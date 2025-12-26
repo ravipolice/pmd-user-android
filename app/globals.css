@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 15, 23, 42; /* slate-900 */
+  --background-end-rgb: 30, 41, 59; /* slate-800 */
+  --primary-purple: 139, 92, 246; /* purple-500 */
+  --primary-blue: 59, 130, 246; /* blue-500 */
+  --sidebar-bg: 15, 23, 42; /* slate-900 */
+  --card-bg: 30, 41, 59; /* slate-800 */
+  --text-primary: 241, 245, 249; /* slate-100 */
+  --text-secondary: 148, 163, 184; /* slate-400 */
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      135deg,
+      rgb(15, 23, 42) 0%,
+      rgb(30, 41, 59) 50%,
+      rgb(15, 23, 42) 100%
+    );
+  min-height: 100vh;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  /* Dark theme gradient background */
+  .bg-dashboard-gradient {
+    background: linear-gradient(135deg, rgb(15, 23, 42) 0%, rgb(30, 41, 59) 50%, rgb(15, 23, 42) 100%);
+  }
+  
+  /* Card styling */
+  .card-dark {
+    background: rgb(30, 41, 59);
+    border: 1px solid rgb(51, 65, 85);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Purple accent */
+  .accent-purple {
+    color: rgb(139, 92, 246);
+  }
+  
+  /* Blue accent */
+  .accent-blue {
+    color: rgb(59, 130, 246);
+  }
+  
+  /* Force horizontal scrollbar visibility */
+  .overflow-x-auto {
+    overflow-x: scroll !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar {
+    height: 12px;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar-track {
+    background: rgb(30, 41, 59);
+    border-radius: 6px;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar-thumb {
+    background: rgb(51, 65, 85);
+    border-radius: 6px;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: rgb(71, 85, 105);
+  }
+}
+

@@ -1,0 +1,7 @@
+kgid,name,email,mobile1,mobile2,rank,metalNumber,district,station,bloodGroup,photoUrl,isAdmin,isApproved
+KG001,John Doe,john.doe@example.com,9876543210,9876543211,PSI,12345,Bengaluru City,Central PS,A+,https://example.com/photo.jpg,false,true
+KG002,Jane Smith,jane.smith@example.com,9876543212,,ASI,,Mysuru City,North PS,B+,https://example.com/photo2.jpg,false,true
+KG003,Bob Johnson,bob.johnson@example.com,9876543213,9876543214,CPI,67890,Bengaluru Dist,South PS,O+,,false,true
+
+
+

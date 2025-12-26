@@ -1,0 +1,10 @@
+agid,name,mobile,landline,rank,station,district,email,photoUrl
+AGID0001,SP Chikkaballapura,9480802501,8156277210,SP,SP Chikkaballapura,Chikkaballapura,spcbpura@ksp.gov.in,
+AGID0002,ASP Chikkaballapura,9480802502,8156277218,ASP,ASP Chikkaballapura,Chikkaballapura,addlspcbpura@ksp.gov.in,
+AGID0003,CONTROL ROOM,9480802500,8156277213,PI,CONTROL ROOM,Chikkaballapura,dccbpura@ksp.gov.in,
+AGID0004,PI WIRELESS,9480800934,8156270916,PI,PI WIRELESS,Chikkaballapura,,
+AGID0005,DSP CEN,9480802510,8156270916,DSP,DSP CEN PS,Chikkaballapura,,
+AGID0006,PI CEN,9480802509,8156275122,PI,PI CEN PS,Chikkaballapura,dcbpscnpura@ksp.gov.in,
+
+
+

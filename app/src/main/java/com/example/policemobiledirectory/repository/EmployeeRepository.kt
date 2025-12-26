@@ -26,6 +26,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Transaction
 import com.google.firebase.functions.FirebaseFunctions
@@ -112,7 +113,40 @@ open class EmployeeRepository @Inject constructor(
                 val storedHash = localEmployee.pin
                 if (!storedHash.isNullOrEmpty() && PinHasher.verifyPin(pin, storedHash)) {
                     Log.d(TAG, "LoginFlow: offline login success for $email")
-                    emit(RepoResult.Success(localEmployee.toEmployee()))
+                    
+                    // ✅ Sign in anonymously and update firebaseUid even for offline login
+                    try {
+                        val authResult = FirebaseAuth.getInstance().signInAnonymously().await()
+                        val firebaseUid = authResult.user?.uid
+                        if (firebaseUid != null) {
+                            // Update firebaseUid in Firestore if different
+                            val kgid = localEmployee.kgid.takeIf { !it.isNullOrBlank() }
+                            if (kgid != null) {
+                                try {
+                                    val docRef = employeesCollection.document(kgid)
+                                    val currentDoc = docRef.get().await()
+                                    val currentFirebaseUid = currentDoc.getString("firebaseUid")
+                                    if (currentFirebaseUid != firebaseUid) {
+                                        docRef.update("firebaseUid", firebaseUid).await()
+                                        Log.d(TAG, "✅ Updated firebaseUid in Firestore (offline login): $firebaseUid")
+                                    }
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "⚠️ Failed to update firebaseUid in Firestore (offline): ${e.message}")
+                                }
+                            }
+                            
+                            // Update local cache with firebaseUid
+                            val updatedEmployee = localEmployee.copy(firebaseUid = firebaseUid)
+                            employeeDao.insertEmployee(updatedEmployee)
+                            emit(RepoResult.Success(updatedEmployee.toEmployee()))
+                        } else {
+                            emit(RepoResult.Success(localEmployee.toEmployee()))
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "⚠️ Failed to sign in anonymously (offline login): ${e.message}")
+                        // Continue with offline login anyway
+                        emit(RepoResult.Success(localEmployee.toEmployee()))
+                    }
                     return@flow
                 }
             }
@@ -148,8 +182,23 @@ open class EmployeeRepository @Inject constructor(
             }
 
             try {
-                FirebaseAuth.getInstance().signInAnonymously().await()
-                Log.d(TAG, "🔥 Firebase anonymous login success (PIN login)")
+                val authResult = FirebaseAuth.getInstance().signInAnonymously().await()
+                val firebaseUid = authResult.user?.uid
+                Log.d(TAG, "🔥 Firebase anonymous login success (PIN login), UID: $firebaseUid")
+                
+                // ✅ Update firebaseUid in Firestore if it's different
+                if (firebaseUid != null) {
+                    val currentFirebaseUid = doc.getString("firebaseUid")
+                    if (currentFirebaseUid != firebaseUid) {
+                        try {
+                            doc.reference.update("firebaseUid", firebaseUid).await()
+                            Log.d(TAG, "✅ Updated firebaseUid in Firestore: $firebaseUid")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "⚠️ Failed to update firebaseUid in Firestore: ${e.message}")
+                            // Continue anyway - not critical for login
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Firebase anonymous login failed (PIN login)", e)
                 emit(RepoResult.Error(e, "Login failed. Try again."))
@@ -158,7 +207,10 @@ open class EmployeeRepository @Inject constructor(
 
             // Step 4 — Cache remote record locally for offline use
             // Build entity from remote Employee object (or from doc fields)
-            val entityToCache = buildEmployeeEntityFromDoc(doc, pinHash = remotePinHash)
+            val authUser = FirebaseAuth.getInstance().currentUser
+            val entityToCache = buildEmployeeEntityFromDoc(doc, pinHash = remotePinHash).copy(
+                firebaseUid = authUser?.uid ?: ""
+            )
             employeeDao.insertEmployee(entityToCache)
             emit(RepoResult.Success(entityToCache.toEmployee()))
         } catch (e: Exception) {
@@ -380,18 +432,40 @@ open class EmployeeRepository @Inject constructor(
             }
 
             val emp = mapEmployeeFromResponse(empData)
-            employeeDao.insertEmployee(emp.toEntity())
-
+            
             try {
-                FirebaseAuth.getInstance().signInAnonymously().await()
-                Log.d(TAG, "🔥 Firebase anonymous login success (OTP flow)")
+                val authResult = FirebaseAuth.getInstance().signInAnonymously().await()
+                val firebaseUid = authResult.user?.uid
+                Log.d(TAG, "🔥 Firebase anonymous login success (OTP flow), UID: $firebaseUid")
+                
+                // ✅ Update firebaseUid in Firestore if it's different
+                if (firebaseUid != null) {
+                    val kgid = emp.kgid.takeIf { !it.isNullOrBlank() } ?: throw IllegalStateException("Employee kgid is missing")
+                    val docRef = employeesCollection.document(kgid)
+                    try {
+                        val currentDoc = docRef.get().await()
+                        val currentFirebaseUid = currentDoc.getString("firebaseUid")
+                        if (currentFirebaseUid != firebaseUid) {
+                            docRef.update("firebaseUid", firebaseUid).await()
+                            Log.d(TAG, "✅ Updated firebaseUid in Firestore: $firebaseUid")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "⚠️ Failed to update firebaseUid in Firestore: ${e.message}")
+                        // Continue anyway - not critical for login
+                    }
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Firebase anonymous login failed (OTP flow)", e)
                 return RepoResult.Error(e, "Login failed. Please try again.")
             }
 
+            // Update local cache with firebaseUid
+            val authUser = FirebaseAuth.getInstance().currentUser
+            val empWithUid = emp.copy(firebaseUid = authUser?.uid)
+            employeeDao.insertEmployee(empWithUid.toEntity())
+            
             Log.d(TAG, "✅ Employee cached for $normalizedEmail")
-            RepoResult.Success(emp)
+            RepoResult.Success(empWithUid)
 
         } catch (e: Exception) {
             Log.e(TAG, "💥 verifyLoginCode() failed", e)
@@ -427,22 +501,199 @@ open class EmployeeRepository @Inject constructor(
         emit(RepoResult.Loading)
         try {
             val kgid = emp.kgid.takeIf { !it.isNullOrBlank() } ?: generateAutoId()
-            // ✅ CRITICAL FIX: Ensure kgid is explicitly set in the Employee object
-            val finalEmp = emp.copy(kgid = kgid)
             
-            // ✅ FIX: Use merge to preserve existing fields that aren't being updated
-            // This ensures fields like fcmToken, firebaseUid, etc. are not lost
-            employeesCollection.document(kgid).set(finalEmp, SetOptions.merge()).await()
+            // ✅ CRITICAL: Get current authenticated user's UID
+            val currentUser = auth.currentUser
+            val currentFirebaseUid = currentUser?.uid
             
-            // ✅ Log the save for debugging
-            Log.d(TAG, "Saved employee: kgid=$kgid, metalNumber=${finalEmp.metalNumber}, name=${finalEmp.name}")
+            // ✅ Read existing document to get current firebaseUid
+            val docRef = employeesCollection.document(kgid)
+            val existingDoc = try {
+                docRef.get().await()
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not read existing document: ${e.message}")
+                null
+            }
             
-            // Insert/update into Room (no pin available here)
-            employeeDao.insertEmployee(buildEmployeeEntityFromPojo(finalEmp))
+            val docExists = existingDoc?.exists() == true
+            val existingFirebaseUid = existingDoc?.getString("firebaseUid")
+            
+            Log.d(TAG, "📋 Document check: exists=$docExists, existingFirebaseUid=$existingFirebaseUid, currentAuthUid=$currentFirebaseUid")
+            
+            // ✅ If firebaseUid is missing and we have a current user, set it first
+            if ((existingFirebaseUid == null || existingFirebaseUid.isEmpty()) && currentFirebaseUid != null && docExists) {
+                try {
+                    docRef.update("firebaseUid", currentFirebaseUid).await()
+                    Log.d(TAG, "✅ Set firebaseUid for first time: $currentFirebaseUid")
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ Failed to set firebaseUid: ${e.message}")
+                    // Continue anyway - might be permission issue, but we'll try the update
+                }
+            }
+            
+            // ✅ Ensure firebaseUid is included in the Employee object
+            // Use existing firebaseUid if available, otherwise use current user's UID
+            val firebaseUidToUse = if (docExists) {
+                // For existing employees: use existing firebaseUid, or current user's UID if missing
+                existingFirebaseUid?.takeIf { it.isNotBlank() } 
+                    ?: currentFirebaseUid 
+                    ?: emp.firebaseUid
+            } else {
+                // ✅ FIX: For NEW employees created by admin, don't use admin's UID
+                // Leave firebaseUid null/empty - it will be set when employee first logs in
+                emp.firebaseUid?.takeIf { it.isNotBlank() } ?: null
+            }
+            
+            // ✅ CRITICAL FIX: Ensure kgid and firebaseUid are explicitly set
+            var finalEmp = emp.copy(
+                kgid = kgid,
+                firebaseUid = firebaseUidToUse
+            )
+            
+            Log.d(TAG, "💾 Saving employee: kgid=$kgid, firebaseUid=$firebaseUidToUse, currentAuthUid=$currentFirebaseUid, docExists=$docExists")
+            Log.d(TAG, "💾 Employee fields: name=${finalEmp.name}, email=${finalEmp.email}, metalNumber=${finalEmp.metalNumber}")
+            
+            // ✅ Use update() if document exists (for profile updates, document should always exist)
+            // This ensures Firestore update rules are applied correctly
+            if (docExists) {
+                // Document exists - use update() to update fields
+                // Build update map with only the fields we want to update (exclude protected fields)
+                // Protected fields: email, kgid, isAdmin, pin, firebaseUid (handled separately)
+                val updateMap = mutableMapOf<String, Any>()
+                
+                // ✅ REQUIRED FIELDS - Always include (even if empty, though they shouldn't be)
+                updateMap["name"] = finalEmp.name
+                
+                // ✅ MOBILE FIELDS - Include if not null
+                finalEmp.mobile1?.takeIf { it.isNotBlank() }?.let {
+                    updateMap["mobile1"] = it
+                }
+                finalEmp.mobile2?.takeIf { it.isNotBlank() }?.let {
+                    updateMap["mobile2"] = it
+                }
+                
+                // ✅ RANK AND METAL NUMBER - Include if they have values
+                finalEmp.rank?.takeIf { it.isNotBlank() }?.let {
+                    updateMap["rank"] = it
+                }
+                finalEmp.metalNumber?.takeIf { it.isNotBlank() }?.let {
+                    updateMap["metalNumber"] = it
+                }
+                
+                // ✅ LOCATION FIELDS - Include if they have values
+                // Note: District is read-only for self-edit in UI, but including it won't hurt if unchanged
+                finalEmp.district?.takeIf { it.isNotBlank() }?.let {
+                    updateMap["district"] = it
+                }
+                finalEmp.station?.takeIf { it.isNotBlank() }?.let {
+                    updateMap["station"] = it
+                }
+                
+                // ✅ BLOOD GROUP - Optional field
+                finalEmp.bloodGroup?.takeIf { it.isNotBlank() }?.let {
+                    updateMap["bloodGroup"] = it
+                }
+                
+                // ✅ PHOTO FIELDS - Include if they have values
+                finalEmp.photoUrl?.takeIf { it.isNotBlank() }?.let {
+                    updateMap["photoUrl"] = it
+                }
+                finalEmp.photoUrlFromGoogle?.takeIf { it.isNotBlank() }?.let {
+                    updateMap["photoUrlFromGoogle"] = it
+                }
+                
+                // ✅ FCM TOKEN - Include if present (for notifications)
+                finalEmp.fcmToken?.takeIf { it.isNotBlank() }?.let {
+                    updateMap["fcmToken"] = it
+                }
+                
+                // Only update firebaseUid if it was missing
+                if (firebaseUidToUse != null && (existingFirebaseUid == null || existingFirebaseUid.isEmpty())) {
+                    updateMap["firebaseUid"] = firebaseUidToUse
+                }
+                
+                // ✅ COMPREHENSIVE LOGGING
+                Log.d(TAG, "═══════════════════════════════════════════════════════")
+                Log.d(TAG, "📝 UPDATE MAP DETAILS:")
+                Log.d(TAG, "   Fields in update map: ${updateMap.keys.joinToString(", ")}")
+                Log.d(TAG, "   Total fields: ${updateMap.size}")
+                Log.d(TAG, "📝 FINAL EMPLOYEE VALUES:")
+                Log.d(TAG, "   name: '${finalEmp.name}'")
+                Log.d(TAG, "   email: '${finalEmp.email}' (protected - not in update)")
+                Log.d(TAG, "   mobile1: '${finalEmp.mobile1}' → ${if (updateMap.containsKey("mobile1")) "INCLUDED" else "EXCLUDED"}")
+                Log.d(TAG, "   mobile2: '${finalEmp.mobile2}' → ${if (updateMap.containsKey("mobile2")) "INCLUDED" else "EXCLUDED"}")
+                Log.d(TAG, "   rank: '${finalEmp.rank}' → ${if (updateMap.containsKey("rank")) "INCLUDED" else "EXCLUDED"}")
+                Log.d(TAG, "   metalNumber: '${finalEmp.metalNumber}' → ${if (updateMap.containsKey("metalNumber")) "INCLUDED" else "EXCLUDED"}")
+                Log.d(TAG, "   district: '${finalEmp.district}' → ${if (updateMap.containsKey("district")) "INCLUDED" else "EXCLUDED"}")
+                Log.d(TAG, "   station: '${finalEmp.station}' → ${if (updateMap.containsKey("station")) "INCLUDED" else "EXCLUDED"}")
+                Log.d(TAG, "   bloodGroup: '${finalEmp.bloodGroup}' → ${if (updateMap.containsKey("bloodGroup")) "INCLUDED" else "EXCLUDED"}")
+                Log.d(TAG, "   photoUrl: '${finalEmp.photoUrl?.take(50)}...' → ${if (updateMap.containsKey("photoUrl")) "INCLUDED" else "EXCLUDED"}")
+                Log.d(TAG, "   photoUrlFromGoogle: '${finalEmp.photoUrlFromGoogle?.take(50)}...' → ${if (updateMap.containsKey("photoUrlFromGoogle")) "INCLUDED" else "EXCLUDED"}")
+                Log.d(TAG, "═══════════════════════════════════════════════════════")
+                
+                if (updateMap.isEmpty()) {
+                    Log.w(TAG, "⚠️ Update map is empty! Nothing to update.")
+                    emit(RepoResult.Success(true))
+                    return@flow
+                }
+                
+                docRef.update(updateMap).await()
+                Log.d(TAG, "✅ Successfully updated employee document with ${updateMap.size} fields")
+            } else {
+                // Document doesn't exist - creating new employee (admin add employee flow)
+                Log.d(TAG, "📝 Creating NEW employee document for kgid=$kgid")
+                Log.d(TAG, "📝 Admin creating employee - ensuring all required fields are set")
+                
+                // ✅ For new employee creation, ensure isApproved is set (defaults to false for new registrations)
+                // Admin-created employees should be approved by default
+                // ✅ firebaseUid: For new employees, this will be null until they first log in.
+                //    When they log in (via PIN or OTP), Firebase Authentication will generate a UID
+                //    and it will be automatically set in Firestore by the login flow.
+                val employeeToCreate = finalEmp.copy(
+                    isApproved = true,  // ✅ Admin-created employees are auto-approved
+                    isAdmin = finalEmp.isAdmin ?: false,  // ✅ Preserve isAdmin if set, otherwise false
+                    firebaseUid = finalEmp.firebaseUid?.takeIf { it.isNotBlank() } ?: null  // ✅ Will be set when employee first logs in
+                )
+                
+                Log.d(TAG, "📝 Creating employee with isApproved=true, isAdmin=${employeeToCreate.isAdmin}, firebaseUid=${employeeToCreate.firebaseUid?.take(10) ?: "null (will be set on first login)"}...")
+                
+                try {
+                    docRef.set(employeeToCreate, SetOptions.merge()).await()
+                    Log.d(TAG, "✅ Successfully created new employee document")
+                    
+                    // ✅ Use employeeToCreate (with isApproved=true) for Room database
+                    finalEmp = employeeToCreate
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Failed to create employee document", e)
+                    Log.e(TAG, "❌ Error type: ${e.javaClass.simpleName}")
+                    Log.e(TAG, "❌ Error message: ${e.message}")
+                    
+                    // Check if it's a permission error
+                    if (e.message?.contains("PERMISSION_DENIED", ignoreCase = true) == true ||
+                        e.message?.contains("permission-denied", ignoreCase = true) == true) {
+                        Log.e(TAG, "❌ PERMISSION DENIED - Admin status may not be recognized")
+                        Log.e(TAG, "❌ Current user UID: ${auth.currentUser?.uid}")
+                        Log.e(TAG, "❌ Current user email: ${auth.currentUser?.email}")
+                        throw IllegalStateException("Permission denied: Admin access required. Please ensure your account has admin privileges in Firestore.")
+                    }
+                    throw e
+                }
+            }
+            
+            Log.d(TAG, "✅ Successfully saved employee: kgid=$kgid, isApproved=${finalEmp.isApproved}")
+            Log.d(TAG, "✅ Employee details: name=${finalEmp.name}, email=${finalEmp.email}, isAdmin=${finalEmp.isAdmin}")
+            
+            // Insert/update into Room (use finalEmp which now has isApproved=true for new employees)
+            val entity = buildEmployeeEntityFromPojo(finalEmp)
+            Log.d(TAG, "✅ Saving to Room DB: kgid=${entity.kgid}, isApproved=${entity.isApproved}, name=${entity.name}")
+            employeeDao.insertEmployee(entity)
+            Log.d(TAG, "✅ Employee saved to Room DB successfully")
             
             emit(RepoResult.Success(true))
         } catch (e: Exception) {
-            Log.e(TAG, "addOrUpdateEmployee failed", e)
+            Log.e(TAG, "❌ addOrUpdateEmployee failed", e)
+            Log.e(TAG, "❌ Error details: ${e.message}")
+            e.printStackTrace()
             emit(RepoResult.Error(null,"Failed to add/update employee: ${e.message}"))
         }
     }.flowOn(ioDispatcher)
@@ -498,15 +749,48 @@ open class EmployeeRepository @Inject constructor(
         }
     }
 
+    /**
+     * Helper function to fetch ALL employees from Firestore using pagination
+     * Firestore has a default limit of ~500 documents per query, so we need pagination
+     */
+    private suspend fun fetchAllEmployeesFromFirestore(): List<DocumentSnapshot> {
+        val allDocuments = mutableListOf<DocumentSnapshot>()
+        var lastDocument: DocumentSnapshot? = null
+        val batchSize = 500L  // ✅ Firestore limit() expects Long, not Int
+        var documents: List<DocumentSnapshot>
+        
+        do {
+            val query = if (lastDocument == null) {
+                employeesCollection.limit(batchSize)
+            } else {
+                employeesCollection.startAfter(lastDocument).limit(batchSize)
+            }
+            
+            val snapshot = query.get().await()
+            documents = snapshot.documents
+            
+            if (documents.isNotEmpty()) {
+                allDocuments.addAll(documents)
+                lastDocument = documents.last()
+                Log.d(TAG, "📥 Fetched ${documents.size} employees (total so far: ${allDocuments.size})")
+            }
+            
+        } while (documents.size == batchSize.toInt()) // Continue if we got a full batch (might be more)
+        
+        Log.d(TAG, "✅ Total employees fetched from Firestore: ${allDocuments.size}")
+        return allDocuments
+    }
+
     fun getEmployees(): Flow<RepoResult<List<Employee>>> = flow {
         emit(RepoResult.Loading)
         try {
             // getAllEmployees returns Flow<List<EmployeeEntity>> from DAO — use .first() to collect current
             var cached = employeeDao.getAllEmployees().first()
             if (cached.isEmpty()) {
-                val snapshot = employeesCollection.get().await()
+                // ✅ FIX: Use pagination to fetch ALL employees (not just first 500)
+                val allDocuments = fetchAllEmployeesFromFirestore()
                 // ✅ CRITICAL FIX: Ensure kgid is set from document ID for all employees
-                val entities = snapshot.documents.mapNotNull { doc ->
+                val entities = allDocuments.mapNotNull { doc ->
                     val docKgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
                     val emp = doc.toObject(Employee::class.java)?.copy(kgid = docKgid)
                     emp?.let { buildEmployeeEntityFromDoc(doc, pinHash = doc.getString(FIELD_PIN_HASH).orEmpty()) }
@@ -929,12 +1213,16 @@ open class EmployeeRepository @Inject constructor(
 
     suspend fun refreshEmployees() = withContext(ioDispatcher) {
         try {
+            Log.d(TAG, "🔄 Starting refreshEmployees - clearing cache and reloading from Firestore")
             // Clear existing cache
             employeeDao.clearEmployees()
             
-            // Force reload from Firestore
-            val snapshot = employeesCollection.get().await()
-            val entities = snapshot.documents.mapNotNull { doc ->
+            // ✅ FIX: Use pagination to fetch ALL employees (not just first 500)
+            val allDocuments = fetchAllEmployeesFromFirestore()
+            Log.d(TAG, "📥 Loaded ${allDocuments.size} documents from Firestore")
+            
+            var processedCount = 0
+            val entities = allDocuments.mapNotNull { doc ->
                 try {
                     // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
                     val kgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
@@ -947,6 +1235,13 @@ open class EmployeeRepository @Inject constructor(
                         return@mapNotNull null
                     }
                     
+                    // ✅ Log employee details for debugging (only first 10 to avoid log spam)
+                    if (processedCount < 10) {
+                        val isApproved = doc.getBoolean("isApproved") ?: false
+                        Log.d(TAG, "📋 Employee: kgid=$kgid, name=${emp?.name}, isApproved=$isApproved")
+                    }
+                    processedCount++
+                    
                     emp?.let { 
                         buildEmployeeEntityFromDoc(doc, pinHash = doc.getString(FIELD_PIN_HASH).orEmpty()) 
                     }
@@ -956,8 +1251,10 @@ open class EmployeeRepository @Inject constructor(
                 }
             }
             
+            Log.d(TAG, "✅ Parsed ${entities.size} employees from Firestore")
             if (entities.isNotEmpty()) {
                 employeeDao.insertEmployees(entities)
+                Log.d(TAG, "✅ Inserted ${entities.size} employees into Room database")
                 Log.d(TAG, "✅ Refreshed ${entities.size} employees from Firestore")
             } else {
                 Log.w(TAG, "⚠️ No employees found in Firestore after refresh")
@@ -1054,6 +1351,47 @@ open class EmployeeRepository @Inject constructor(
             Log.d(TAG, "✅ Inserted employee entity: kgid=${entity.kgid}, metalNumber=${entity.metalNumber}")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Failed to insert employee entity: ${e.message}", e)
+        }
+    }
+
+    /**
+     * ✅ Update firebaseUid in Firestore for the current authenticated user
+     * Used after Google Sign-In or when firebaseUid needs to be synced
+     */
+    suspend fun updateFirebaseUidForCurrentUser(email: String): RepoResult<Unit> = withContext(ioDispatcher) {
+        try {
+            val currentUser = auth.currentUser
+            val firebaseUid = currentUser?.uid
+            if (firebaseUid == null) {
+                return@withContext RepoResult.Error(null, "No authenticated Firebase user")
+            }
+
+            // Find employee by email
+            val snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, email).limit(1).get().await()
+            if (snapshot.isEmpty) {
+                return@withContext RepoResult.Error(null, "Employee not found for email: $email")
+            }
+
+            val doc = snapshot.documents.first()
+            val currentFirebaseUid = doc.getString("firebaseUid")
+            
+            // Update if different
+            if (currentFirebaseUid != firebaseUid) {
+                doc.reference.update("firebaseUid", firebaseUid).await()
+                Log.d(TAG, "✅ Updated firebaseUid in Firestore for $email: $firebaseUid")
+                
+                // Update local cache
+                val kgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
+                val localEmp = employeeDao.getEmployeeByEmail(email)
+                if (localEmp != null) {
+                    employeeDao.insertEmployee(localEmp.copy(firebaseUid = firebaseUid))
+                }
+            }
+            
+            RepoResult.Success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to update firebaseUid: ${e.message}", e)
+            RepoResult.Error(e, "Failed to update firebaseUid: ${e.message}")
         }
     }
 
