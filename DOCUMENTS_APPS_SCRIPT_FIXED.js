@@ -34,7 +34,6 @@
  */
 
 const SPREADSHEET_ID = "1m8z-ryBbFTUsox-sEoZgFm_lOvbMb1_XjsaUky1VUjY";
-const SHEET_NAME = "Documents Url";   // ⚠️ must match your tab name exactly
 const GALLERY_SHEET_NAME = "Gallery";   // ⚠️ Gallery sheet name - must match tab name in gallery sheet
 const FOLDER_ID = "13qNrVmJQeFgcC_Q90yyD3fhTZq8j0GXK";  // Drive folder for storing documents
 const GALLERY_FOLDER_ID = "1SP9Zuy7RWUvDMhhEbHSbb3Ll0uc01VA-";  // Gallery Drive folder

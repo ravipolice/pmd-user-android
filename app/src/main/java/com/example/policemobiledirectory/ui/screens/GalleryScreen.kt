@@ -70,11 +70,18 @@ fun GalleryScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     
-    // 🔹 Fetch gallery images on launch and when coming back
+    // 🔹 Fetch gallery images on initial composition
+    LaunchedEffect(Unit) {
+        android.util.Log.d("GalleryScreen", "🔄 LaunchedEffect(Unit) - Fetching gallery images on initial load")
+        viewModel.fetchGalleryImages()
+    }
+    
+    // 🔹 Fetch gallery images when coming back to this screen
     LaunchedEffect(currentRoute) {
         // Only refresh if we're on the gallery screen
         if (currentRoute == com.example.policemobiledirectory.navigation.Routes.GALLERY_SCREEN) {
-            viewModel.fetchGalleryImages()
+            android.util.Log.d("GalleryScreen", "🔄 LaunchedEffect(currentRoute) - Refreshing gallery images")
+            viewModel.fetchGalleryImages(forceRefresh = true)
         }
     }
 
@@ -206,12 +213,13 @@ fun GalleryScreen(
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    items(galleryImages) { image ->
+                                    // ✅ Filter out invalid images before displaying
+                                    items(galleryImages.filter { it.isValid }) { image ->
                                         GalleryImageItem(
                                             image = image,
                                             isAdmin = isAdmin,
-                                            onClick = { fullScreenImage = image.url },
-                                            onDelete = { deleteDialogImageTitle = image.title }
+                                            onClick = { fullScreenImage = image.resolvedUrl ?: image.displayUrl },
+                                            onDelete = { deleteDialogImageTitle = image.resolvedTitle }
                                         )
                                     }
                                 }
@@ -222,12 +230,13 @@ fun GalleryScreen(
                                     contentPadding = PaddingValues(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    items(galleryImages) { image ->
+                                    // ✅ Filter out invalid images before displaying
+                                    items(galleryImages.filter { it.isValid }) { image ->
                                         GalleryImageListItem(
                                             image = image,
                                             isAdmin = isAdmin,
-                                            onClick = { fullScreenImage = image.url },
-                                            onDelete = { deleteDialogImageTitle = image.title }
+                                            onClick = { fullScreenImage = image.resolvedUrl ?: image.displayUrl },
+                                            onDelete = { deleteDialogImageTitle = image.resolvedTitle }
                                         )
                                     }
                                 }
@@ -266,7 +275,7 @@ fun GalleryScreen(
 
             // 👀 Fullscreen image dialog
             val currentFullScreenImage = fullScreenImage
-            if (currentFullScreenImage != null) {
+            if (!currentFullScreenImage.isNullOrBlank()) {
                 // ✅ Convert Drive URL to direct image URL for fullscreen display
                 val fullScreenImageUrl = remember(currentFullScreenImage) {
                     convertDriveUrlToDirectImageUrl(currentFullScreenImage)
@@ -281,12 +290,20 @@ fun GalleryScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            AsyncImage(
-                                model = fullScreenImageUrl,
-                                contentDescription = "Full Screen Image",
-                                modifier = Modifier.fillMaxWidth(),
-                                contentScale = ContentScale.Fit
-                            )
+                            if (fullScreenImageUrl.isNotBlank()) {
+                                AsyncImage(
+                                    model = fullScreenImageUrl,
+                                    contentDescription = "Full Screen Image",
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentScale = ContentScale.Fit
+                                )
+                            } else {
+                                Text(
+                                    text = "Image not available",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
                             IconButton(
                                 onClick = { fullScreenImage = null },
                                 modifier = Modifier
@@ -572,9 +589,10 @@ fun GalleryImageItem(
         onClick: () -> Unit,
         onDelete: () -> Unit
     ) {
-        // ✅ Convert Drive URL to direct image URL for display
-        val imageUrl = remember(image.url) {
-            convertDriveUrlToDirectImageUrl(image.url)
+        // ✅ Use displayUrl and convert Drive URL to direct image URL for display
+        val displayUrl = image.displayUrl
+        val imageUrl = remember(displayUrl) {
+            displayUrl?.let { convertDriveUrlToDirectImageUrl(it) } ?: ""
         }
 
         Box(
@@ -583,12 +601,29 @@ fun GalleryImageItem(
                 .clip(RoundedCornerShape(12.dp))
                 .clickable { onClick() }
         ) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = "Gallery Image",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            if (imageUrl.isNotBlank()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = "Gallery Image",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                // Show placeholder when URL is invalid
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = "No Image",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(48.dp)
+                    )
+                }
+            }
 
             // Only show delete button for admins
             if (isAdmin) {
@@ -622,9 +657,10 @@ fun GalleryImageListItem(
         onClick: () -> Unit,
         onDelete: () -> Unit
     ) {
-        // ✅ Convert Drive URL to direct image URL for display
-        val imageUrl = remember(image.url) {
-            convertDriveUrlToDirectImageUrl(image.url)
+        // ✅ Use displayUrl and convert Drive URL to direct image URL for display
+        val displayUrl = image.displayUrl
+        val imageUrl = remember(displayUrl) {
+            displayUrl?.let { convertDriveUrlToDirectImageUrl(it) } ?: ""
         }
 
         Card(
@@ -642,14 +678,32 @@ fun GalleryImageListItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Image thumbnail
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = "Gallery Image",
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                if (imageUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = "Gallery Image",
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // Show placeholder when URL is invalid
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = "No Image",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
 
                 // Image details
                 Column(
@@ -657,18 +711,18 @@ fun GalleryImageListItem(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = image.title,
+                        text = image.resolvedTitle,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium
                     )
-                    image.category?.let {
+                    image.resolvedCategory?.let {
                         Text(
                             text = "Category: $it",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
                     }
-                    image.description?.let {
+                    image.resolvedDescription?.let {
                         if (it.isNotBlank()) {
                             Text(
                                 text = it,

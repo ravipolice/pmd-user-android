@@ -92,3 +92,19 @@ Column T:  isDeleted      ← Boolean (TRUE/FALSE)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -20,14 +20,23 @@ class DocumentsRepository @Inject constructor(
 
     suspend fun fetchDocuments(): List<Document> {
         val response: Response<ResponseBody> = api.getDocumentsRaw(token = token())
+        
+        if (!response.isSuccessful) {
+            val errorBody = response.errorBody()?.string() ?: "Unknown error"
+            throw IllegalStateException("HTTP ${response.code()}: $errorBody")
+        }
+        
         val bodyStr = response.body()?.string()
             ?: throw IllegalStateException("Empty documents response")
 
         // Try parse as array
         try {
             val listType = object : TypeToken<List<Document>>() {}.type
-            return gson.fromJson(bodyStr, listType)
-        } catch (_: Exception) {
+            val documents = gson.fromJson<List<Document>>(bodyStr, listType)
+            // ✅ Filter out invalid documents (those without valid URLs)
+            return documents.filter { it.isValid }
+        } catch (e: Exception) {
+            android.util.Log.w("DocumentsRepository", "Failed to parse as array: ${e.message}")
             // try object with data/error
         }
 
@@ -44,7 +53,16 @@ class DocumentsRepository @Inject constructor(
             throw IllegalStateException("Unable to parse documents response: ${e.message}")
         }
 
-        obj.data?.let { return it }
+        // ✅ Check if response indicates an error
+        if (obj.success == false || (obj.error != null || obj.message != null)) {
+            val err = obj.error ?: obj.message ?: "Documents load failed"
+            throw IllegalStateException(err)
+        }
+
+        obj.data?.let { 
+            // ✅ Filter out invalid documents (those without valid URLs)
+            return it.filter { it.isValid }
+        }
 
         val err = obj.error ?: obj.message ?: "Documents load failed"
         throw IllegalStateException(err)

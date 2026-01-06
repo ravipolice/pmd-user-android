@@ -200,7 +200,7 @@ fun ContactCard(
                     }
 
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (!mobileNumber.isNullOrBlank()) {
+                        if (!mobileNumber.isNullOrBlank() && mobileNumber.uppercase() != "NM") {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -248,6 +248,19 @@ fun ContactCard(
                                         )
                                     }
                                 }
+                            }
+                        } else if (!mobileNumber.isNullOrBlank() && mobileNumber.uppercase() == "NM") {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "NM (Not Mentioned)",
+                                    color = Color.Black.copy(alpha = 0.7f),
+                                    fontSize = (12 * fontScale).sp,
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
                         } else {
                             Text(

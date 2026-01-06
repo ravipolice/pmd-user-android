@@ -48,6 +48,9 @@ class DocumentsViewModel @Inject constructor(
     val isLoading: Boolean get() = _documentsStatus.value is OperationStatus.Loading
     val error: String? get() = (_documentsStatus.value as? OperationStatus.Error)?.message
 
+    // Track locally deleted documents to prevent them from reappearing due to stale server data
+    private val localDeletedDocs = mutableSetOf<String>()
+
     fun clearStatus() {
         _uploadStatus.value = OperationStatus.Idle
         _deleteStatus.value = OperationStatus.Idle
@@ -62,8 +65,10 @@ class DocumentsViewModel @Inject constructor(
             // Return cached data if available and not expired
             if (!forceRefresh && cachedDocuments != null && 
                 (System.currentTimeMillis() - cacheTimestamp) < CACHE_DURATION_MS) {
-                _documents.value = cachedDocuments!!
-                _documentsStatus.value = OperationStatus.Success(cachedDocuments!!)
+                // Apply local delete filter to cached data too
+                val filteredCache = cachedDocuments!!.filter { !localDeletedDocs.contains(it.resolvedTitle) }
+                _documents.value = filteredCache
+                _documentsStatus.value = OperationStatus.Success(filteredCache)
                 return@launch
             }
 
@@ -80,15 +85,19 @@ class DocumentsViewModel @Inject constructor(
                 cachedDocuments = docList
                 cacheTimestamp = System.currentTimeMillis()
                 
-                _documents.value = docList
-                _documentsStatus.value = OperationStatus.Success(docList)
+                // ✅ Filter out locally deleted docs
+                val filteredList = docList.filter { !localDeletedDocs.contains(it.resolvedTitle) }
+                
+                _documents.value = filteredList
+                _documentsStatus.value = OperationStatus.Success(filteredList)
                 
             } catch (e: Exception) {
                 val errorInfo = ErrorHandler.handleException(e, "DocumentsViewModel.fetchDocuments")
                 
                 // Return cached data if available, even if expired
                 if (cachedDocuments != null) {
-                    _documents.value = cachedDocuments!!
+                    val filteredCache = cachedDocuments!!.filter { !localDeletedDocs.contains(it.resolvedTitle) }
+                    _documents.value = filteredCache
                     _documentsStatus.value = OperationStatus.Error(
                         "Using cached data. ${errorInfo.userFriendlyMessage}"
                     )
@@ -119,6 +128,9 @@ class DocumentsViewModel @Inject constructor(
             _uploadStatus.value = OperationStatus.Loading
             
             try {
+                // Remove from delete list if re-uploading
+                localDeletedDocs.remove(title)
+
                 val userEmail = sessionManager.userEmail.first()
                 val request = DocumentUploadRequest(
                     title = title,
@@ -163,19 +175,17 @@ class DocumentsViewModel @Inject constructor(
             _editStatus.value = OperationStatus.Loading
             
             // Optimistic update
-            val documentToEdit = _documents.value.find { it.title == oldTitle }
-            val updatedList = if (documentToEdit != null && newTitle != null) {
-                _documents.value.map { doc ->
-                    if (doc.title == oldTitle) {
-                        doc.copy(title = newTitle, category = category, description = description)
-                    } else doc
-                }
-            } else {
-                _documents.value
-            }
-            _documents.value = updatedList
+            val documentToEdit = _documents.value.find { it.resolvedTitle == oldTitle }
+            // Note: We can't use copy() with resolved properties, so we'll just refresh after edit
+            // For now, keep the list as-is and let the refresh handle the update
             
             try {
+                // Update local delete list if title changed
+                if (newTitle != null && newTitle != oldTitle) {
+                     // If we are renaming, ensure the new name isn't in the blocklist
+                     localDeletedDocs.remove(newTitle)
+                }
+
                 val userEmail = sessionManager.userEmail.first()
                 val request = DocumentEditRequest(
                     oldTitle = oldTitle,
@@ -195,12 +205,8 @@ class DocumentsViewModel @Inject constructor(
                 invalidateCache()
                 fetchDocuments(forceRefresh = true)
             } catch (e: Exception) {
-                // Revert optimistic update on failure
-                _documents.value = _documents.value.map { doc ->
-                    if (doc.title == newTitle && documentToEdit != null) {
-                        documentToEdit
-                    } else doc
-                }
+                // Revert by refreshing from server
+                fetchDocuments(forceRefresh = true)
                 val errorInfo = ErrorHandler.handleException(e, "DocumentsViewModel.editDocument")
                 _editStatus.value = OperationStatus.Error(errorInfo.userFriendlyMessage)
             }
@@ -215,8 +221,8 @@ class DocumentsViewModel @Inject constructor(
             _deleteStatus.value = OperationStatus.Loading
             
             // Optimistic update - remove from UI immediately
-            val documentToDelete = _documents.value.find { it.title == title }
-            val updatedList = _documents.value.filter { it.title != title }
+            val documentToDelete = _documents.value.find { it.resolvedTitle == title }
+            val updatedList = _documents.value.filter { it.resolvedTitle != title }
             _documents.value = updatedList
             
             try {
@@ -232,9 +238,13 @@ class DocumentsViewModel @Inject constructor(
                 
                 _deleteStatus.value = OperationStatus.Success("Document deleted successfully")
                 
+                // ✅ Add to local delete set to prevent it from reappearing
+                localDeletedDocs.add(title)
+                
                 // Invalidate cache and refresh
                 invalidateCache()
-                fetchDocuments(forceRefresh = true)
+                // fetchDocuments(forceRefresh = true) <-- Removed to prevent race condition/stale data
+
             } catch (e: Exception) {
                 // Revert optimistic update on failure
                 _documents.value = _documents.value + listOfNotNull(documentToDelete)

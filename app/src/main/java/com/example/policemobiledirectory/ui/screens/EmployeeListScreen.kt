@@ -272,10 +272,23 @@ private fun EmployeeListContent(
 
     // Get constants from ViewModel
     val districts by constantsViewModel.districts.collectAsStateWithLifecycle()
+    val units by constantsViewModel.units.collectAsStateWithLifecycle()
     val stationsByDistrict by constantsViewModel.stationsByDistrict.collectAsStateWithLifecycle()
     val ranks by constantsViewModel.ranks.collectAsStateWithLifecycle()
 
     var searchQuery by remember { mutableStateOf("") }
+    
+    // 🔹 UNIT SELECTION STATE
+    var selectedUnit by remember { mutableStateOf("All") }
+    var unitExpanded by remember { mutableStateOf(false) }
+    val unitsList = remember(units) { units } // Units are already "All" + list in ViewModel/Repo or just list
+    val selectedUnitState by viewModel.selectedUnit.collectAsStateWithLifecycle()
+    
+    // Sync selectedUnit with ViewModel
+    LaunchedEffect(selectedUnitState) {
+        selectedUnit = selectedUnitState
+    }
+
     var selectedDistrict by remember { mutableStateOf("All") }
     var districtExpanded by remember { mutableStateOf(false) }
     // Show "All" only for admins, regular users see only districts
@@ -289,13 +302,48 @@ private fun EmployeeListContent(
 
     var selectedStation by remember { mutableStateOf("All") }
     var stationExpanded by remember { mutableStateOf(false) }
-    val stationsForDistrict = remember(selectedDistrict, stationsByDistrict) {
-        if (selectedDistrict == "All") listOf("All")
-        else {
+    
+    // 🔹 FILTER STATIONS BY DISTRICT AND UNIT
+    val stationsForDistrict = remember(selectedDistrict, selectedUnit, stationsByDistrict) {
+        // 1. Get stations for the selected district (or all districts if "All")
+        val districtStations = if (selectedDistrict == "All") {
+             // If "All" districts, we effectively don't filter by district yet, OR we rely on ViewModel filtering.
+             // But for the dropdown, showing *all* stations from *all* districts is too much.
+             // Strategy: If District is All, show Empty or All? 
+             // Current app showed "All". Let's stick to that, but maybe limit distinct names?
+             listOf("All") 
+        } else {
             val stations = stationsByDistrict[selectedDistrict]
                 ?: stationsByDistrict.keys.find { it.equals(selectedDistrict, ignoreCase = true) }?.let { stationsByDistrict[it] }
                 ?: emptyList()
             listOf("All") + stations
+        }
+        
+        // 2. Filter these stations by Unit keyword (Hybrid Strategy in UI)
+        if (selectedUnit == "All" || selectedUnit == "Law & Order") {
+            // "Law & Order" is the default bucket. Ideally, we'd check if a station falls into ANY other unit.
+            // But doing that inverse check in the UI is expensive.
+            // For the dropdown, simple containment is usually enough, or we just show all stations in the district.
+            // Let's stick to: "Law & Order" shows everything in the district for now, or we can make it stricter later.
+            districtStations
+        } else {
+             // For specific units, filter by station name keywords as per the Hybrid Strategy fallback
+             val expectedKeywords = when(selectedUnit) {
+                 "Traffic" -> listOf("Traffic")
+                 "Control Room" -> listOf("Control Room") 
+                 "CEN Crime / Cyber" -> listOf("CEN", "Cyber")
+                 "Women Police" -> listOf("Women")
+                 "DPO / Admin" -> listOf("DPO", "Computer", "Admin", "Office")
+                 "DAR" -> listOf("DAR")
+                 "DCRB" -> listOf("DCRB")
+                 "DSB / Intelligence" -> listOf("DSB", "Intelligence", "INT")
+                 "Special Units" -> listOf("FPB", "MCU", "SMMC", "DCRE", "Lokayukta", "ESCOM")
+                 else -> listOf(selectedUnit)
+             }
+             
+             districtStations.filter { station -> 
+                 station == "All" || expectedKeywords.any { station.contains(it, ignoreCase = true) }
+             }
         }
     }
 
@@ -345,12 +393,69 @@ private fun EmployeeListContent(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
 
-        // 🔸 DISTRICT & STATION DROPDOWNS
+        // 🔹 ROW 1: UNIT & DISTRICT (Primary Filters)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // District Dropdown - Glassmorphism style
+            // UNIT Dropdown
+            ExposedDropdownMenuBox(
+                expanded = unitExpanded,
+                onExpandedChange = { unitExpanded = !unitExpanded },
+                modifier = Modifier
+                    .weight(1f)
+                    .shadow(
+                        elevation = 2.dp,
+                        shape = RoundedCornerShape(15.dp),
+                        spotColor = CardShadow,
+                        ambientColor = CardShadow.copy(alpha = 0.5f)
+                    )
+            ) {
+                OutlinedTextField(
+                    value = selectedUnit,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { 
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Groups, null, Modifier.size(16.dp), PrimaryTeal)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Unit")
+                        }
+                    },
+                    leadingIcon = { Icon(Icons.Default.Groups, null, tint = PrimaryTeal) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    singleLine = true,
+                    maxLines = 1,
+                    shape = RoundedCornerShape(15.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = BorderTeal,
+                        unfocusedBorderColor = BorderTeal,
+                        focusedLabelColor = PrimaryTeal,
+                        unfocusedLabelColor = PrimaryTeal
+                    )
+                )
+                ExposedDropdownMenu(
+                    expanded = unitExpanded,
+                    onDismissRequest = { unitExpanded = false }
+                ) {
+                    unitsList.forEach { unit ->
+                        DropdownMenuItem(
+                            text = { Text(unit) },
+                            onClick = {
+                                selectedUnit = unit
+                                // Reset district and station if needed, or keep?
+                                // Usually keep District, but Station might change.
+                                // Logic handled in ViewModel updateSelectedUnit + UI stationsForDistrict
+                                unitExpanded = false
+                                viewModel.updateSelectedUnit(unit)
+                            }
+                        )
+                    }
+                }
+            }
+
+            // DISTRICT Dropdown
             ExposedDropdownMenuBox(
                 expanded = districtExpanded,
                 onExpandedChange = { districtExpanded = !districtExpanded },
@@ -369,27 +474,16 @@ private fun EmployeeListContent(
                     readOnly = true,
                     label = { 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.LocationOn,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = PrimaryTeal
-                            )
+                            Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp), PrimaryTeal)
                             Spacer(Modifier.width(4.dp))
-                            Text("District/Unit")
+                            Text("District")
                         }
                     },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.LocationOn,
-                            contentDescription = null,
-                            tint = PrimaryTeal
-                        )
-                    },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded)
-                    },
+                    leadingIcon = { Icon(Icons.Default.LocationOn, null, tint = PrimaryTeal) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    singleLine = true,
+                    maxLines = 1,
                     shape = RoundedCornerShape(15.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = BorderTeal,
@@ -407,6 +501,7 @@ private fun EmployeeListContent(
                             text = { Text(district) },
                             onClick = {
                                 selectedDistrict = district
+                                // Reset station
                                 selectedStation = "All"
                                 districtExpanded = false
                                 viewModel.updateSelectedDistrict(district)
@@ -416,8 +511,14 @@ private fun EmployeeListContent(
                     }
                 }
             }
+        }
 
-            // Station Dropdown - Glassmorphism style
+        // 🔹 ROW 2: STATION & RANK (Secondary Filters)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            // STATION Dropdown
             ExposedDropdownMenuBox(
                 expanded = stationExpanded,
                 onExpandedChange = {
@@ -438,28 +539,17 @@ private fun EmployeeListContent(
                     readOnly = true,
                     label = { 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Business,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = PrimaryTeal
-                            )
+                            Icon(Icons.Default.Business, null, Modifier.size(16.dp), PrimaryTeal)
                             Spacer(Modifier.width(4.dp))
-                            Text("Station/Unit")
+                            Text("Station")
                         }
                     },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Business,
-                            contentDescription = null,
-                            tint = PrimaryTeal
-                        )
-                    },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded)
-                    },
+                    leadingIcon = { Icon(Icons.Default.Business, null, tint = PrimaryTeal) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                     enabled = selectedDistrict != "All",
+                    singleLine = true,
+                    maxLines = 1,
                     shape = RoundedCornerShape(15.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = BorderTeal,
@@ -484,30 +574,13 @@ private fun EmployeeListContent(
                     }
                 }
             }
-        }
-
-        // 🔹 RANK DROPDOWN & SEARCH BAR (Same Row - 1/4 and 3/4 width)
-        val searchLabel = when (searchFilter) {
-            SearchFilter.METAL_NUMBER -> "Metal"
-            SearchFilter.KGID -> "KGID"
-            SearchFilter.MOBILE -> "Mobile"
-            SearchFilter.STATION -> "Station"
-            SearchFilter.RANK -> "Rank"
-            SearchFilter.NAME -> "Name"
-            else -> searchFilter.name.lowercase().replaceFirstChar { it.uppercase() }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            // Rank Dropdown - Glassmorphism style
+            
+            // RANK Dropdown
             ExposedDropdownMenuBox(
                 expanded = rankExpanded,
                 onExpandedChange = { rankExpanded = !rankExpanded },
                 modifier = Modifier
-                    .weight(1.3f)
-                    .widthIn(min = 150.dp)
+                    .weight(1f)
                     .shadow(
                         elevation = 2.dp,
                         shape = RoundedCornerShape(15.dp),
@@ -521,27 +594,16 @@ private fun EmployeeListContent(
                     readOnly = true,
                     label = { 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.MilitaryTech,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = PrimaryTeal
-                            )
+                            Icon(Icons.Default.MilitaryTech, null, Modifier.size(16.dp), PrimaryTeal)
                             Spacer(Modifier.width(4.dp))
                             Text("Rank")
                         }
                     },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.MilitaryTech,
-                            contentDescription = null,
-                            tint = PrimaryTeal
-                        )
-                    },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded)
-                    },
-                    modifier = Modifier.fillMaxWidth().menuAnchor().height(56.dp),
+                    leadingIcon = { Icon(Icons.Default.MilitaryTech, null, tint = PrimaryTeal) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    singleLine = true,
+                    maxLines = 1,
                     shape = RoundedCornerShape(15.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = BorderTeal,
@@ -566,63 +628,64 @@ private fun EmployeeListContent(
                     }
                 }
             }
-
-            // Search Box - 3/4 width
-            // Determine keyboard type based on selected filter
-            val keyboardType = when (searchFilter) {
-                SearchFilter.MOBILE, SearchFilter.METAL_NUMBER -> KeyboardType.Number
-                else -> KeyboardType.Text
-            }
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = {
-                    searchQuery = it
-                    viewModel.updateSearchQuery(it)
-                },
-                placeholder = { Text("Search by $searchLabel") },
-                leadingIcon = { 
-                    Icon(
-                        Icons.Default.Search, 
-                        contentDescription = "Search",
-                        tint = PrimaryTeal
-                    ) 
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = {
-                            searchQuery = ""
-                            viewModel.updateSearchQuery("")
-                        }) { 
-                            Icon(
-                                Icons.Default.Clear, 
-                                contentDescription = "Clear",
-                                tint = PrimaryTeal
-                            ) 
-                        }
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = keyboardType
-                ),
-                modifier = Modifier
-                    .weight(2.7f)
-                    .height(56.dp)
-                    .shadow(
-                        elevation = 2.dp,
-                        shape = RoundedCornerShape(15.dp),
-                        spotColor = CardShadow,
-                        ambientColor = CardShadow.copy(alpha = 0.5f)
-                    ),
-                singleLine = true,
-                shape = RoundedCornerShape(15.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BorderTeal,
-                    unfocusedBorderColor = BorderTeal,
-                    focusedLabelColor = PrimaryTeal,
-                    unfocusedLabelColor = PrimaryTeal
-                )
-            )
         }
+
+        // 🔹 ROW 3: SEARCH BAR
+        
+        val searchLabel = when (searchFilter) {
+            SearchFilter.METAL_NUMBER -> "Metal"
+            SearchFilter.KGID -> "KGID"
+            SearchFilter.MOBILE -> "Mobile"
+            SearchFilter.STATION -> "Station"
+            SearchFilter.RANK -> "Rank"
+            SearchFilter.NAME -> "Name"
+            else -> searchFilter.name.lowercase().replaceFirstChar { it.uppercase() }
+        }
+
+        // Determine keyboard type based on selected filter
+        val keyboardType = when (searchFilter) {
+            SearchFilter.MOBILE, SearchFilter.METAL_NUMBER -> KeyboardType.Number
+            else -> KeyboardType.Text
+        }
+        
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = {
+                searchQuery = it
+                viewModel.updateSearchQuery(it)
+            },
+            placeholder = { Text("Search by $searchLabel") },
+            leadingIcon = { 
+                Icon(Icons.Default.Search, contentDescription = "Search", tint = PrimaryTeal) 
+            },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = {
+                        searchQuery = ""
+                        viewModel.updateSearchQuery("")
+                    }) { 
+                        Icon(Icons.Default.Clear, contentDescription = "Clear", tint = PrimaryTeal) 
+                    }
+                }
+            },
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(
+                    elevation = 2.dp,
+                    shape = RoundedCornerShape(15.dp),
+                    spotColor = CardShadow,
+                    ambientColor = CardShadow.copy(alpha = 0.5f)
+                ),
+            singleLine = true,
+            shape = RoundedCornerShape(15.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = BorderTeal,
+                unfocusedBorderColor = BorderTeal,
+                focusedLabelColor = PrimaryTeal,
+                unfocusedLabelColor = PrimaryTeal
+            )
+        )
 
         // 🔹 FILTER CHIPS (Compact Wrapping Layout)
         FlowRow(

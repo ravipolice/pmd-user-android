@@ -187,3 +187,19 @@ Client Request → Apps Script
 
 **🔐 Security is now significantly hardened. Follow the deployment checklist before going to production!**
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

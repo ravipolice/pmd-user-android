@@ -116,6 +116,10 @@ open class EmployeeViewModel @Inject constructor(
     private val _debouncedSearchQuery = MutableStateFlow("")
     private val _searchFilter = MutableStateFlow(SearchFilter.NAME)
     val searchFilter: StateFlow<SearchFilter> = _searchFilter.asStateFlow()
+    
+    private val _selectedUnit = MutableStateFlow("All") // New Unit Filter
+    val selectedUnit: StateFlow<String> = _selectedUnit.asStateFlow()
+    
     private val _selectedDistrict = MutableStateFlow("All")
     private val _selectedStation = MutableStateFlow("All")
     private val _selectedRank = MutableStateFlow("All")
@@ -124,6 +128,7 @@ open class EmployeeViewModel @Inject constructor(
     private data class SearchFilters(
         val query: String,
         val filter: SearchFilter,
+        val unit: String, // Added Unit
         val district: String,
         val station: String,
         val rank: String
@@ -133,11 +138,18 @@ open class EmployeeViewModel @Inject constructor(
     private val searchFiltersFlow = combine(
         _debouncedSearchQuery, // Use debounced query
         _searchFilter,
+        _selectedUnit, // Added Unit
         _selectedDistrict,
         _selectedStation,
         _selectedRank
-    ) { query, filter, district, station, rank ->
-        SearchFilters(query, filter, district, station, rank)
+    ) { args: Array<Any?> ->
+        val query = args[0] as String
+        val filter = args[1] as SearchFilter
+        val unit = args[2] as String
+        val district = args[3] as String
+        val station = args[4] as String
+        val rank = args[5] as String
+        SearchFilters(query, filter, unit, district, station, rank)
     }
     
     val allContacts: StateFlow<List<Contact>> = combine(_employees, _officers, _isAdmin) { employees, officers, isAdmin ->
@@ -171,6 +183,8 @@ open class EmployeeViewModel @Inject constructor(
         
         // Step 1: Fast pre-filtering by district/station/rank (cheap operations)
         // Simplified logic: When filter is "All", show everything. Otherwise, match specific values only.
+        // Step 1: Fast pre-filtering by district/station/rank/unit
+        // Simplified logic: When filter is "All", show everything. Otherwise, match specific values only.
         val preFiltered = contacts.filter { contact ->
             val districtMatch = filters.district == "All" || 
                 (contact.district?.equals(filters.district, ignoreCase = true) == true)
@@ -178,8 +192,23 @@ open class EmployeeViewModel @Inject constructor(
                 (contact.station?.equals(filters.station, ignoreCase = true) == true)
             val rankMatch = filters.rank == "All" || 
                 (contact.rank?.equals(filters.rank, ignoreCase = true) == true)
+                
+            // Unit Matching Logic (Modified to use effectiveUnit)
+            val unitMatch = if (filters.unit == "All") {
+                true 
+            } else {
+                when {
+                    contact.employee != null -> {
+                       filters.unit.equals(contact.employee.effectiveUnit, ignoreCase = true)
+                    }
+                    contact.officer != null -> {
+                       filters.unit.equals(contact.officer.effectiveUnit, ignoreCase = true)
+                    }
+                    else -> false
+                }
+            }
             
-            districtMatch && stationMatch && rankMatch
+            districtMatch && stationMatch && rankMatch && unitMatch
         }
         
         // Log when filters result in empty list
@@ -265,11 +294,12 @@ open class EmployeeViewModel @Inject constructor(
             employees.filter { it.isApproved } // Regular users see only approved employees
         }
         
-        // Step 1: Fast pre-filtering by district/station/rank
+        // Step 1: Fast pre-filtering by district/station/rank/unit
         val preFiltered = approvedEmployees.filter { emp ->
             (filters.district == "All" || emp.district == filters.district) &&
             (filters.station == "All" || emp.station == filters.station) &&
-            (filters.rank == "All" || emp.rank == filters.rank)
+            (filters.rank == "All" || emp.rank == filters.rank) &&
+            (filters.unit == "All" || emp.effectiveUnit.equals(filters.unit, ignoreCase = true))
         }
         
         // Early exit if no matches after pre-filtering
@@ -1655,6 +1685,14 @@ open class EmployeeViewModel @Inject constructor(
 
     fun updateSearchFilter(filter: SearchFilter) {
         _searchFilter.value = filter
+    }
+
+    fun updateSelectedUnit(unit: String) {
+        _selectedUnit.value = unit
+        // Reset station when unit changes
+        if (unit != "All") {
+             _selectedStation.value = "All"
+        }
     }
 
     fun updateSelectedDistrict(district: String) {

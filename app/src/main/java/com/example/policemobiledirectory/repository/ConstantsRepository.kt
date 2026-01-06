@@ -34,8 +34,8 @@ class ConstantsRepository @Inject constructor(
 
     private val prefs = context.getSharedPreferences("constants_cache", Context.MODE_PRIVATE)
     
-    // Cache expiration: 30 days in milliseconds
-    private val CACHE_EXPIRY_MS = TimeUnit.DAYS.toMillis(30)
+    // Cache expiration: 1 hour (reduced from 30 days to ensure updates appear)
+    private val CACHE_EXPIRY_MS = TimeUnit.HOURS.toMillis(1)
     private val CACHE_KEY = "remote_constants"
     private val CACHE_TIMESTAMP_KEY = "cache_timestamp"
 
@@ -169,6 +169,10 @@ class ConstantsRepository @Inject constructor(
         val hardcodedDistricts = Constants.districtsList
         val mergedDistricts = (hardcodedDistricts + apiDistricts).distinct().sorted()
         return mergedDistricts
+    }
+
+    fun getUnits(): List<String> {
+        return Constants.unitsList
     }
 
     /**

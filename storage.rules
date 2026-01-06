@@ -1,0 +1,121 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    /* ============================================================
+       🔐 ADMIN VERIFICATION (Same as Firestore Rules)
+    ============================================================ */
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function hasAuthEmail() {
+      return request.auth.token.email != null
+             && request.auth.token.email is string;
+    }
+
+    // Check if user is admin by UID
+    function isUidAdmin() {
+      return request.auth.uid != null
+          && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.isActive == true;
+    }
+
+    // Check if user is admin by email
+    function isEmailAdmin() {
+      return hasAuthEmail()
+          && firestore.exists(/databases/(default)/documents/admins/$(request.auth.token.email))
+          && firestore.get(/databases/(default)/documents/admins/$(request.auth.token.email)).data.isActive == true
+          && firestore.get(/databases/(default)/documents/admins/$(request.auth.token.email)).data.email == request.auth.token.email;
+    }
+
+    // Check if user is admin via employees collection (by email)
+    function isEmployeeAdminByEmail() {
+      return hasAuthEmail()
+          && request.auth.uid != null
+          && firestore.exists(/databases/(default)/documents/employees/$(request.auth.token.email))
+          && firestore.get(/databases/(default)/documents/employees/$(request.auth.token.email)).data.isAdmin == true
+          && firestore.get(/databases/(default)/documents/employees/$(request.auth.token.email)).data.firebaseUid == request.auth.uid;
+    }
+
+    // Check if user is admin via employees collection (by UID)
+    function isEmployeeAdminByUid() {
+      return request.auth.uid != null
+          && firestore.exists(/databases/(default)/documents/employees/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/employees/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Final admin check (matches Firestore rules logic)
+    function isAdmin() {
+      return isAuthenticated()
+          && (isUidAdmin() || isEmailAdmin() || isEmployeeAdminByEmail() || isEmployeeAdminByUid());
+    }
+
+    // Check if request is from service account (Admin SDK)
+    function isServiceAccount() {
+      return request.auth != null
+          && request.auth.token.firebase != null
+          && request.auth.token.firebase.sign_in_provider == "service_account";
+    }
+
+    /* ============================================================
+       🔹 GALLERY IMAGES (for admin panel uploads)
+    ============================================================ */
+    match /gallery/{allPaths=**} {
+      allow read: if true; // Anyone can view gallery images
+      allow write: if isAdmin() || isServiceAccount();
+      // Note: Admin SDK (service account) bypasses rules, so server-side uploads work
+    }
+
+    /* ============================================================
+       🔹 APP APK FILES
+    ============================================================ */
+    match /app_uploads/{allPaths=**} {
+      allow read: if true; // Anyone can download apps
+      allow write: if isAdmin() || isServiceAccount();
+      allow create: if request.time < timestamp.date(2030, 1, 1);
+    }
+
+    /* ============================================================
+       🔹 OFFICIAL DOCUMENTS (PDFs, etc.)
+    ============================================================ */
+    match /document_uploads/{allPaths=**} {
+      allow read: if true; // Visible to all
+      allow write: if isAdmin() || isServiceAccount();
+      allow create: if request.time < timestamp.date(2030, 1, 1);
+    }
+
+    /* ============================================================
+       🔹 EMPLOYEE PHOTOS
+    ============================================================ */
+    match /photos/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() || isServiceAccount();
+    }
+
+    /* ============================================================
+       🔹 PUBLIC ASSETS (logo, icons)
+    ============================================================ */
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() || isServiceAccount();
+    }
+
+    /* ============================================================
+       🔹 DOCUMENTS FOLDER (for documents page)
+    ============================================================ */
+    match /documents/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() || isServiceAccount();
+    }
+
+    /* ============================================================
+       🔹 DEFAULT PRIVATE ACCESS (catch-all)
+    ============================================================ */
+    match /{allPaths=**} {
+      allow read, write: if isAdmin() || isServiceAccount();
+    }
+  }
+}
+

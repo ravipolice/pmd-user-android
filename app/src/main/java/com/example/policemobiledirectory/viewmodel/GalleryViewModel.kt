@@ -167,8 +167,8 @@ class GalleryViewModel @Inject constructor(
             _deleteStatus.value = OperationStatus.Loading
             
             // Optimistic update - remove from UI immediately
-            val imageToDelete = _galleryImages.value.find { it.title == title }
-            val updatedList = _galleryImages.value.filter { it.title != title }
+            val imageToDelete = _galleryImages.value.find { it.resolvedTitle == title }
+            val updatedList = _galleryImages.value.filter { it.resolvedTitle != title }
             _galleryImages.value = updatedList
             
             try {
@@ -186,9 +186,12 @@ class GalleryViewModel @Inject constructor(
                     _deleteStatus.value = OperationStatus.Success("Image deleted successfully")
                     
                     // Delete from Firestore (non-blocking)
-                    imageToDelete?.let {
-                        launch {
-                            deleteFromFirestore(it.url)
+                    imageToDelete?.let { image ->
+                        val url = image.resolvedUrl ?: image.displayUrl
+                        if (url != null) {
+                            launch {
+                                deleteFromFirestore(url)
+                            }
                         }
                     }
                     

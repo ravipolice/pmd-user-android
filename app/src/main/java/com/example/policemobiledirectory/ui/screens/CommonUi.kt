@@ -191,10 +191,21 @@ private fun calculateInSampleSize(options: BitmapFactory.Options, maxDimension: 
  * - https://drive.google.com/open?id=FILE_ID
  * - Already direct URLs (returns as-is)
  */
-fun convertDriveUrlToDirectImageUrl(driveUrl: String): String {
+fun convertDriveUrlToDirectImageUrl(driveUrl: String?): String {
+    if (driveUrl.isNullOrBlank()) {
+        return ""
+    }
+    
     return try {
         // If already a direct image URL, return as-is
         if (driveUrl.contains("drive.google.com/uc?export=view")) {
+            return driveUrl
+        }
+        
+        // If it's a Firebase Storage URL, return as-is
+        if (driveUrl.contains("firebasestorage.googleapis.com") || 
+            driveUrl.contains("firebasestorage.app") ||
+            driveUrl.contains("storage.googleapis.com")) {
             return driveUrl
         }
         

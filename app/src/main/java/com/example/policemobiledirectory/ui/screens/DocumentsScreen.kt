@@ -71,9 +71,11 @@ fun DocumentsScreen(
     }
 
     val filteredDocs = remember(searchQuery, documents) {
-        documents.filter {
-            it.title.contains(searchQuery, ignoreCase = true) ||
-                    it.category?.contains(searchQuery, ignoreCase = true) == true
+        documents.filter { doc ->
+            doc.isValid && (
+                doc.resolvedTitle.contains(searchQuery, ignoreCase = true) ||
+                doc.resolvedCategory?.contains(searchQuery, ignoreCase = true) == true
+            )
         }
     }
 
@@ -185,33 +187,42 @@ fun DocumentsScreen(
                                         doc = doc,
                                         isAdmin = isAdmin,
                                         onViewClick = {
-                                            previewUrl = doc.url
+                                            val url = doc.resolvedUrl
+                                            previewUrl = url
 
                                             // Smarter MIME detection
                                             previewMimeType = when {
-                                                doc.url.contains(".pdf", ignoreCase = true) ||
-                                                        doc.url.contains("drive.google.com", ignoreCase = true) -> "application/pdf"
+                                                url?.contains(".pdf", ignoreCase = true) == true ||
+                                                        url?.contains("drive.google.com", ignoreCase = true) == true -> "application/pdf"
 
-                                                doc.url.contains(".jpg", ignoreCase = true) ||
-                                                        doc.url.contains(".jpeg", ignoreCase = true) -> "image/jpeg"
+                                                url?.contains(".jpg", ignoreCase = true) == true ||
+                                                        url?.contains(".jpeg", ignoreCase = true) == true -> "image/jpeg"
 
-                                                doc.url.contains(".png", ignoreCase = true) -> "image/png"
+                                                url?.contains(".png", ignoreCase = true) == true -> "image/png"
 
-                                                doc.url.contains(".doc", ignoreCase = true) ||
-                                                        doc.url.contains(".docx", ignoreCase = true) -> "application/msword"
+                                                url?.contains(".doc", ignoreCase = true) == true ||
+                                                        url?.contains(".docx", ignoreCase = true) == true -> "application/msword"
 
-                                                doc.url.contains(".xls", ignoreCase = true) ||
-                                                        doc.url.contains(".xlsx", ignoreCase = true) -> "application/vnd.ms-excel"
+                                                url?.contains(".xls", ignoreCase = true) == true ||
+                                                        url?.contains(".xlsx", ignoreCase = true) == true -> "application/vnd.ms-excel"
 
-                                                doc.url.contains(".ppt", ignoreCase = true) ||
-                                                        doc.url.contains(".pptx", ignoreCase = true) -> "application/vnd.ms-powerpoint"
+                                                url?.contains(".ppt", ignoreCase = true) == true ||
+                                                        url?.contains(".pptx", ignoreCase = true) == true -> "application/vnd.ms-powerpoint"
 
                                                 else -> "application/octet-stream"
                                             }
                                         },
 
-                                        onDownloadClick = { scope.launch { downloadFile(context, doc.url, doc.title) } },
-                                        onDeleteClick = { showDeleteConfirm = doc.title }
+                                        onDownloadClick = { 
+                                            scope.launch { 
+                                                val url = doc.resolvedUrl
+                                                val title = doc.resolvedTitle
+                                                if (url != null) {
+                                                    downloadFile(context, url, title)
+                                                }
+                                            } 
+                                        },
+                                        onDeleteClick = { showDeleteConfirm = doc.resolvedTitle }
                                     )
                                 }
                             }
@@ -309,7 +320,7 @@ fun DocumentItem(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        doc.title,
+                        doc.resolvedTitle,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium
                     )
@@ -341,10 +352,10 @@ fun DocumentItem(
                     }
                 }
             }
-            doc.category?.let {
+            doc.resolvedCategory?.let {
                 Text("Category: $it", style = MaterialTheme.typography.bodySmall)
             }
-            doc.description?.let {
+            doc.resolvedDescription?.let {
                 Text("Description: $it", style = MaterialTheme.typography.bodySmall)
             }
         }

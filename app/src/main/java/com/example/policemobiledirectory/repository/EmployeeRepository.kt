@@ -606,6 +606,11 @@ open class EmployeeRepository @Inject constructor(
                 finalEmp.fcmToken?.takeIf { it.isNotBlank() }?.let {
                     updateMap["fcmToken"] = it
                 }
+
+                // ✅ UNIT FIELD - Include if not null (Hybrid Strategy)
+                finalEmp.unit?.let {
+                    updateMap["unit"] = it
+                }
                 
                 // Only update firebaseUid if it was missing
                 if (firebaseUidToUse != null && (existingFirebaseUid == null || existingFirebaseUid.isEmpty())) {
@@ -1056,7 +1061,8 @@ open class EmployeeRepository @Inject constructor(
                 firebaseUid = emp.firebaseUid ?: "",
                 createdAt = emp.createdAt ?: Date(),
                 updatedAt = emp.updatedAt ?: Date(),
-                pin = pinHash
+                pin = pinHash,
+                unit = emp.unit
             )
         } else {
             // If doc couldn't be mapped to Employee, build from fields directly
@@ -1082,7 +1088,8 @@ open class EmployeeRepository @Inject constructor(
                 firebaseUid = doc.getString("firebaseUid") ?: "",
                 createdAt = doc.getDate("createdAt") ?: Date(),
                 updatedAt = doc.getDate("updatedAt") ?: Date(),
-                pin = pinHash
+                pin = pinHash,
+                unit = doc.getString("unit")
             )
         }
     }
@@ -1111,7 +1118,8 @@ open class EmployeeRepository @Inject constructor(
             fcmToken = str("fcmToken").ifBlank { null },
             firebaseUid = str("firebaseUid").ifBlank { null },
             isAdmin = bool("isAdmin"),
-            isApproved = data["isApproved"] as? Boolean ?: true
+            isApproved = data["isApproved"] as? Boolean ?: true,
+            unit = str("unit").ifBlank { null }
         )
     }
 
@@ -1136,7 +1144,8 @@ open class EmployeeRepository @Inject constructor(
             firebaseUid = emp.firebaseUid ?: "",
             createdAt = emp.createdAt ?: Date(),
             updatedAt = emp.updatedAt ?: Date(),
-            pin = pinHash
+            pin = pinHash,
+            unit = emp.unit
         )
     }
 

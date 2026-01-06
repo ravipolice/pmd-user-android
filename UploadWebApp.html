@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PMD Data Upload Portal</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    header {
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      color: white;
+      padding: 24px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { font-size: 24px; font-weight: 600; }
+    .auth-section {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .user-info {
+      font-size: 14px;
+      color: #d1d5db;
+    }
+    nav {
+      background: #374151;
+      padding: 0;
+      display: flex;
+      gap: 0;
+    }
+    nav button {
+      background: transparent;
+      color: #d1d5db;
+      border: none;
+      padding: 16px 24px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+      border-bottom: 3px solid transparent;
+    }
+    nav button:hover {
+      background: #4b5563;
+      color: white;
+    }
+    nav button.active {
+      background: #1f2937;
+      color: white;
+      border-bottom-color: #3b82f6;
+    }
+    main {
+      padding: 32px;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .card {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 1px solid #e5e7eb;
+    }
+    .card h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+    label .required {
+      color: #dc2626;
+      margin-left: 2px;
+    }
+    input, select, textarea {
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #2563eb;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+    .btn-secondary {
+      background: #6b7280;
+      color: white;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: #4b5563;
+    }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .file-upload {
+      border: 2px dashed #d1d5db;
+      border-radius: 8px;
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: white;
+    }
+    .file-upload:hover {
+      border-color: #3b82f6;
+      background: #f0f9ff;
+    }
+    .file-upload.dragover {
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+    .file-upload input[type="file"] {
+      display: none;
+    }
+    .file-upload-label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+    .file-icon {
+      font-size: 48px;
+      color: #9ca3af;
+    }
+    .file-info {
+      font-size: 14px;
+      color: #6b7280;
+      margin-top: 12px;
+    }
+    .file-name {
+      font-weight: 500;
+      color: #111827;
+    }
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      display: none;
+    }
+    .alert.show {
+      display: block;
+      animation: slideDown 0.3s;
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .alert-success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+    .alert-error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    .alert-info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 12px;
+      display: none;
+    }
+    .progress-bar.show {
+      display: block;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #111827;
+    }
+    .hidden {
+      display: none !important;
+    }
+    .loading {
+      width: 18px;
+      height: 18px;
+      border: 3px solid #fff;
+      border-top: 3px solid transparent;
+      border-radius: 50%;
+      display: inline-block;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .csv-template {
+      margin-top: 16px;
+      padding: 16px;
+      background: #f3f4f6;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .csv-template code {
+      background: #e5e7eb;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📋 PMD Data Upload Portal</h1>
+      <div class="auth-section">
+        <span id="userEmail" class="user-info hidden"></span>
+        <button id="loginBtn" class="btn btn-primary">Login with Google</button>
+        <button id="logoutBtn" class="btn btn-secondary hidden">Logout</button>
+      </div>
+    </header>
+
+    <nav id="tabs" class="hidden">
+      <button data-tab="employees" class="active">👥 Employees</button>
+      <button data-tab="officers">👮 Officers</button>
+      <button data-tab="districts">🏛️ Districts</button>
+      <button data-tab="stations">🏢 Stations</button>
+      <button data-tab="bulk">📤 Bulk Upload</button>
+    </nav>
+
+    <main>
+      <!-- Employees Tab -->
+      <section id="employees" class="tab-content active">
+        <div class="card">
+          <h2>Add Employee</h2>
+          <div id="employeeAlert"></div>
+          <form id="employeeForm">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>KGID <span class="required">*</span></label>
+                <input
+                  type="text"
+                  id="e_kgid"
+                  placeholder="Enter KGID"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label>Name <span class="required">*</span></label>
+                <input type="text" id="e_name" required placeholder="Enter full name" />
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="e_email" placeholder="email@example.com" />
+              </div>
+              <div class="form-group">
+                <label>Mobile 1 <span class="required">*</span></label>
+                <input
+                  type="tel"
+                  id="e_mobile1"
+                  placeholder="10-digit mobile number"
+                  inputmode="numeric"
+                  maxlength="10"
+                  pattern="[0-9]{10}"
+                  oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label>Mobile 2</label>
+                <input
+                  type="tel"
+                  id="e_mobile2"
+                  placeholder="Optional second mobile"
+                  inputmode="numeric"
+                  maxlength="10"
+                  pattern="[0-9]{10}"
+                  oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+                />
+              </div>
+              <div class="form-group">
+                <label>Rank</label>
+                <select id="e_rank">
+                  <option value="">Select Rank</option>
+                  <option>APC</option><option>CPC</option><option>WPC</option><option>PCW</option><option>PC</option>
+                  <option>AHC</option><option>CHC</option><option>WHC</option><option>HCW</option><option>HC</option>
+                  <option>ASI</option><option>ARSI</option><option>WASI</option><option>ASIW</option><option>RSI</option>
+                  <option>PSI</option><option>WPSI</option><option>PSIW</option><option>RPI</option><option>CPI</option>
+                  <option>PI</option><option>PIW</option><option>WPI</option><option>DYSP</option>
+                  <option>SDA</option><option>FDA</option><option>SS</option><option>GHA</option><option>AO</option>
+                  <option>Typist</option><option>Steno</option><option>PA</option>
+                </select>
+              </div>
+              <div class="form-group" id="e_metalNumberGroup" style="display: none;">
+                <label>Metal Number <span class="required">*</span></label>
+                <input
+                  type="text"
+                  id="e_metalNumber"
+                  placeholder="Metal number"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+                />
+              </div>
+              <div class="form-group">
+                <label>Blood Group</label>
+                <select id="e_bloodGroup">
+                  <option value="">Select</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                  <option value="??">??</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>District <span class="required">*</span></label>
+                <select id="e_district" required>
+                  <option value="">Loading districts...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Station <span class="required">*</span></label>
+                <select id="e_station" required>
+                  <option value="">Select district first</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Photo URL</label>
+                <input type="url" id="e_photoUrl" placeholder="https://..." />
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" id="e_submit">
+              <span id="e_submitText">Save Employee</span>
+              <span id="e_submitLoader" class="loading hidden"></span>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Officers Tab -->
+      <section id="officers" class="tab-content">
+        <div class="card">
+          <h2>Add Officer</h2>
+          <div id="officerAlert"></div>
+          <form id="officerForm">
+            <input type="hidden" id="o_editId" />
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Name <span class="required">*</span></label>
+                <input type="text" id="o_name" required placeholder="Enter officer name" />
+              </div>
+              <div class="form-group">
+                <label>Rank</label>
+                <select id="o_rank">
+                  <option value="">Select Rank</option>
+                  <option>PI</option>
+                  <option>DYSP</option>
+                  <option>ASP</option>
+                  <option>SP</option>
+                  <option>DCP</option>
+                  <option>ACP</option>
+                  <option>CP</option>
+                  <option>DIG</option>
+                  <option>IGP</option>
+                  <option>DGP</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Mobile</label>
+                <input
+                  type="text"
+                  id="o_mobile"
+                  placeholder="10-digit number or 'NM'"
+                  maxlength="10"
+                  oninput="this.value=this.value.toUpperCase().replace(/[^0-9NM]/g,'')"
+                />
+                <small style="color: #6b7280; font-size: 12px;">Enter 10-digit mobile number or "NM" if not provided by government</small>
+              </div>
+              <div class="form-group">
+                <label>Landline</label>
+                <input
+                  type="tel"
+                  id="o_landline"
+                  placeholder="Landline number"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+                />
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="o_email" placeholder="email@example.com" />
+              </div>
+              <div class="form-group">
+                <label>District <span class="required">*</span></label>
+                <select id="o_district" required>
+                  <option value="">Loading districts...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Station</label>
+                <input type="text" id="o_station" placeholder="Station name" />
+              </div>
+              <div class="form-group">
+                <label>Photo URL</label>
+                <input type="url" id="o_photoUrl" placeholder="https://..." />
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" id="o_submit">
+              <span id="o_submitText">Add Officer</span>
+              <span id="o_submitLoader" class="loading hidden"></span>
+            </button>
+            <button type="button" class="btn btn-secondary" id="o_cancel" style="margin-left: 12px; display: none;" onclick="cancelEditOfficer()">
+              Cancel
+            </button>
+          </form>
+        </div>
+        
+        <div class="card" style="margin-top: 24px;">
+          <h2>Edit Officers</h2>
+          <div style="margin-bottom: 16px;">
+            <label>Filter by District:</label>
+            <select id="o_filterDistrict" style="width: 300px; margin-left: 12px;" onchange="loadOfficersForEdit()">
+              <option value="">All Districts</option>
+            </select>
+          </div>
+          <div id="officersList" style="margin-top: 16px;">
+            <div style="text-align: center; color: #6b7280; padding: 20px;">Loading officers...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Districts Tab -->
+      <section id="districts" class="tab-content">
+        <div class="card">
+          <h2>Add District</h2>
+          <div id="districtAlert"></div>
+          <form id="districtForm">
+            <input type="hidden" id="d_editId" />
+            <div class="form-grid">
+              <div class="form-group">
+                <label>District Name <span class="required">*</span></label>
+                <input type="text" id="d_name" required placeholder="Enter district name" />
+              </div>
+              <div class="form-group">
+                <label>Range</label>
+                <input type="text" id="d_range" placeholder="Optional range information" />
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" id="d_submit">
+              <span id="d_submitText">Add District</span>
+              <span id="d_submitLoader" class="loading hidden"></span>
+            </button>
+            <button type="button" class="btn btn-secondary" id="d_cancel" style="margin-left: 12px; display: none;" onclick="cancelEditDistrict()">
+              Cancel
+            </button>
+          </form>
+        </div>
+        
+        <div class="card" style="margin-top: 24px;">
+          <h2>Edit Districts</h2>
+          <div id="districtsList" style="margin-top: 16px;">
+            <div style="text-align: center; color: #6b7280; padding: 20px;">Loading districts...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stations Tab -->
+      <section id="stations" class="tab-content">
+        <div class="card">
+          <h2>Add Station</h2>
+          <div id="stationAlert"></div>
+          <form id="stationForm">
+            <input type="hidden" id="s_editId" />
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Station Name <span class="required">*</span></label>
+                <input type="text" id="s_name" required placeholder="Enter station name" />
+              </div>
+              <div class="form-group">
+                <label>District <span class="required">*</span></label>
+                <select id="s_district" required>
+                  <option value="">Loading districts...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>STD Code</label>
+                <input type="text" id="s_std" placeholder="STD code (optional)" />
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" id="s_submit">
+              <span id="s_submitText">Add Station</span>
+              <span id="s_submitLoader" class="loading hidden"></span>
+            </button>
+            <button type="button" class="btn btn-secondary" id="s_cancel" style="margin-left: 12px; display: none;" onclick="cancelEditStation()">
+              Cancel
+            </button>
+          </form>
+        </div>
+        
+        <div class="card" style="margin-top: 24px;">
+          <h2>Edit Stations</h2>
+          <div style="margin-bottom: 16px;">
+            <label>Filter by District:</label>
+            <select id="s_filterDistrict" style="width: 300px; margin-left: 12px;" onchange="loadStationsForEdit()">
+              <option value="">All Districts</option>
+            </select>
+          </div>
+          <div id="stationsList" style="margin-top: 16px;">
+            <div style="text-align: center; color: #6b7280; padding: 20px;">Select a district to view stations</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bulk Upload Tab -->
+      <section id="bulk" class="tab-content">
+        <div class="card">
+          <h2>Bulk Upload (CSV)</h2>
+          <div id="bulkAlert"></div>
+          
+          <div style="margin-bottom: 20px; padding: 16px; background: #f3f4f6; border-radius: 8px; border: 1px solid #d1d5db;">
+            <label style="display: block; font-weight: 600; margin-bottom: 12px; color: #374151;">Select Upload Type:</label>
+            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="uploadType" value="employees" checked onchange="updateBulkUploadUI()" />
+                <span>Employees</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="uploadType" value="officers" onchange="updateBulkUploadUI()" />
+                <span>Officers</span>
+              </label>
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 20px; padding: 16px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+              <div>
+                <strong style="color: #1e40af;">📥 Download Sample CSV Template</strong>
+                <div style="font-size: 13px; color: #3b82f6; margin-top: 4px;" id="templateDescription">
+                  Get the correct format for employees with all required headers
+                </div>
+              </div>
+              <button class="btn btn-primary" id="downloadSampleBtn" onclick="downloadSampleCSV()">
+                <span>⬇️ Download Template</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="file-upload" id="fileUpload">
+            <label class="file-upload-label" for="csvFile">
+              <div class="file-icon">📄</div>
+              <div>
+                <strong>Click to upload</strong> or drag and drop
+                <br />
+                <span style="color: #6b7280; font-size: 12px;">CSV file only</span>
+              </div>
+            </label>
+            <input type="file" id="csvFile" accept=".csv" />
+            <div class="file-info hidden" id="fileInfo">
+              <div class="file-name" id="fileName"></div>
+              <div style="font-size: 12px; color: #6b7280; margin-top: 4px;" id="fileSize"></div>
+            </div>
+          </div>
+          <div class="progress-bar hidden" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="csv-template" id="csvFormatInfo">
+            <strong>CSV Format (Employees):</strong>
+            <br />
+            Required columns: <code>kgid</code>, <code>name</code>, <code>mobile1</code>, <code>district</code>, <code>station</code>
+            <br />
+            Optional columns: <code>email</code>, <code>mobile2</code>, <code>rank</code>, <code>metalNumber</code>, <code>bloodGroup</code>, <code>photoUrl</code>, <code>isAdmin</code>, <code>isApproved</code>
+            <br />
+            <br />
+            <strong>Example:</strong>
+            <br />
+            <code>kgid,name,mobile1,district,station,rank,email</code>
+            <br />
+            <code>KG001,John Doe,9876543210,Bengaluru City,Central PS,PI,john@example.com</code>
+          </div>
+          <button class="btn btn-primary" id="uploadCsvBtn" style="margin-top: 20px;" disabled>
+            <span id="uploadCsvText">Upload CSV</span>
+            <span id="uploadCsvLoader" class="loading hidden"></span>
+          </button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp, writeBatch, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB_d5ueTul9vKeNw3pmEtCmbF9w1BVkrAQ",
+      authDomain: "pmd-police-mobile-directory.firebaseapp.com",
+      projectId: "pmd-police-mobile-directory"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    // DOM Elements
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const tabs = document.getElementById('tabs');
+    const userEmail = document.getElementById('userEmail');
+
+    // Helper Functions
+    function showAlert(containerId, message, type = 'info') {
+      const alert = document.getElementById(containerId);
+      alert.className = `alert alert-${type} show`;
+      alert.textContent = message;
+      setTimeout(() => {
+        alert.classList.remove('show');
+        setTimeout(() => alert.textContent = '', 300);
+      }, 5000);
+    }
+
+    function setLoading(buttonId, isLoading) {
+      const btn = document.getElementById(buttonId);
+      const text = document.getElementById(buttonId.replace('_submit', '_submitText')) || 
+                   document.getElementById(buttonId.replace('Btn', 'Text'));
+      const loader = document.getElementById(buttonId.replace('_submit', '_submitLoader')) ||
+                     document.getElementById(buttonId.replace('Btn', 'Loader'));
+      
+      if (btn) btn.disabled = isLoading;
+      if (text) text.textContent = isLoading ? 'Saving...' : text.textContent.replace('Saving...', '');
+      if (loader) loader.classList.toggle('hidden', !isLoading);
+    }
+
+    // Auth Handlers
+    loginBtn.onclick = () => {
+      signInWithPopup(auth, provider).catch(err => {
+        console.error('Login error:', err);
+        showAlert('employeeAlert', 'Login failed: ' + err.message, 'error');
+      });
+    };
+
+    logoutBtn.onclick = () => {
+      signOut(auth).catch(err => {
+        console.error('Logout error:', err);
+      });
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        loginBtn.classList.add('hidden');
+        logoutBtn.classList.remove('hidden');
+        tabs.classList.remove('hidden');
+        userEmail.textContent = user.email;
+        userEmail.classList.remove('hidden');
+        loadDistricts();
+      } else {
+        loginBtn.classList.remove('hidden');
+        logoutBtn.classList.add('hidden');
+        tabs.classList.add('hidden');
+        userEmail.classList.add('hidden');
+      }
+    });
+
+    // Tab Switching
+    document.querySelectorAll('nav button').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
+        const activeTab = btn.dataset.tab;
+        document.getElementById(activeTab).classList.add('active');
+        
+        // Load edit lists when switching to districts, stations, or officers tabs
+        if (activeTab === 'districts') {
+          loadDistrictsForEdit();
+        } else if (activeTab === 'stations') {
+          loadStationsForEdit();
+        } else if (activeTab === 'officers') {
+          loadOfficersForEdit();
+        }
+      };
+    });
+
+    // Load Districts
+    async function loadDistricts() {
+      try {
+        const snap = await getDocs(collection(db, 'districts'));
+        const districts = snap.docs
+          .map(d => d.data().name)
+          .filter(name => name)
+          .sort();
+        
+        if (districts.length === 0) {
+          // No districts found - show helpful message
+          const options = '<option value="">No districts found. Add districts first.</option>';
+          ['e_district', 's_district', 'o_district', 's_filterDistrict', 'o_filterDistrict'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = options;
+          });
+          return;
+        }
+        
+        const options = '<option value="">Select District</option>' + 
+          districts.map(d => `<option value="${d}">${d}</option>`).join('');
+        
+        ['e_district', 's_district', 'o_district'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.innerHTML = options;
+        });
+
+        // Populate filter dropdowns for stations and officers
+        const filterOptions = '<option value="">All Districts</option>' + 
+          districts.map(d => `<option value="${d}">${d}</option>`).join('');
+        const stationFilterEl = document.getElementById('s_filterDistrict');
+        if (stationFilterEl) stationFilterEl.innerHTML = filterOptions;
+        const officerFilterEl = document.getElementById('o_filterDistrict');
+        if (officerFilterEl) officerFilterEl.innerHTML = filterOptions;
+      } catch (err) {
+        console.error('Error loading districts:', err);
+        const errorMsg = err.message || err.code || 'Unknown error';
+        console.error('Full error details:', err);
+        
+        // Show more helpful error message
+        const options = `<option value="">Error: ${errorMsg.includes('permission') || errorMsg.includes('Permission') ? 'Permission denied. Check Firestore rules.' : 'Failed to load districts'}</option>`;
+        ['e_district', 's_district', 'o_district', 's_filterDistrict', 'o_filterDistrict'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.innerHTML = options;
+        });
+      }
+    }
+
+    // Load Stations for Employee Dropdown
+    async function loadEmployeeStations() {
+      const district = document.getElementById('e_district').value;
+      const stationSelect = document.getElementById('e_station');
+      
+      if (!district) {
+        stationSelect.innerHTML = '<option value="">Select District First</option>';
+        return;
+      }
+      
+      try {
+        const q = query(collection(db, 'stations'), where('district', '==', district));
+        const snap = await getDocs(q);
+        const stations = snap.docs
+          .map(s => s.data().name)
+          .filter(name => name)
+          .sort();
+        
+        stationSelect.innerHTML = '<option value="">Select Station</option>' + 
+          stations.map(s => `<option value="${s}">${s}</option>`).join('');
+      } catch (err) {
+        console.error('Error loading stations:', err);
+        stationSelect.innerHTML = '<option value="">Error loading stations</option>';
+      }
+    }
+
+    // Ranks that require metal number (matching app logic)
+    const ranksRequiringMetalNumber = ['APC', 'CPC', 'WPC', 'PC', 'AHC', 'CHC', 'WHC', 'HC'];
+
+    // Show/hide metal number field based on rank
+    function toggleMetalNumberField() {
+      const rank = document.getElementById('e_rank').value;
+      const metalNumberGroup = document.getElementById('e_metalNumberGroup');
+      const metalNumberInput = document.getElementById('e_metalNumber');
+      
+      if (ranksRequiringMetalNumber.includes(rank)) {
+        metalNumberGroup.style.display = 'flex';
+        metalNumberGroup.style.flexDirection = 'column';
+      } else {
+        metalNumberGroup.style.display = 'none';
+        metalNumberInput.value = ''; // Clear metal number when rank doesn't require it
+      }
+    }
+
+    // Event Listeners
+    document.getElementById('e_district').addEventListener('change', loadEmployeeStations);
+    document.getElementById('e_rank').addEventListener('change', toggleMetalNumberField);
+
+    // Employee Form - Get DOM elements
+    const e_kgid = document.getElementById('e_kgid');
+    const e_name = document.getElementById('e_name');
+    const e_email = document.getElementById('e_email');
+    const e_mobile1 = document.getElementById('e_mobile1');
+    const e_mobile2 = document.getElementById('e_mobile2');
+    const e_rank = document.getElementById('e_rank');
+    const e_metalNumber = document.getElementById('e_metalNumber');
+    const e_bloodGroup = document.getElementById('e_bloodGroup');
+    const e_district = document.getElementById('e_district');
+    const e_station = document.getElementById('e_station');
+    const e_photoUrl = document.getElementById('e_photoUrl');
+
+    // Employee Form Submit Handler
+    document.getElementById('employeeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const submitBtn = document.getElementById('e_submit');
+      const submitText = document.getElementById('e_submitText');
+      const submitLoader = document.getElementById('e_submitLoader');
+
+      // 🔒 Prevent double submit
+      submitBtn.disabled = true;
+      submitText.classList.add('hidden');
+      submitLoader.classList.remove('hidden');
+
+      try {
+        // ===== VALIDATION =====
+        if (!e_kgid.value || !e_name.value || !e_mobile1.value || !e_rank.value ||
+            !e_district.value || !e_station.value) {
+          alert('Please fill all required fields');
+          submitBtn.disabled = false;
+          submitLoader.classList.add('hidden');
+          submitText.classList.remove('hidden');
+          return;
+        }
+
+        if (e_mobile1.value.length !== 10) {
+          alert('Mobile number must be 10 digits');
+          submitBtn.disabled = false;
+          submitLoader.classList.add('hidden');
+          submitText.classList.remove('hidden');
+          return;
+        }
+
+        // Validate metal number if required for selected rank
+        const rank = e_rank.value;
+        if (ranksRequiringMetalNumber.includes(rank) && !e_metalNumber.value.trim()) {
+          alert('Metal number is required for this rank');
+          submitBtn.disabled = false;
+          submitLoader.classList.add('hidden');
+          submitText.classList.remove('hidden');
+          return;
+        }
+
+        // ===== SAVE TO FIRESTORE =====
+        await addDoc(collection(db, 'employees'), {
+          kgid: e_kgid.value.trim(),
+          name: e_name.value.trim(),
+          email: e_email.value.trim() || null,
+          mobile1: e_mobile1.value.trim(),
+          mobile2: e_mobile2.value.trim() || null,
+          rank: rank,
+          displayRank: rank,
+          metalNumber: e_metalNumber.value.trim() || null,
+          bloodGroup: e_bloodGroup.value || null,
+          district: e_district.value,
+          station: e_station.value,
+          photoUrl: e_photoUrl.value.trim() || null,
+          isAdmin: false,
+          isApproved: true,
+          isDeleted: false,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+
+        alert('✅ Employee saved successfully');
+        document.getElementById('employeeForm').reset();
+        e_station.innerHTML = '<option value="">Select District First</option>';
+
+      } catch (err) {
+        console.error('❌ Save failed:', err);
+        alert('Failed to save employee. Check console.');
+      } finally {
+        // 🔓 Restore button
+        submitBtn.disabled = false;
+        submitLoader.classList.add('hidden');
+        submitText.classList.remove('hidden');
+      }
+    });
+
+    // District Form
+    document.getElementById('districtForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const editId = document.getElementById('d_editId').value;
+      setLoading('d_submit', true);
+      
+      try {
+        const districtData = {
+          name: document.getElementById('d_name').value.trim(),
+          range: document.getElementById('d_range').value.trim() || null,
+          updatedAt: serverTimestamp()
+        };
+
+        if (editId) {
+          // Update existing district
+          const docRef = doc(db, 'districts', editId);
+          await updateDoc(docRef, districtData);
+          showAlert('districtAlert', 'District updated successfully!', 'success');
+        } else {
+          // Add new district
+          districtData.isActive = true;
+          districtData.createdAt = serverTimestamp();
+          await addDoc(collection(db, 'districts'), districtData);
+          showAlert('districtAlert', 'District added successfully!', 'success');
+        }
+        
+        e.target.reset();
+        document.getElementById('d_editId').value = '';
+        document.getElementById('d_cancel').style.display = 'none';
+        document.getElementById('d_submitText').textContent = 'Add District';
+        await loadDistricts();
+        await loadDistrictsForEdit();
+      } catch (err) {
+        console.error('Error saving district:', err);
+        showAlert('districtAlert', 'Failed to save district: ' + err.message, 'error');
+      } finally {
+        setLoading('d_submit', false);
+      }
+    });
+
+    // Load Districts for Edit List
+    async function loadDistrictsForEdit() {
+      try {
+        const snap = await getDocs(collection(db, 'districts'));
+        const districts = snap.docs.map(d => ({
+          id: d.id,
+          name: d.data().name || '',
+          range: d.data().range || ''
+        })).sort((a, b) => a.name.localeCompare(b.name));
+
+        const listContainer = document.getElementById('districtsList');
+        if (districts.length === 0) {
+          listContainer.innerHTML = '<div style="text-align: center; color: #6b7280; padding: 20px;">No districts found. Add districts first.</div>';
+          return;
+        }
+
+        listContainer.innerHTML = `
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">District Name</th>
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">Range</th>
+                <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${districts.map(d => `
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                  <td style="padding: 12px;">${d.name}</td>
+                  <td style="padding: 12px; color: #6b7280;">${d.range || '-'}</td>
+                  <td style="padding: 12px; text-align: right;">
+                    <button class="btn btn-secondary" onclick="editDistrict('${d.id}', '${d.name.replace(/'/g, "\\'")}', '${(d.range || '').replace(/'/g, "\\'")}')" style="padding: 6px 12px; font-size: 13px;">
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (err) {
+        console.error('Error loading districts for edit:', err);
+        document.getElementById('districtsList').innerHTML = '<div style="text-align: center; color: #dc2626; padding: 20px;">Error loading districts</div>';
+      }
+    }
+
+    // Edit District Function
+    window.editDistrict = function(id, name, range) {
+      document.getElementById('d_editId').value = id;
+      document.getElementById('d_name').value = name;
+      document.getElementById('d_range').value = range || '';
+      document.getElementById('d_cancel').style.display = 'inline-block';
+      document.getElementById('d_submitText').textContent = 'Update District';
+      document.getElementById('d_name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    // Cancel Edit District
+    window.cancelEditDistrict = function() {
+      document.getElementById('districtForm').reset();
+      document.getElementById('d_editId').value = '';
+      document.getElementById('d_cancel').style.display = 'none';
+      document.getElementById('d_submitText').textContent = 'Add District';
+    };
+
+    // Station Form
+    document.getElementById('stationForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const editId = document.getElementById('s_editId').value;
+      setLoading('s_submit', true);
+      
+      try {
+        const stationData = {
+          name: document.getElementById('s_name').value.trim(),
+          district: document.getElementById('s_district').value,
+          stdCode: document.getElementById('s_std').value.trim() || null,
+          updatedAt: serverTimestamp()
+        };
+
+        if (editId) {
+          // Update existing station
+          const docRef = doc(db, 'stations', editId);
+          await updateDoc(docRef, stationData);
+          showAlert('stationAlert', 'Station updated successfully!', 'success');
+        } else {
+          // Add new station
+          stationData.isActive = true;
+          stationData.createdAt = serverTimestamp();
+          await addDoc(collection(db, 'stations'), stationData);
+          showAlert('stationAlert', 'Station added successfully!', 'success');
+        }
+        
+        e.target.reset();
+        document.getElementById('s_editId').value = '';
+        document.getElementById('s_cancel').style.display = 'none';
+        document.getElementById('s_submitText').textContent = 'Add Station';
+        await loadEmployeeStations();
+        await loadStationsForEdit();
+      } catch (err) {
+        console.error('Error saving station:', err);
+        showAlert('stationAlert', 'Failed to save station: ' + err.message, 'error');
+      } finally {
+        setLoading('s_submit', false);
+      }
+    });
+
+    // Load Stations for Edit List
+    window.loadStationsForEdit = async function() {
+      try {
+        const filterDistrictEl = document.getElementById('s_filterDistrict');
+        if (!filterDistrictEl) {
+          console.error('Filter district element not found');
+          return;
+        }
+        
+        const filterDistrict = filterDistrictEl.value;
+        console.log('Filtering stations by district:', filterDistrict);
+        
+        let snap;
+        
+        if (filterDistrict && filterDistrict.trim() !== '') {
+          // Filter by selected district
+          const q = query(collection(db, 'stations'), where('district', '==', filterDistrict));
+          snap = await getDocs(q);
+          console.log(`Found ${snap.docs.length} stations for district: ${filterDistrict}`);
+        } else {
+          // Get all stations when no filter is selected
+          snap = await getDocs(collection(db, 'stations'));
+          console.log(`Found ${snap.docs.length} total stations (no filter)`);
+        }
+        const stations = snap.docs.map(d => ({
+          id: d.id,
+          name: d.data().name || '',
+          district: d.data().district || '',
+          stdCode: d.data().stdCode || ''
+        })).sort((a, b) => {
+          if (a.district !== b.district) return a.district.localeCompare(b.district);
+          return a.name.localeCompare(b.name);
+        });
+
+        const listContainer = document.getElementById('stationsList');
+        if (stations.length === 0) {
+          const message = filterDistrict 
+            ? `No stations found for district: ${filterDistrict}` 
+            : 'No stations found.';
+          listContainer.innerHTML = `<div style="text-align: center; color: #6b7280; padding: 20px;">${message}</div>`;
+          return;
+        }
+
+        listContainer.innerHTML = `
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">Station Name</th>
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">District</th>
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">STD Code</th>
+                <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${stations.map(s => `
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                  <td style="padding: 12px;">${s.name}</td>
+                  <td style="padding: 12px; color: #6b7280;">${s.district}</td>
+                  <td style="padding: 12px; color: #6b7280;">${s.stdCode || '-'}</td>
+                  <td style="padding: 12px; text-align: right;">
+                    <button class="btn btn-secondary" onclick="editStation('${s.id}', '${s.name.replace(/'/g, "\\'")}', '${s.district.replace(/'/g, "\\'")}', '${(s.stdCode || '').replace(/'/g, "\\'")}')" style="padding: 6px 12px; font-size: 13px;">
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (err) {
+        console.error('Error loading stations for edit:', err);
+        const listContainer = document.getElementById('stationsList');
+        if (listContainer) {
+          listContainer.innerHTML = '<div style="text-align: center; color: #dc2626; padding: 20px;">Error loading stations: ' + err.message + '</div>';
+        }
+      }
+    };
+
+    // Edit Station Function
+    window.editStation = function(id, name, district, stdCode) {
+      document.getElementById('s_editId').value = id;
+      document.getElementById('s_name').value = name;
+      document.getElementById('s_district').value = district;
+      document.getElementById('s_std').value = stdCode || '';
+      document.getElementById('s_cancel').style.display = 'inline-block';
+      document.getElementById('s_submitText').textContent = 'Update Station';
+      document.getElementById('s_name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    // Cancel Edit Station
+    window.cancelEditStation = function() {
+      document.getElementById('stationForm').reset();
+      document.getElementById('s_editId').value = '';
+      document.getElementById('s_cancel').style.display = 'none';
+      document.getElementById('s_submitText').textContent = 'Add Station';
+    };
+
+    // Officer Form
+    document.getElementById('officerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const editId = document.getElementById('o_editId').value;
+      setLoading('o_submit', true);
+      
+      try {
+        const mobileValue = document.getElementById('o_mobile').value.trim().toUpperCase();
+        // Validate mobile: must be "NM" or 10 digits
+        if (mobileValue && mobileValue !== 'NM' && mobileValue.length !== 10) {
+          showAlert('officerAlert', 'Mobile number must be 10 digits or "NM" if not provided by government', 'error');
+          setLoading('o_submit', false);
+          return;
+        }
+        
+        const officerData = {
+          name: document.getElementById('o_name').value.trim(),
+          rank: document.getElementById('o_rank').value.trim() || null,
+          mobile: mobileValue || null,
+          landline: document.getElementById('o_landline').value.trim() || null,
+          email: document.getElementById('o_email').value.trim() || null,
+          district: document.getElementById('o_district').value,
+          station: document.getElementById('o_station').value.trim() || null,
+          photoUrl: document.getElementById('o_photoUrl').value.trim() || null,
+          updatedAt: serverTimestamp()
+        };
+
+        if (editId) {
+          // Update existing officer
+          const docRef = doc(db, 'officers', editId);
+          await updateDoc(docRef, officerData);
+          showAlert('officerAlert', 'Officer updated successfully!', 'success');
+        } else {
+          // Add new officer - AGID will be auto-generated by Firestore
+          officerData.createdAt = serverTimestamp();
+          await addDoc(collection(db, 'officers'), officerData);
+          showAlert('officerAlert', 'Officer added successfully!', 'success');
+        }
+        
+        e.target.reset();
+        document.getElementById('o_editId').value = '';
+        document.getElementById('o_cancel').style.display = 'none';
+        document.getElementById('o_submitText').textContent = 'Add Officer';
+        await loadOfficersForEdit();
+      } catch (err) {
+        console.error('Error saving officer:', err);
+        showAlert('officerAlert', 'Failed to save officer: ' + err.message, 'error');
+      } finally {
+        setLoading('o_submit', false);
+      }
+    });
+
+    // Load Officers for Edit List
+    window.loadOfficersForEdit = async function() {
+      try {
+        const filterDistrictEl = document.getElementById('o_filterDistrict');
+        if (!filterDistrictEl) {
+          console.error('Filter district element not found');
+          return;
+        }
+        
+        const filterDistrict = filterDistrictEl.value;
+        console.log('Filtering officers by district:', filterDistrict);
+        
+        let snap;
+        
+        if (filterDistrict && filterDistrict.trim() !== '') {
+          // Filter by selected district
+          const q = query(collection(db, 'officers'), where('district', '==', filterDistrict));
+          snap = await getDocs(q);
+          console.log(`Found ${snap.docs.length} officers for district: ${filterDistrict}`);
+        } else {
+          // Get all officers when no filter is selected
+          snap = await getDocs(collection(db, 'officers'));
+          console.log(`Found ${snap.docs.length} total officers (no filter)`);
+        }
+        
+        const officers = snap.docs.map(d => ({
+          id: d.id,
+          agid: d.data().agid || d.id,
+          name: d.data().name || '',
+          rank: d.data().rank || '',
+          mobile: d.data().mobile || '',
+          landline: d.data().landline || '',
+          email: d.data().email || '',
+          district: d.data().district || '',
+          station: d.data().station || '',
+          photoUrl: d.data().photoUrl || ''
+        })).sort((a, b) => {
+          if (a.district !== b.district) return a.district.localeCompare(b.district);
+          return a.name.localeCompare(b.name);
+        });
+
+        const listContainer = document.getElementById('officersList');
+        if (officers.length === 0) {
+          const message = filterDistrict 
+            ? `No officers found for district: ${filterDistrict}` 
+            : 'No officers found.';
+          listContainer.innerHTML = `<div style="text-align: center; color: #6b7280; padding: 20px;">${message}</div>`;
+          return;
+        }
+
+        listContainer.innerHTML = `
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">AGID</th>
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">Name</th>
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">Rank</th>
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">Mobile</th>
+                <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">District</th>
+                <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${officers.map(o => `
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                  <td style="padding: 12px; font-size: 12px; color: #6b7280;">${o.agid}</td>
+                  <td style="padding: 12px;">${o.name}</td>
+                  <td style="padding: 12px; color: #6b7280;">${o.rank || '-'}</td>
+                  <td style="padding: 12px; color: #6b7280;">${o.mobile || '-'}</td>
+                  <td style="padding: 12px; color: #6b7280;">${o.district}</td>
+                  <td style="padding: 12px; text-align: right;">
+                    <button class="btn btn-secondary" onclick="editOfficer('${o.id}', '${o.name.replace(/'/g, "\\'")}', '${(o.rank || '').replace(/'/g, "\\'")}', '${(o.mobile || '').replace(/'/g, "\\'")}', '${(o.landline || '').replace(/'/g, "\\'")}', '${(o.email || '').replace(/'/g, "\\'")}', '${o.district.replace(/'/g, "\\'")}', '${(o.station || '').replace(/'/g, "\\'")}', '${(o.photoUrl || '').replace(/'/g, "\\'")}')" style="padding: 6px 12px; font-size: 13px;">
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (err) {
+        console.error('Error loading officers for edit:', err);
+        const listContainer = document.getElementById('officersList');
+        if (listContainer) {
+          listContainer.innerHTML = '<div style="text-align: center; color: #dc2626; padding: 20px;">Error loading officers: ' + err.message + '</div>';
+        }
+      }
+    };
+
+    // Edit Officer Function
+    window.editOfficer = function(id, name, rank, mobile, landline, email, district, station, photoUrl) {
+      document.getElementById('o_editId').value = id;
+      document.getElementById('o_name').value = name;
+      document.getElementById('o_rank').value = rank || '';
+      document.getElementById('o_mobile').value = mobile || '';
+      document.getElementById('o_landline').value = landline || '';
+      document.getElementById('o_email').value = email || '';
+      document.getElementById('o_district').value = district;
+      document.getElementById('o_station').value = station || '';
+      document.getElementById('o_photoUrl').value = photoUrl || '';
+      document.getElementById('o_cancel').style.display = 'inline-block';
+      document.getElementById('o_submitText').textContent = 'Update Officer';
+      document.getElementById('o_name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    // Cancel Edit Officer
+    window.cancelEditOfficer = function() {
+      document.getElementById('officerForm').reset();
+      document.getElementById('o_editId').value = '';
+      document.getElementById('o_cancel').style.display = 'none';
+      document.getElementById('o_submitText').textContent = 'Add Officer';
+    };
+
+    // CSV Upload
+    const csvFile = document.getElementById('csvFile');
+    const fileUpload = document.getElementById('fileUpload');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const uploadCsvBtn = document.getElementById('uploadCsvBtn');
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+
+    let selectedFile = null;
+
+    csvFile.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        selectedFile = file;
+        fileName.textContent = file.name;
+        fileSize.textContent = `Size: ${(file.size / 1024).toFixed(2)} KB`;
+        fileInfo.classList.remove('hidden');
+        uploadCsvBtn.disabled = false;
+      }
+    });
+
+    fileUpload.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      fileUpload.classList.add('dragover');
+    });
+
+    fileUpload.addEventListener('dragleave', () => {
+      fileUpload.classList.remove('dragover');
+    });
+
+    fileUpload.addEventListener('drop', (e) => {
+      e.preventDefault();
+      fileUpload.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && file.name.endsWith('.csv')) {
+        csvFile.files = e.dataTransfer.files;
+        selectedFile = file;
+        fileName.textContent = file.name;
+        fileSize.textContent = `Size: ${(file.size / 1024).toFixed(2)} KB`;
+        fileInfo.classList.remove('hidden');
+        uploadCsvBtn.disabled = false;
+      } else {
+        showAlert('bulkAlert', 'Please upload a CSV file', 'error');
+      }
+    });
+
+    uploadCsvBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      const uploadType = document.querySelector('input[name="uploadType"]:checked').value;
+      setLoading('uploadCsvBtn', true);
+      progressBar.classList.add('show');
+      progressFill.style.width = '0%';
+
+      try {
+        const text = await selectedFile.text();
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+          throw new Error('CSV file must have at least a header row and one data row');
+        }
+
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        let requiredHeaders, collectionName, entityType;
+        
+        if (uploadType === 'officers') {
+          requiredHeaders = ['name', 'district'];
+          collectionName = 'officers';
+          entityType = 'officers';
+        } else {
+          requiredHeaders = ['kgid', 'name', 'mobile1', 'district', 'station'];
+          collectionName = 'employees';
+          entityType = 'employees';
+        }
+        
+        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+        
+        if (missingHeaders.length > 0) {
+          throw new Error(`Missing required columns: ${missingHeaders.join(', ')}`);
+        }
+
+        let successCount = 0;
+        let errorCount = 0;
+        const BATCH_SIZE = 500; // Firestore batch limit
+        let currentBatch = writeBatch(db);
+        let batchCount = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim());
+          if (values.length !== headers.length) continue;
+
+          const recordData = {};
+          headers.forEach((header, index) => {
+            const value = values[index];
+            if (value) {
+              if (uploadType === 'officers') {
+                // Officer fields
+                recordData[header] = value;
+              } else {
+                // Employee fields
+                if (header === 'mobile1' || header === 'mobile2') {
+                  recordData[header] = value;
+                } else if (header === 'isadmin' || header === 'isapproved') {
+                  recordData[header] = value.toLowerCase() === 'true';
+                } else {
+                  recordData[header] = value;
+                }
+              }
+            }
+          });
+
+          // Validate required fields
+          if (uploadType === 'officers') {
+            if (!recordData.name || !recordData.district) {
+              errorCount++;
+              continue;
+            }
+            // Set defaults for officers
+            recordData.createdAt = serverTimestamp();
+            recordData.updatedAt = serverTimestamp();
+          } else {
+            if (!recordData.kgid || !recordData.name || !recordData.mobile1 || 
+                !recordData.district || !recordData.station) {
+              errorCount++;
+              continue;
+            }
+            // Set defaults for employees
+            recordData.isAdmin = recordData.isAdmin || false;
+            recordData.isApproved = recordData.isApproved !== undefined ? recordData.isApproved : true;
+            recordData.createdAt = serverTimestamp();
+            recordData.updatedAt = serverTimestamp();
+            // Ensure displayRank = rank
+            recordData.displayRank = recordData.rank || null;
+          }
+
+          const docRef = doc(collection(db, collectionName));
+          currentBatch.set(docRef, recordData);
+          batchCount++;
+          successCount++;
+
+          // Commit batch if it reaches the limit
+          if (batchCount >= BATCH_SIZE) {
+            await currentBatch.commit();
+            currentBatch = writeBatch(db);
+            batchCount = 0;
+          }
+
+          // Update progress
+          const progress = ((i) / (lines.length - 1)) * 100;
+          progressFill.style.width = `${progress}%`;
+        }
+
+        // Commit remaining batch
+        if (batchCount > 0) {
+          await currentBatch.commit();
+        }
+        
+        progressFill.style.width = '100%';
+        showAlert('bulkAlert', 
+          `Successfully uploaded ${successCount} ${entityType}${errorCount > 0 ? `. ${errorCount} rows skipped due to errors.` : ''}`, 
+          'success');
+        
+        // Reset
+        setTimeout(() => {
+          csvFile.value = '';
+          selectedFile = null;
+          fileInfo.classList.add('hidden');
+          progressBar.classList.remove('show');
+          uploadCsvBtn.disabled = true;
+        }, 2000);
+      } catch (err) {
+        console.error('Error uploading CSV:', err);
+        showAlert('bulkAlert', 'Failed to upload CSV: ' + err.message, 'error');
+        progressBar.classList.remove('show');
+      } finally {
+        setLoading('uploadCsvBtn', false);
+      }
+    });
+
+    // Update Bulk Upload UI based on selected type
+    window.updateBulkUploadUI = function() {
+      const uploadType = document.querySelector('input[name="uploadType"]:checked').value;
+      const templateDesc = document.getElementById('templateDescription');
+      const csvFormatInfo = document.getElementById('csvFormatInfo');
+      
+      if (uploadType === 'officers') {
+        if (templateDesc) {
+          templateDesc.textContent = 'Get the correct format for officers with all required headers';
+        }
+        if (csvFormatInfo) {
+          csvFormatInfo.innerHTML = `
+            <strong>CSV Format (Officers):</strong>
+            <br />
+            Required columns: <code>name</code>, <code>district</code>
+            <br />
+            Optional columns: <code>rank</code>, <code>mobile</code>, <code>landline</code>, <code>email</code>, <code>station</code>, <code>photoUrl</code>
+            <br />
+            <strong>Note:</strong> <code>agid</code> will be auto-generated if not provided
+            <br />
+            <br />
+            <strong>Example:</strong>
+            <br />
+            <code>name,rank,mobile,landline,email,district,station</code>
+            <br />
+            <code>SP Chikkaballapura,SP,9480802501,8156277210,spcbpura@ksp.gov.in,Chikkaballapura,SP Chikkaballapura</code>
+          `;
+        }
+      } else {
+        if (templateDesc) {
+          templateDesc.textContent = 'Get the correct format for employees with all required headers';
+        }
+        if (csvFormatInfo) {
+          csvFormatInfo.innerHTML = `
+            <strong>CSV Format (Employees):</strong>
+            <br />
+            Required columns: <code>kgid</code>, <code>name</code>, <code>mobile1</code>, <code>district</code>, <code>station</code>
+            <br />
+            Optional columns: <code>email</code>, <code>mobile2</code>, <code>rank</code>, <code>metalNumber</code>, <code>bloodGroup</code>, <code>photoUrl</code>, <code>isAdmin</code>, <code>isApproved</code>
+            <br />
+            <br />
+            <strong>Example:</strong>
+            <br />
+            <code>kgid,name,mobile1,district,station,rank,email</code>
+            <br />
+            <code>KG001,John Doe,9876543210,Bengaluru City,Central PS,PI,john@example.com</code>
+          `;
+        }
+      }
+    };
+
+    // Download Sample CSV Template
+    window.downloadSampleCSV = function() {
+      const uploadType = document.querySelector('input[name="uploadType"]:checked').value;
+      
+      let headers, sampleRows, filename;
+      
+      if (uploadType === 'officers') {
+        // Officer CSV format
+        headers = [
+          'name',
+          'rank',
+          'mobile',
+          'landline',
+          'email',
+          'district',
+          'station',
+          'photoUrl'
+        ];
+        
+        sampleRows = [
+          [
+            'SP Chikkaballapura',
+            'SP',
+            '9480802501',
+            '8156277210',
+            'spcbpura@ksp.gov.in',
+            'Chikkaballapura',
+            'SP Chikkaballapura',
+            ''
+          ],
+          [
+            'ASP Chikkaballapura',
+            'ASP',
+            '9480802502',
+            '8156277218',
+            'addlspcbpura@ksp.gov.in',
+            'Chikkaballapura',
+            'ASP Chikkaballapura',
+            ''
+          ],
+          [
+            'CONTROL ROOM',
+            'PI',
+            '9480802500',
+            '8156277213',
+            'dccbpura@ksp.gov.in',
+            'Chikkaballapura',
+            'CONTROL ROOM',
+            ''
+          ]
+        ];
+        filename = 'officer_upload_template.csv';
+      } else {
+        // Employee CSV format
+        headers = [
+          'kgid',
+          'name',
+          'mobile1',
+          'mobile2',
+          'email',
+          'rank',
+          'metalNumber',
+          'bloodGroup',
+          'district',
+          'station',
+          'photoUrl',
+          'isAdmin',
+          'isApproved'
+        ];
+        
+        sampleRows = [
+          [
+            'KG001',
+            'John Doe',
+            '9876543210',
+            '9876543211',
+            'john.doe@example.com',
+            'PI',
+            '12345',
+            'A+',
+            'Bengaluru City',
+            'Central PS',
+            '',
+            'false',
+            'true'
+          ],
+          [
+            'KG002',
+            'Jane Smith',
+            '9876543212',
+            '',
+            'jane.smith@example.com',
+            'PSI',
+            '12346',
+            'B+',
+            'Mysuru City',
+            'North PS',
+            '',
+            'false',
+            'true'
+          ],
+          [
+            'KG003',
+            'Raj Kumar',
+            '9876543213',
+            '9876543214',
+            '',
+            'ASI',
+            '',
+            'O+',
+            'Mangaluru City',
+            'South PS',
+            '',
+            'false',
+            'true'
+          ]
+        ];
+        filename = 'employee_upload_template.csv';
+      }
+
+      // Create CSV content
+      const csvContent = [
+        headers.join(','),
+        ...sampleRows.map(row => row.map(cell => {
+          // Escape commas and quotes in cell values
+          if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
+            return `"${cell.replace(/"/g, '""')}"`;
+          }
+          return cell;
+        }).join(','))
+      ].join('\n');
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Show success message
+      showAlert('bulkAlert', `✅ Sample ${uploadType} CSV template downloaded! Fill it with your data and upload.`, 'success');
+    };
+
+    // Initial load
+    setTimeout(() => {
+      loadDistricts();
+      updateBulkUploadUI(); // Initialize bulk upload UI
+    }, 500);
+  </script>
+</body>
+</html>
+

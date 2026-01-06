@@ -37,7 +37,7 @@ function doGet(e) {
           stationsbydistrict: {},
           bloodgroups: [],
           lastupdated: new Date().toISOString(),
-          version: 1
+          version: 2
         }
       }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -54,7 +54,7 @@ function getAllConstants(ss) {
       stationsbydistrict: stations,
       bloodgroups: getBloodGroups(ss),
       lastupdated: new Date().toISOString(),
-      version: 1  // Version number - increment when constants structure changes
+      version: 2  // Version number - increment when constants structure changes (matches LOCAL_CONSTANTS_VERSION)
     };
   } catch (err) {
     Logger.log("Error in getAllConstants: " + err.toString());
@@ -65,7 +65,7 @@ function getAllConstants(ss) {
       stationsbydistrict: {},
       bloodgroups: [],
       lastupdated: new Date().toISOString(),
-      version: 1
+      version: 2
     };
   }
 }

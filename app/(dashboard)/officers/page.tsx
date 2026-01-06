@@ -183,8 +183,8 @@ export default function OfficersPage() {
         bValue = b.district || "";
         break;
       case "office":
-        aValue = a.office || "";
-        bValue = b.office || "";
+        aValue = (a as any).station || a.office || "";
+        bValue = (b as any).station || b.office || "";
         break;
     }
 
@@ -194,6 +194,14 @@ export default function OfficersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate mobile number format - allow "NM" or 10 digits
+    const mobileUpper = formData.mobile.trim().toUpperCase();
+    if (mobileUpper && mobileUpper !== "NM" && mobileUpper.length !== 10) {
+      alert("Mobile number must be 10 digits or 'NM' if not provided by government");
+      return;
+    }
+    
     setSubmitting(true);
 
     try {
@@ -201,7 +209,7 @@ export default function OfficersPage() {
         agid: formData.agid.trim() || undefined,
         rank: formData.rank.trim(),
         name: formData.name.trim(),
-        mobile: formData.mobile.trim(),
+        mobile: mobileUpper || undefined,
         email: formData.email.trim() || undefined,
         landline: formData.landline.trim() || undefined,
         district: formData.district,
@@ -302,12 +310,29 @@ export default function OfficersPage() {
                   Mobile *
                 </label>
                 <input
-                  type="tel"
+                  type="text"
                   required
                   value={formData.mobile}
-                  onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                  onChange={(e) => {
+                    let value = e.target.value.toUpperCase();
+                    // If user is typing "NM", allow it
+                    if (value.startsWith("N") || value.startsWith("NM")) {
+                      // Allow "N" or "NM" only, no digits after
+                      value = value.replace(/[^NM]/g, "");
+                      if (value.length > 2) value = "NM";
+                    } else {
+                      // Allow digits only, max 10
+                      value = value.replace(/[^0-9]/g, "").slice(0, 10);
+                    }
+                    setFormData({ ...formData, mobile: value });
+                  }}
+                  placeholder="Enter 10-digit number or 'NM'"
+                  maxLength={10}
                   className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
                 />
+                <p className="mt-1 text-xs text-slate-500">
+                  Enter 10-digit mobile number or "NM" if not provided by government
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-400">
@@ -599,7 +624,7 @@ export default function OfficersPage() {
                   {officer.district}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-400 overflow-hidden text-ellipsis" style={{ maxWidth: columnWidths.office }}>
-                  {officer.office || "N/A"}
+                  {(officer as any).station || officer.office || "N/A"}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                   <div className="flex items-center justify-end gap-2">

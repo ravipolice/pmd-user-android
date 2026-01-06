@@ -1,5 +1,9 @@
 {
   "projects": {
-    "default": "pmd-police-mobile-directory"
-  }
+    "default": "pmd-police-mobile-directory",
+    "GMI_PASS": "pmd-police-mobile-directory",
+    "prod": "pmd-police-mobile-directory"
+  },
+  "targets": {},
+  "etags": {}
 }

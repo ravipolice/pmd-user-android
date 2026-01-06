@@ -28,10 +28,13 @@ class ConstantsViewModel @Inject constructor(
     private val _ranks = MutableStateFlow(constantsRepository.getRanks())
     val ranks: StateFlow<List<String>> = _ranks.asStateFlow()
 
-    private val _districts = MutableStateFlow(constantsRepository.getDistricts())
+    private val _districts = MutableStateFlow<List<String>>(emptyList())
     val districts: StateFlow<List<String>> = _districts.asStateFlow()
 
-    private val _stationsByDistrict = MutableStateFlow(constantsRepository.getStationsByDistrict())
+    private val _units = MutableStateFlow<List<String>>(emptyList())
+    val units: StateFlow<List<String>> = _units.asStateFlow()
+
+    private val _stationsByDistrict = MutableStateFlow<Map<String, List<String>>>(emptyMap())
     val stationsByDistrict: StateFlow<Map<String, List<String>>> = _stationsByDistrict.asStateFlow()
 
     private val _bloodGroups = MutableStateFlow(constantsRepository.getBloodGroups())
@@ -83,10 +86,11 @@ class ConstantsViewModel @Inject constructor(
     /**
      * Refresh constants from repository and update StateFlows
      */
-    fun refreshConstants() {
-        _ranks.value = constantsRepository.getRanks()
+    private fun refreshConstants() {
         _districts.value = constantsRepository.getDistricts()
+        _units.value = constantsRepository.getUnits()
         _stationsByDistrict.value = constantsRepository.getStationsByDistrict()
+        _ranks.value = constantsRepository.getRanks()
         _bloodGroups.value = constantsRepository.getBloodGroups()
         _ranksRequiringMetalNumber.value = constantsRepository.getRanksRequiringMetalNumber()
     }

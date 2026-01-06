@@ -38,5 +38,6 @@ data class EmployeeEntity(
     val updatedAt: Date? = null,
     val firebaseUid: String? = null,
     val photoUrlFromGoogle: String? = null,
-    val isApproved: Boolean = true
+    val isApproved: Boolean = true,
+    val unit: String? = null
 )

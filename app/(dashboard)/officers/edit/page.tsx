@@ -50,11 +50,11 @@ export default function EditOfficerPage() {
         agid: officer.agid || officer.cfd || "",
         rank: officer.rank || "",
         name: officer.name || "",
-        mobile: officer.mobile || "",
+        mobile: officer.mobile ? officer.mobile.toUpperCase() : "",
         email: officer.email || "",
         landline: officer.landline || "",
         district: officer.district || "",
-        office: officer.office || "",
+        office: (officer as any).station || officer.office || "",
       });
 
       // Set selected district to load stations
@@ -140,9 +140,10 @@ export default function EditOfficerPage() {
       return;
     }
 
-    // Validate mobile number format
-    if (formData.mobile && formData.mobile.length !== 10) {
-      alert("Mobile number must be 10 digits");
+    // Validate mobile number format - allow "NM" or 10 digits
+    const mobileUpper = formData.mobile.trim().toUpperCase();
+    if (mobileUpper && mobileUpper !== "NM" && mobileUpper.length !== 10) {
+      alert("Mobile number must be 10 digits or 'NM' if not provided by government");
       return;
     }
 
@@ -153,7 +154,7 @@ export default function EditOfficerPage() {
         agid: formData.agid.trim() || undefined,
         rank: formData.rank.trim(),
         name: formData.name.trim(),
-        mobile: formData.mobile.trim(),
+        mobile: mobileUpper || undefined,
         email: formData.email.trim() || undefined,
         landline: formData.landline.trim() || undefined,
         district: formData.district,
@@ -231,12 +232,29 @@ export default function EditOfficerPage() {
               Mobile *
             </label>
             <input
-              type="tel"
+              type="text"
               required
               value={formData.mobile}
-              onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+              onChange={(e) => {
+                let value = e.target.value.toUpperCase();
+                // If user is typing "NM", allow it
+                if (value.startsWith("N") || value.startsWith("NM")) {
+                  // Allow "N" or "NM" only, no digits after
+                  value = value.replace(/[^NM]/g, "");
+                  if (value.length > 2) value = "NM";
+                } else {
+                  // Allow digits only, max 10
+                  value = value.replace(/[^0-9]/g, "").slice(0, 10);
+                }
+                setFormData({ ...formData, mobile: value });
+              }}
+              placeholder="Enter 10-digit number or 'NM'"
+              maxLength={10}
               className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
             />
+            <p className="mt-1 text-xs text-slate-500">
+              Enter 10-digit mobile number or "NM" if not provided by government
+            </p>
           </div>
 
           <div>

@@ -14,8 +14,31 @@ data class Officer(
     val rank: String? = null,
     val station: String? = null,
     val district: String? = null,
-    val photoUrl: String? = null
+    val photoUrl: String? = null,
+    val unit: String? = null
 ) {
+    /**
+     * ✅ Effective Unit: Hybrid Strategy
+     */
+    val effectiveUnit: String
+        get() {
+            if (!unit.isNullOrBlank()) return unit
+            
+            val stationName = station ?: ""
+            return when {
+                listOf("Traffic").any { stationName.contains(it, ignoreCase = true) } -> "Traffic"
+                listOf("Control Room").any { stationName.contains(it, ignoreCase = true) } -> "Control Room"
+                listOf("CEN", "Cyber").any { stationName.contains(it, ignoreCase = true) } -> "CEN Crime / Cyber"
+                listOf("Women").any { stationName.contains(it, ignoreCase = true) } -> "Women Police"
+                listOf("DPO", "Computer", "Admin", "Office").any { stationName.contains(it, ignoreCase = true) } -> "DPO / Admin"
+                listOf("DAR").any { stationName.contains(it, ignoreCase = true) } -> "DAR"
+                listOf("DCRB").any { stationName.contains(it, ignoreCase = true) } -> "DCRB"
+                listOf("DSB", "Intelligence", "INT").any { stationName.contains(it, ignoreCase = true) } -> "DSB / Intelligence"
+                listOf("FPB", "MCU", "SMMC", "DCRE", "Lokayukta", "ESCOM").any { stationName.contains(it, ignoreCase = true) } -> "Special Units"
+                else -> "Law & Order"
+            }
+        }
+
     val primaryPhone: String?
         get() = mobile ?: landline
 

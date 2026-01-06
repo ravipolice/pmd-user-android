@@ -22,7 +22,8 @@ fun EmployeeEntity.toEmployee(): Employee = Employee(
     isAdmin = isAdmin,
     isApproved = isApproved,
     createdAt = createdAt,
-    updatedAt = updatedAt
+    updatedAt = updatedAt,
+    unit = unit
 )
 
 fun Employee.toEntity(): EmployeeEntity = EmployeeEntity(
@@ -44,5 +45,6 @@ fun Employee.toEntity(): EmployeeEntity = EmployeeEntity(
     isAdmin = isAdmin,
     isApproved = isApproved,
     createdAt = createdAt,
-    updatedAt = updatedAt
+    updatedAt = updatedAt,
+    unit = unit
 )

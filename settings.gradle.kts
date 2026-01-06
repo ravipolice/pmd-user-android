@@ -1,8 +1,8 @@
 pluginManagement {
     repositories {
         google()
-        gradlePluginPortal()
         mavenCentral()
+        gradlePluginPortal()
         maven { url = uri("https://jitpack.io") } // ✅ Added for uCrop and other GitHub libs
     }
 }

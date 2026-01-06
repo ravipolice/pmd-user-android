@@ -32,6 +32,20 @@ object Constants {
         "Vijayanagara", "Vijayapur", "Yadgir"
     ).sorted()
 
+    // Functional Units for filtering
+    val unitsList = listOf(
+        "Law & Order", // Standard Police Stations (default/files that don't match others)
+        "Traffic",
+        "Women Police",
+        "Control Room",
+        "CEN Crime / Cyber",
+        "DPO / Admin", // Includes DPO, Computer Sec, etc.
+        "DAR",
+        "DCRB",
+        "DSB / Intelligence", // DSB, State INT
+        "Special Units" // FPB, MCU, SMMC, DCRE, Lokayukta, ESCOM
+    )
+
     // This map contains station lists for ALL districts
     // All stations (including common units) are hardcoded in each district's list
     val stationsByDistrictMap: Map<String, List<String>> = districtsList.associateWith { districtName ->

@@ -3,244 +3,350 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ============================================================
-    // 🔐 HELPER FUNCTIONS
-    // ============================================================
-    
-    // Check if user is authenticated
+    /* ============================================================
+       🔐 OPTIMIZED ADMIN HELPERS
+    ============================================================ */
+
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Check if user is admin (from admins collection keyed by email)
-    function isAdmin() {
-      return request.auth != null
-          && exists(/databases/$(database)/documents/admins/$(request.auth.token.email))
-          && get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.isActive == true;
+    function hasAuthEmail() {
+      return request.auth.token.email != null
+             && request.auth.token.email is string;
     }
 
-    // Check if request is from service account (Apps Script with proper auth)
+    /* ---------- 1️⃣ UID-Based Admin ---------- */
+    function isUidAdmin() {
+      return request.auth.uid != null
+          && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+          && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isActive == true;
+    }
+
+    /* ---------- 2️⃣ Email-Based Admin ---------- */
+    function isEmailAdmin() {
+      return hasAuthEmail()
+          && exists(/databases/$(database)/documents/admins/$(request.auth.token.email))
+          && get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.isActive == true
+          && get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.email == request.auth.token.email;
+    }
+
+    /* ---------- 3️⃣ Employee Fallback Admin ---------- */
+    function isEmployeeAdmin() {
+      return (
+        hasAuthEmail()
+        && request.auth.uid != null
+        && exists(/databases/$(database)/documents/employees/$(request.auth.token.email))
+        && get(/databases/$(database)/documents/employees/$(request.auth.token.email)).data.isAdmin == true
+        && get(/databases/$(database)/documents/employees/$(request.auth.token.email)).data.firebaseUid == request.auth.uid
+      )
+      || (
+        request.auth.uid != null
+        && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
+        && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.isAdmin == true
+      );
+    }
+
+    /* ---------- Final Admin Evaluator ---------- */
+    function isAdmin() {
+      return isAuthenticated()
+          && (isUidAdmin() || isEmailAdmin() || isEmployeeAdmin());
+    }
+
     function isServiceAccount() {
       return request.auth != null
           && request.auth.token.firebase != null
           && request.auth.token.firebase.sign_in_provider == "service_account";
     }
 
-    // Validate email format
     function isValidEmail(email) {
       return email.matches('^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$');
     }
 
-    // ============================================================
-    // 🔹 OTP CODES COLLECTION (Server-managed with rate limiting)
-    // ============================================================
+
+    /* ============================================================
+       🔹 OTP CODES
+    ============================================================ */
     match /otp_codes/{email} {
-      // Service account (Firebase Functions) can create OTPs
       allow create: if isServiceAccount()
                     && isValidEmail(email)
-                    && request.resource.data.keys().hasAll(['code', 'timestamp'])
-                    && request.resource.data.code is string
-                    && request.resource.data.timestamp is number
-                    && request.resource.data.timestamp > 0;
-      
-      // Users can read only their own OTP for verification
-      allow read: if isAuthenticated() 
+                    && request.resource.data.keys().hasOnly(['code','timestamp'])
+                    && request.resource.data.timestamp is number;
+
+      allow read: if isAuthenticated()
                   && request.auth.token.email == email;
-      
-      // Service account can delete expired OTPs
+
       allow delete: if isServiceAccount();
-      
-      // No updates allowed
+
       allow update: if false;
     }
 
-    // ============================================================
-    // 🔹 OFFICERS COLLECTION (Read by authenticated users)
-    // ============================================================
+
+    /* ============================================================
+       🔹 OFFICERS (Admin-only Write, Read for all logged users)
+    ============================================================ */
     match /officers/{officerId} {
-      // Authenticated users can read officers
+
       allow read: if isAuthenticated();
 
-      // Admins can create/update/delete
-      allow create, update, delete: if isAdmin()
-                                     && request.resource.data.keys().hasAll(['agid', 'name']);
+      // Admin full control
+      allow create, update, delete: if isAdmin();
 
-      // Service account (Apps Script) can create/update during sync
-      // Restricted to specific fields only (no sensitive data)
+      // Service account – LIMITED FIELDS ONLY
       allow create, update: if isServiceAccount()
-                            && request.resource.data.keys().hasAll(['agid', 'name'])
-                            && !request.resource.data.keys().hasAny(['isAdmin', 'email', 'pin', 'firebaseUid']);
+            && request.resource.data.keys().hasOnly([
+              'agid','name','mobile','landline','rank','station','district','email','photoUrl'
+            ]);
     }
 
-    // ============================================================
-    // 🔹 EMPLOYEES COLLECTION (Keyed by kgid, not UID)
-    // ============================================================
+
+    /* ============================================================
+       🔹 EMPLOYEES
+    ============================================================ */
     match /employees/{employeeId} {
-      // Require authentication for reads
+
       allow read: if isAuthenticated();
 
-      // Employee can update their own record (by matching firebaseUid)
-      // Cannot modify protected fields
+      /* --- Employee can update only their own profile --- */
+      // Employees can only update their own profile (matched by firebaseUid or email)
+      // They cannot modify protected fields: email, kgid, isAdmin, isApproved, pin, firebaseUid, createdAt, updatedAt
       allow update: if isAuthenticated()
-                    && request.auth.uid == resource.data.firebaseUid
-                    && !request.resource.data.diff(resource.data).affectedKeys()
-                         .hasAny(['email', 'kgid', 'isAdmin', 'pin', 'firebaseUid']);
+            && (
+                // Match by firebaseUid (primary method - works for anonymous and Google Sign-In)
+                (resource.data.firebaseUid != null && request.auth.uid == resource.data.firebaseUid)
+                ||
+                // Match by email fallback (for Google Sign-In users with email in token)
+                (hasAuthEmail() && resource.data.email != null && request.auth.token.email == resource.data.email)
+            )
+            // Ensure document ID (kgid) matches the kgid field in the document for consistency
+            && (resource.data.kgid == null || employeeId == resource.data.kgid)
+            // Prevent changing protected/sensitive fields - employees can only update: name, mobile, rank, station, district, bloodGroup, photoUrl, etc.
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                  .hasAny(['email','kgid','isAdmin','isApproved','pin','firebaseUid','createdAt','updatedAt']);
 
-      // Service account (Apps Script) can ONLY update photoUrl
-      // This is for image uploads from Apps Script
+
+      /* --- Allow setting firebaseUid FIRST TIME ONLY --- */
+      allow update: if isAuthenticated()
+            && (resource.data.firebaseUid == null || resource.data.firebaseUid == "")
+            && request.resource.data.keys().hasOnly(['firebaseUid'])
+            && request.resource.data.firebaseUid == request.auth.uid;
+            // Note: When only updating firebaseUid, email is not in request.resource.data
+            // Security: User must be authenticated and firebaseUid must match their UID
+
+
+      /* --- Service Account: ONLY photoUrl --- */
       allow update: if isServiceAccount()
-                    && request.resource.data.keys().hasOnly(['photoUrl'])
-                    && request.resource.data.photoUrl is string
-                    && request.resource.data.photoUrl.size() > 0
-                    && request.resource.data.photoUrl.size() < 1000;
+            && request.resource.data.keys().hasOnly(['photoUrl'])
+            && request.resource.data.photoUrl is string;
 
-      // ⚠️ SECURITY: Unauthenticated Apps Script writes (legacy support)
-      // Only allow photoUrl updates, nothing else
-      allow update: if request.auth == null
-                    && request.resource.data.keys().hasOnly(['photoUrl'])
-                    && request.resource.data.photoUrl is string
-                    && request.resource.data.photoUrl.size() > 0
-                    && request.resource.data.photoUrl.size() < 1000;
 
-      // Admin full access (with validation)
-      allow create, update, delete: if isAdmin()
-                                    && (request.resource == null || 
-                                        (request.resource.data.keys().hasAll(['name', 'email', 'kgid'])));
+      /* --- Admins can do everything --- */
+      allow create, update, delete: if isAdmin();
     }
 
-    // ============================================================
-    // 🔹 ADMINS COLLECTION (Keyed by email, not UID)
-    // ============================================================
-    match /admins/{adminEmail} {
-      // Only admins can read admin list
+
+    /* ============================================================
+       🔹 ADMINS
+       Supports both email and UID as document ID
+    ============================================================ */
+    match /admins/{adminId} {
+
       allow get, list: if isAdmin();
-      
-      // Only existing admins can add new admins (prevent privilege escalation)
+
+      // Create admin document (can use email or UID as document ID)
       allow create: if isAdmin()
-                    && isValidEmail(adminEmail)
-                    && request.resource.data.keys().hasAll(['isActive', 'email'])
-                    && request.resource.data.isActive is bool
-                    && isValidEmail(request.resource.data.email);
-      
-      // Only admins can update (cannot deactivate themselves)
+              && request.resource.data.size() > 0
+              && (
+                  // If using email as ID, validate it's a valid email
+                  (isValidEmail(adminId) && request.resource.data.keys().hasOnly(['email','isActive','uid','updatedAt']))
+                  ||
+                  // If using UID as ID, allow it
+                  (request.resource.data.keys().hasOnly(['email','isActive','uid','updatedAt']))
+              )
+              && request.resource.data.isActive == true;
+
+      // Update/delete admin document (prevent self-deletion)
       allow update: if isAdmin()
-                    && adminEmail != request.auth.token.email;
+              && request.resource.data.size() > 0
+              && (
+                  // If adminId is email, prevent self-deletion
+                  (isValidEmail(adminId) && adminId != request.auth.token.email)
+                  ||
+                  // If adminId is UID, prevent self-deletion
+                  (adminId != request.auth.uid)
+              );
       
-      // Only admins can delete (cannot delete themselves)
       allow delete: if isAdmin()
-                    && adminEmail != request.auth.token.email;
+              && (
+                  // If adminId is email, prevent self-deletion
+                  (isValidEmail(adminId) && adminId != request.auth.token.email)
+                  ||
+                  // If adminId is UID, prevent self-deletion
+                  (adminId != request.auth.uid)
+              );
     }
 
-    // ============================================================
-    // 🔹 META COLLECTION (Admin Only)
-    // ============================================================
-    match /meta/{document=**} {
-      allow get: if isAuthenticated();
+
+    /* ============================================================
+       🔹 META (Admin write)
+    ============================================================ */
+    match /meta/{docId} {
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
-    // ============================================================
-    // 🔹 PENDING REGISTRATIONS (Validated)
-    // ============================================================
+
+    /* ============================================================
+       🔹 PENDING REGISTRATIONS
+    ============================================================ */
     match /pending_registrations/{docId} {
-      // Anyone can create registration with required fields
-      allow create: if request.resource.data.keys().hasAll(
-                      ['kgid','email','name','mobile1','rank','district','station','pin'])
-                    && isValidEmail(request.resource.data.email)
-                    && request.resource.data.kgid is string
-                    && request.resource.data.kgid.size() > 0;
-      
-      // Only admins can read/update/delete
+
+      allow create: if request.resource.data.keys().hasAll([
+          'kgid','email','name','mobile1','rank','district','station','pin'
+      ]) && isValidEmail(request.resource.data.email);
+
       allow read, update, delete: if isAdmin();
     }
 
-    // ============================================================
-    // 🔹 ADMIN NOTIFICATIONS (Rate Limited)
-    // ============================================================
+
+    /* ============================================================
+       🔹 ADMIN NOTIFICATIONS
+    ============================================================ */
     match /admin_notifications/{docId} {
-      // Service account or admins can create notifications
-      allow create: if (isAdmin() || isServiceAccount())
-                    && request.resource.data.keys().hasAll(['title', 'message', 'timestamp'])
-                    && request.resource.data.timestamp is number;
-      
-      // Only admins can read/update/delete
+      allow create: if isAdmin() || isServiceAccount();
       allow read, update, delete: if isAdmin();
     }
 
-    // ============================================================
-    // 🔹 PUSH NOTIFICATION QUEUE (Authenticated Only)
-    // ============================================================
+
+    /* ============================================================
+       🔹 NOTIFICATION QUEUE
+    ============================================================ */
     match /notifications_queue/{docId} {
-      // Authenticated users can create notification requests
-      allow create: if isAuthenticated()
-                    && request.resource.data.keys().hasAll(['title', 'message', 'target'])
-                    && request.resource.data.title is string;
-      
-      // Only admins or service account can read/update/delete
+      allow create: if isAuthenticated();
       allow read, update, delete: if isAdmin() || isServiceAccount();
     }
 
-    // ============================================================
-    // 🔹 USEFUL LINKS COLLECTION (Public Read, Admin Write)
-    // ============================================================
+
+    /* ============================================================
+       🔹 USEFUL LINKS (Public Read)
+    ============================================================ */
     match /useful_links/{linkId} {
-      // Public read access
+
       allow read: if true;
 
-      // App writes: only authenticated admins
+      // Admin can create/update/delete with all fields
       allow create, update, delete: if isAdmin();
 
-      // Service account (Apps Script) can sync links
-      // Restricted to specific fields only
+      // Service account can create/update with required fields
       allow create, update: if isServiceAccount()
-                            && request.resource.data.keys().hasAll(['name', 'playStoreUrl'])
-                            && request.resource.data.name is string
-                            && !request.resource.data.keys().hasAny(['isAdmin', 'email']);
-
-      // ⚠️ SECURITY: Legacy unauthenticated Apps Script support
-      // Only allow specific fields, no sensitive data
-      allow create, update: if request.auth == null
-                            && request.resource.data.keys().hasAll(['name', 'playStoreUrl'])
-                            && !request.resource.data.keys().hasAny(['isAdmin', 'email']);
-      
-      allow delete: if request.auth == null && isAdmin();
+            && request.resource.data.keys().hasAll(['name'])
+            && request.resource.data.name is string
+            && request.resource.data.keys().hasOnly(['name','playStoreUrl','apkUrl','iconUrl','createdAt','updatedAt'])
+            && (request.resource.data.playStoreUrl == null || request.resource.data.playStoreUrl is string)
+            && (request.resource.data.apkUrl == null || request.resource.data.apkUrl is string)
+            && (request.resource.data.iconUrl == null || request.resource.data.iconUrl is string)
+            && (request.resource.data.createdAt == null || request.resource.data.createdAt is number)
+            && (request.resource.data.updatedAt == null || request.resource.data.updatedAt is number);
     }
 
-    // ============================================================
-    // 🔹 GALLERY COLLECTION (Public Read, Admin Write)
-    // ============================================================
+
+    /* ============================================================
+       🔹 GALLERY (Public Read)
+    ============================================================ */
     match /gallery/{imageId} {
-      // Public read access
+
       allow read: if true;
 
-      // Admin can create, update, delete
       allow create, update, delete: if isAdmin();
 
-      // Service account (Apps Script) can create/update
       allow create, update: if isServiceAccount()
-                            && request.resource.data.keys().hasAll(['imageUrl'])
-                            && request.resource.data.imageUrl is string
-                            && request.resource.data.imageUrl.size() > 0
-                            && request.resource.data.imageUrl.size() < 1000;
-
-      // ⚠️ SECURITY: Legacy unauthenticated Apps Script support
-      // Only allow imageUrl updates, nothing else
-      allow create, update: if request.auth == null
-                            && request.resource.data.keys().hasAll(['imageUrl'])
-                            && request.resource.data.imageUrl is string
-                            && request.resource.data.imageUrl.size() > 0
-                            && request.resource.data.imageUrl.size() < 1000;
+            && request.resource.data.keys().hasOnly(['imageUrl']);
     }
 
-    // ============================================================
-    // 🔹 DOCUMENTS COLLECTION (Admin Only Writes)
-    // ============================================================
-    match /documents/{documentId} {
-      // Authenticated users can read
+
+    /* ============================================================
+       🔹 DOCUMENTS
+    ============================================================ */
+    match /documents/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+
+    /* ============================================================
+       🔹 DISTRICTS (Master Data)
+    ============================================================ */
+    match /districts/{districtId} {
+      // All authenticated users can read districts
       allow read: if isAuthenticated();
       
-      // Only admins can write
+      // Only admins can create, update, or delete districts
       allow create, update, delete: if isAdmin();
+      
+      // Service account can create/update with required fields
+      allow create, update: if isServiceAccount()
+            && request.resource.data.keys().hasAll(['name'])
+            && request.resource.data.name is string
+            && request.resource.data.keys().hasOnly(['name','range','isActive','createdAt','updatedAt'])
+            && (request.resource.data.range == null || request.resource.data.range is string)
+            && (request.resource.data.isActive == null || request.resource.data.isActive is bool)
+            && (request.resource.data.createdAt == null || request.resource.data.createdAt is timestamp)
+            && (request.resource.data.updatedAt == null || request.resource.data.updatedAt is timestamp);
     }
+
+
+    /* ============================================================
+       🔹 STATIONS (Master Data)
+    ============================================================ */
+    match /stations/{stationId} {
+      // All authenticated users can read stations
+      allow read: if isAuthenticated();
+      
+      // Only admins can create, update, or delete stations
+      allow create, update, delete: if isAdmin();
+      
+      // Service account can create/update with required fields
+      allow create, update: if isServiceAccount()
+            && request.resource.data.keys().hasAll(['name', 'district'])
+            && request.resource.data.name is string
+            && request.resource.data.district is string
+            && request.resource.data.keys().hasOnly(['name','district','stdCode','isActive','createdAt','updatedAt'])
+            && (request.resource.data.stdCode == null || request.resource.data.stdCode is string)
+            && (request.resource.data.isActive == null || request.resource.data.isActive is bool)
+            && (request.resource.data.createdAt == null || request.resource.data.createdAt is timestamp)
+            && (request.resource.data.updatedAt == null || request.resource.data.updatedAt is timestamp);
+    }
+
+
+    /* ============================================================
+       🔹 RANKS (Master Data) - rankMaster collection
+    ============================================================ */
+    match /rankMaster/{rank_id} {
+      // All authenticated users can read ranks
+      allow read: if isAuthenticated();
+      
+      // Only admins can create, update, or delete ranks
+      allow create, update, delete: if isAdmin();
+      
+      // Service account can create/update with required fields
+      allow create, update: if isServiceAccount()
+            && request.resource.data.keys().hasAll(['rank_id', 'rank_label', 'staffType', 'category', 'equivalent_rank', 'seniority_order', 'aliases', 'requiresMetalNumber', 'isActive'])
+            && request.resource.data.keys().hasOnly(['rank_id', 'rank_label', 'staffType', 'category', 'equivalent_rank', 'seniority_order', 'aliases', 'requiresMetalNumber', 'isActive', 'remarks', 'createdAt', 'updatedAt'])
+            && request.resource.data.rank_id is string
+            && request.resource.data.rank_id == rank_id  // Document ID must match rank_id field
+            && request.resource.data.rank_label is string
+            && request.resource.data.staffType is string
+            && (request.resource.data.staffType == "POLICE" || request.resource.data.staffType == "MINISTERIAL")
+            && request.resource.data.category is string
+            && request.resource.data.equivalent_rank is string
+            && request.resource.data.seniority_order is int
+            && request.resource.data.aliases is list
+            && request.resource.data.requiresMetalNumber is bool
+            && request.resource.data.isActive is bool
+            && (request.resource.data.remarks == null || request.resource.data.remarks is string)
+            && (request.resource.data.createdAt == null || request.resource.data.createdAt is timestamp)
+            && (request.resource.data.updatedAt == null || request.resource.data.updatedAt is timestamp);
+    }
+
   }
 }
