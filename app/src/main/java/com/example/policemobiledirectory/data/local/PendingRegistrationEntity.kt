@@ -30,9 +30,12 @@ data class PendingRegistrationEntity(
 
     val mobile1: String = "",
     val mobile2: String? = null,
+    val landline: String? = null,
+    val landline2: String? = null,
 
     val district: String = "",
     val station: String = "",
+    val unit: String? = null,
     val rank: String = "",
     val metalNumber: String? = null,
 
@@ -69,10 +72,13 @@ fun PendingRegistrationEntity.toEmployee(
         email = email.trim(),
         mobile1 = mobile1.trim(),
         mobile2 = mobile2?.trim()?.takeIf { it.isNotBlank() },
+        landline = landline?.trim()?.takeIf { it.isNotBlank() },
+        landline2 = landline2?.trim()?.takeIf { it.isNotBlank() },
         rank = rank.trim(),
         metalNumber = metalNumber?.trim()?.takeIf { it.isNotBlank() },
         district = district.trim(),
         station = station.trim(),
+        unit = unit?.trim()?.takeIf { it.isNotBlank() },
         bloodGroup = bloodGroup.takeIf { it.isNotBlank() },
         isAdmin = false,
         photoUrl = finalPhotoUrl

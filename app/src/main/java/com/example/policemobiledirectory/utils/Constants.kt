@@ -33,17 +33,14 @@ object Constants {
     ).sorted()
 
     // Functional Units for filtering
+    // Functional Units for filtering
     val unitsList = listOf(
-        "Law & Order", // Standard Police Stations (default/files that don't match others)
-        "Traffic",
-        "Women Police",
-        "Control Room",
-        "CEN Crime / Cyber",
-        "DPO / Admin", // Includes DPO, Computer Sec, etc.
-        "DAR",
-        "DCRB",
-        "DSB / Intelligence", // DSB, State INT
-        "Special Units" // FPB, MCU, SMMC, DCRE, Lokayukta, ESCOM
+        "Admin", "ASC Team", "BDDS", "C Room", "CAR", "CCB", "CCRB", "CDR", "CEN", "CID", 
+        "Coast Guard", "Computer", "Court", "CSB", "CSP", "DAR", "DCIB", "DCRB", "DCRE", 
+        "Dog Squad", "DSB", "ERSS", "ESCOM", "Excise", "Fire", "Forest", "FPB", "FRRO", 
+        "FSL", "Guest House", "Health", "Home Guard", "INT", "ISD", "KLA", "L&O", 
+        "Ministrial", "Minisrial", "Others", "Prison", "PTS", "Railway", "RTO", 
+        "S INT", "Social Media", "Toll", "Traffic", "VVIP", "Wireless"
     )
 
     // This map contains station lists for ALL districts

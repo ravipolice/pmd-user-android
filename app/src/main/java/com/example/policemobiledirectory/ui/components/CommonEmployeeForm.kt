@@ -87,7 +87,9 @@ fun CommonEmployeeForm(
     val districts by constantsViewModel.districts.collectAsStateWithLifecycle()
     val stationsByDistrict by constantsViewModel.stationsByDistrict.collectAsStateWithLifecycle()
     val bloodGroups by constantsViewModel.bloodGroups.collectAsStateWithLifecycle()
+
     val ranksRequiringMetalNumber by constantsViewModel.ranksRequiringMetalNumber.collectAsStateWithLifecycle()
+    val units by constantsViewModel.units.collectAsStateWithLifecycle()
 
     // fields
     var kgid by remember(initialEmployee, initialKgid) { mutableStateOf(initialEmployee?.kgid ?: initialKgid.orEmpty()) }
@@ -98,10 +100,13 @@ fun CommonEmployeeForm(
     }
     var mobile1 by remember(initialEmployee) { mutableStateOf(initialEmployee?.mobile1 ?: "") }
     var mobile2 by remember(initialEmployee) { mutableStateOf(initialEmployee?.mobile2 ?: "") }
+    var landline by remember(initialEmployee) { mutableStateOf(initialEmployee?.landline ?: "") }
+    var landline2 by remember(initialEmployee) { mutableStateOf(initialEmployee?.landline2 ?: "") }
     var rank by remember(initialEmployee) { mutableStateOf(initialEmployee?.rank ?: "") }
     var metalNumber by remember(initialEmployee) { mutableStateOf(initialEmployee?.metalNumber ?: "") }
     var district by remember(initialEmployee) { mutableStateOf(initialEmployee?.district ?: "") }
     var station by remember(initialEmployee) { mutableStateOf(initialEmployee?.station ?: "") }
+    var unit by remember(initialEmployee) { mutableStateOf(initialEmployee?.unit ?: "") }
     var bloodGroup by remember(initialEmployee) { mutableStateOf(initialEmployee?.bloodGroup ?: "") }
     var currentPhotoUrl by remember(initialEmployee) { mutableStateOf(initialEmployee?.photoUrl) }
     var croppedPhotoUri by remember(initialEmployee) { mutableStateOf<Uri?>(null) }
@@ -118,6 +123,7 @@ fun CommonEmployeeForm(
     var bloodGroupExpanded by remember { mutableStateOf(false) }
     var showSourceDialog by remember { mutableStateOf(false) }
     var showValidationErrors by remember { mutableStateOf(false) }
+    var unitExpanded by remember { mutableStateOf(false) }
 
     val showMetalNumberField = remember(rank, ranksRequiringMetalNumber) { ranksRequiringMetalNumber.contains(rank) }
     val stationsForSelectedDistrict = remember(district, stationsByDistrict) {
@@ -256,6 +262,36 @@ fun CommonEmployeeForm(
             )
             Spacer(Modifier.height(fieldSpacing))
 
+            // Row 5: Mobile 2
+            OutlinedTextField(
+                value = mobile2,
+                onValueChange = { mobile2 = it.filter { ch -> ch.isDigit() } },
+                label = { Text("Mobile 2 (Optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+            )
+            Spacer(Modifier.height(fieldSpacing))
+
+            // Row 5b: Landline
+            OutlinedTextField(
+                value = landline,
+                onValueChange = { landline = it.filter { ch -> ch.isDigit() || ch == '-' } },
+                label = { Text("Landline (Optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+            )
+            Spacer(Modifier.height(fieldSpacing))
+
+            // Row 5c: Landline 2
+            OutlinedTextField(
+                value = landline2,
+                onValueChange = { landline2 = it.filter { ch -> ch.isDigit() || ch == '-' } },
+                label = { Text("Landline 2 (Optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+            )
+            Spacer(Modifier.height(fieldSpacing))
+
             // Row 6: KGID, Rank, Metal Number (conditional) - all in same row
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -356,7 +392,8 @@ fun CommonEmployeeForm(
             }
             Spacer(Modifier.height(fieldSpacing))
 
-            // Row 8: Station, Blood (on same row)
+            // Row 8: Station, Unit, Blood (all in same flow or row)
+            // Splitting into 2 rows for better fit
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -373,7 +410,7 @@ fun CommonEmployeeForm(
                         value = station.ifEmpty { if (district.isNotBlank()) "Select Station" else "Select District First" },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Station/Unit*") },
+                        label = { Text("Station*") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
                         enabled = district.isNotBlank() && stationsForSelectedDistrict.isNotEmpty(),
@@ -389,11 +426,40 @@ fun CommonEmployeeForm(
                     }
                 }
 
-                // Blood Group
+                // Unit
+                ExposedDropdownMenuBox(
+                    expanded = unitExpanded,
+                    onExpandedChange = { unitExpanded = !unitExpanded },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = unit.ifEmpty { "Unit (Optional)" },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Unit") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) }
+                    )
+                    ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
+                        units.forEach { selection ->
+                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                unit = selection
+                                unitExpanded = false
+                            })
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(fieldSpacing))
+
+            // Blood Group row
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 ExposedDropdownMenuBox(
                     expanded = bloodGroupExpanded,
                     onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
                         value = bloodGroup.ifEmpty { "Blood Group" },
@@ -515,6 +581,14 @@ fun CommonEmployeeForm(
             OutlinedTextField(value = mobile2, onValueChange = { mobile2 = it.filter { ch -> ch.isDigit() } }, label = { Text("Mobile 2 (Optional)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
             Spacer(Modifier.height(fieldSpacing))
 
+            // Landline
+            OutlinedTextField(value = landline, onValueChange = { landline = it.filter { ch -> ch.isDigit() || ch == '-' } }, label = { Text("Landline (Optional)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+            Spacer(Modifier.height(fieldSpacing))
+
+            // Landline 2
+            OutlinedTextField(value = landline2, onValueChange = { landline2 = it.filter { ch -> ch.isDigit() || ch == '-' } }, label = { Text("Landline 2 (Optional)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+            Spacer(Modifier.height(fieldSpacing))
+
             // Rank
             ExposedDropdownMenuBox(expanded = rankExpanded, onExpandedChange = { rankExpanded = !rankExpanded }) {
                 OutlinedTextField(
@@ -589,7 +663,7 @@ fun CommonEmployeeForm(
                     value = station.ifEmpty { if (district.isNotBlank()) "Select Station" else "Select District First" },
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Station/Unit*") },
+                    label = { Text("Station*") },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
                     enabled = district.isNotBlank() && stationsForSelectedDistrict.isNotEmpty(),
@@ -605,6 +679,27 @@ fun CommonEmployeeForm(
                 }
             }
             if (showValidationErrors && station.isBlank()) Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(fieldSpacing))
+
+            // Unit
+            ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = !unitExpanded }) {
+                OutlinedTextField(
+                    value = unit.ifEmpty { "Unit (Optional)" },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Unit") },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) }
+                )
+                ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
+                    units.forEach { selection ->
+                        DropdownMenuItem(text = { Text(selection) }, onClick = {
+                            unit = selection
+                            unitExpanded = false
+                        })
+                    }
+                }
+            }
             Spacer(Modifier.height(fieldSpacing))
 
             // Blood group
@@ -698,9 +793,12 @@ fun CommonEmployeeForm(
                     email = email.trim(),
                     mobile1 = mobile1.trim(),
                     mobile2 = mobile2.trim().takeIf { it.isNotBlank() },
+                    landline = landline.trim().takeIf { it.isNotBlank() },
+                    landline2 = landline2.trim().takeIf { it.isNotBlank() },
                     rank = rank.trim(),
                     district = district.trim(),
                     station = station.trim(),
+                    unit = unit.trim().takeIf { it.isNotBlank() },
                     bloodGroup = bloodGroup.ifBlank { null },
                     metalNumber = metalNumber.trim().takeIf { it.isNotBlank() },
                     isAdmin = initialEmployee?.isAdmin ?: false,
@@ -721,11 +819,14 @@ fun CommonEmployeeForm(
                                 email = emp.email,
                                 mobile1 = emp.mobile1 ?: "",
                                 mobile2 = emp.mobile2,
+                                landline = emp.landline,
+                                landline2 = emp.landline2,
                                 pin = pin,
                                 rank = emp.rank ?: "",
                                 metalNumber = emp.metalNumber,
                                 district = emp.district.orEmpty(),
                                 station = emp.station.orEmpty(),
+                                unit = emp.unit,
                                 bloodGroup = emp.bloodGroup.orEmpty(),
                                 firebaseUid = firebaseUid,
                                 photoUrl = emp.photoUrl

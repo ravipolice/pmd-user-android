@@ -31,7 +31,9 @@ data class Employee(
     val createdAt: Date? = null,       // TIMESTAMP after migration
     @ServerTimestamp
     val updatedAt: Date? = null,        // TIMESTAMP after migration
-    val unit: String? = null            // Explicit Unit field (Hybrid Strategy)
+    val unit: String? = null,           // Explicit Unit field (Hybrid Strategy)
+    val landline: String? = null,
+    val landline2: String? = null
 ) {
     // Computed property for display
     val displayRank: String
