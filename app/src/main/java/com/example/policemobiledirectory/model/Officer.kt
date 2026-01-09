@@ -15,7 +15,9 @@ data class Officer(
     val station: String? = null,
     val district: String? = null,
     val photoUrl: String? = null,
-    val unit: String? = null
+    val unit: String? = null,
+    @get:PropertyName("isHidden")
+    val isHidden: Boolean = false
 ) {
     /**
      * ✅ Effective Unit: Hybrid Strategy

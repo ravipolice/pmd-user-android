@@ -34,7 +34,8 @@ object Constants {
 
     // Functional Units for filtering
     // Functional Units for filtering
-    val unitsList = listOf(
+    // Functional Units for filtering
+    val defaultUnitsList = listOf(
         "Admin", "ASC Team", "BDDS", "C Room", "CAR", "CCB", "CCRB", "CDR", "CEN", "CID", 
         "Coast Guard", "Computer", "Court", "CSB", "CSP", "DAR", "DCIB", "DCRB", "DCRE", 
         "Dog Squad", "DSB", "ERSS", "ESCOM", "Excise", "Fire", "Forest", "FPB", "FRRO", 

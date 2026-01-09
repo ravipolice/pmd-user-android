@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Edit // ✅ Added Edit icon
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -39,6 +40,8 @@ fun ContactCard(
     employee: Employee? = null,
     officer: Officer? = null,
     fontScale: Float = 1.0f,
+    isAdmin: Boolean = false, // ✅ Added isAdmin
+    onEdit: (() -> Unit)? = null, // ✅ Added onEdit callback
     onClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -159,6 +162,8 @@ fun ContactCard(
                     )
                 }
 
+
+
                 Spacer(Modifier.width(10.dp))
 
                 Column(
@@ -169,23 +174,45 @@ fun ContactCard(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween, // Changed to SpaceBetween to push Edit icon to right
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = name,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = (16 * fontScale).sp,
-                            color = Color.Black
-                        )
-
-                        val rankText = rank ?: ""
-                        if (rankText.isNotBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.weight(1f, fill = false) // Allow text to take space but not push icon off
+                        ) {
                             Text(
-                                text = rankText,
-                                fontSize = (13 * fontScale).sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.Black.copy(alpha = 0.9f)
+                                text = name,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = (16 * fontScale).sp,
+                                color = Color.Black
                             )
+
+                            val rankText = rank ?: ""
+                            if (rankText.isNotBlank()) {
+                                Text(
+                                    text = rankText,
+                                    fontSize = (13 * fontScale).sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color.Black.copy(alpha = 0.9f)
+                                )
+                            }
+                        }
+
+                        // ✅ Edit Icon (Only for Admins and if onEdit is provided)
+                        if (isAdmin && onEdit != null) {
+                            IconButton(
+                                onClick = onEdit,
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Officer",
+                                    tint = PrimaryTeal,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
 

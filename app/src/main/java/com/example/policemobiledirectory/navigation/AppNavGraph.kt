@@ -238,6 +238,29 @@ private fun AppNavHostContent(
             )
         }
 
+        // --- ADD / EDIT OFFICER ---
+        composable(
+            route = "${Routes.EDIT_OFFICER}/{officerId}",
+            arguments = listOf(
+                navArgument("officerId") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            )
+        ) { backStackEntry ->
+            val officerId = backStackEntry.arguments?.getString("officerId") ?: ""
+            // Use hiltViewModel for Officer logic
+            val addEditOfficerViewModel: com.example.policemobiledirectory.viewmodel.AddEditOfficerViewModel = hiltViewModel()
+            val employeeViewModelForRefresh: EmployeeViewModel = hiltViewModel()
+
+            AddEditOfficerScreen(
+                officerId = officerId,
+                navController = navController,
+                viewModel = addEditOfficerViewModel,
+                employeeViewModel = employeeViewModelForRefresh
+            )
+        }
+
         // --- EMPLOYEE LIST (HOME) ---
         composable(Routes.EMPLOYEE_LIST) {
             EmployeeListScreen(

@@ -480,13 +480,39 @@ open class EmployeeRepository @Inject constructor(
     suspend fun syncAllEmployees(): RepoResult<Unit> = withContext(ioDispatcher) {
         try {
             val snapshot = employeesCollection.get().await()
-            // ✅ CRITICAL FIX: Ensure kgid is set from document ID for all employees
-            val entities = snapshot.documents.mapNotNull { doc ->
+            
+            val visibleEntities = ArrayList<EmployeeEntity>()
+            val hiddenKgids = ArrayList<String>()
+
+            snapshot.documents.forEach { doc ->
                 val docKgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
+                // toObject will now deserialise isHidden because we updated Employee.kt
                 val emp = doc.toObject(Employee::class.java)?.copy(kgid = docKgid)
-                emp?.let { buildEmployeeEntityFromDoc(doc, pinHash = doc.getString(FIELD_PIN_HASH).orEmpty()) }
+
+                if (emp != null) {
+                    if (emp.isHidden) {
+                        if (docKgid.isNotBlank()) hiddenKgids.add(docKgid)
+                    } else {
+                        // Only add to list if NOT hidden
+                        val entity = buildEmployeeEntityFromDoc(doc, pinHash = doc.getString(FIELD_PIN_HASH).orEmpty())
+                        visibleEntities.add(entity)
+                    }
+                }
             }
-            employeeDao.insertEmployees(entities)
+
+            // 1. Insert/Update visible employees
+            if (visibleEntities.isNotEmpty()) {
+                employeeDao.insertEmployees(visibleEntities)
+            }
+            
+            // 2. Delete hidden employees from local DB
+            if (hiddenKgids.isNotEmpty()) {
+                Log.d(TAG, "Removing ${hiddenKgids.size} hidden employees from local DB")
+                hiddenKgids.forEach { kgid ->
+                    employeeDao.deleteByKgid(kgid)
+                }
+            }
+            
             RepoResult.Success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "syncAllEmployees failed", e)

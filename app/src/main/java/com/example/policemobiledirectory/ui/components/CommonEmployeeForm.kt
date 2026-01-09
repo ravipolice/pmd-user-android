@@ -76,6 +76,7 @@ fun CommonEmployeeForm(
     isLoading: Boolean = false, // ✅ Add loading state parameter
     onNavigateToTerms: (() -> Unit)? = null, // ✅ Callback to navigate to terms
     constantsViewModel: ConstantsViewModel = hiltViewModel(),
+    isOfficer: Boolean = false, // ✅ New parameter for Officer mode
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -297,11 +298,13 @@ fun CommonEmployeeForm(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // KGID
+                // KGID / ID
                 OutlinedTextField(
                     value = kgid,
-                    onValueChange = { kgid = it.filter { ch -> ch.isDigit() } },
-                    label = { Text("KGID*") },
+                    onValueChange = { 
+                        if (isOfficer) kgid = it else if (it.all { ch -> ch.isDigit() }) kgid = it
+                    },
+                    label = { Text(if(isOfficer) "Officer ID*" else "KGID*") },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     isError = showValidationErrors && !isKgidValid(kgid),
@@ -334,8 +337,8 @@ fun CommonEmployeeForm(
                     }
                 }
 
-                // Metal Number (conditional - only show when required)
-                if (showMetalNumberField) {
+                // Metal Number (conditional - only show when required AND NOT OFFICER)
+                if (showMetalNumberField && !isOfficer) {
                     OutlinedTextField(
                         value = metalNumber,
                         onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
@@ -350,12 +353,12 @@ fun CommonEmployeeForm(
             if (showValidationErrors) {
                 Row(modifier = Modifier.fillMaxWidth()) {
                     if (!isKgidValid(kgid)) {
-                        Text("KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                        Text(if(isOfficer) "ID required" else "KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                     }
                     if (rank.isBlank()) {
                         Text("Rank required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                     }
-                    if (showMetalNumberField && metalNumber.isBlank()) {
+                    if (showMetalNumberField && metalNumber.isBlank() && !isOfficer) {
                         Text("Metal no. required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                     }
                 }
@@ -452,64 +455,76 @@ fun CommonEmployeeForm(
             }
             Spacer(Modifier.height(fieldSpacing))
 
-            // Blood Group row
-            Row(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ExposedDropdownMenuBox(
-                    expanded = bloodGroupExpanded,
-                    onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded },
+
+            Spacer(Modifier.height(fieldSpacing))
+
+            // Blood Group row (Hide for Officer)
+            if (!isOfficer) {
+                Row(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    OutlinedTextField(
-                        value = bloodGroup.ifEmpty { "Blood Group" },
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Blood Group") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) }
-                    )
-                    ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
-                        bloodGroups.forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                bloodGroup = selection
-                                bloodGroupExpanded = false
-                            })
+                    ExposedDropdownMenuBox(
+                        expanded = bloodGroupExpanded,
+                        onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = bloodGroup.ifEmpty { "Blood Group" },
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Blood Group") },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) }
+                        )
+                        ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
+                            bloodGroups.forEach { selection ->
+                                DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                    bloodGroup = selection
+                                    bloodGroupExpanded = false
+                                })
+                            }
                         }
                     }
                 }
+                if (showValidationErrors && station.isBlank()) {
+                    Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                Spacer(Modifier.height(fieldSpacing))
+            } else {
+                 if (showValidationErrors && station.isBlank()) {
+                    Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(fieldSpacing))
+                }
             }
-            if (showValidationErrors && station.isBlank()) {
-                Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
-            Spacer(Modifier.height(fieldSpacing))
 
-            // Row 9: Create PIN, Confirm PIN (on same row)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = pin,
-                    onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) pin = it },
-                    label = { Text("Create PIN*") },
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    isError = showValidationErrors && (pin.length != 6 || (pin.isNotEmpty() && pin != confirmPin))
-                )
-                OutlinedTextField(
-                    value = confirmPin,
-                    onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) confirmPin = it },
-                    label = { Text("Confirm PIN*") },
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    isError = showValidationErrors && (confirmPin.length != 6 || (confirmPin.isNotEmpty() && pin != confirmPin))
-                )
+            // Row 9: Create PIN, Confirm PIN (on same row) - Hide for Officer
+            if (!isOfficer) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = pin,
+                        onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) pin = it },
+                        label = { Text("Create PIN*") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        isError = showValidationErrors && (pin.length != 6 || (pin.isNotEmpty() && pin != confirmPin))
+                    )
+                    OutlinedTextField(
+                        value = confirmPin,
+                        onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) confirmPin = it },
+                        label = { Text("Confirm PIN*") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        isError = showValidationErrors && (confirmPin.length != 6 || (confirmPin.isNotEmpty() && pin != confirmPin))
+                    )
+                }
+                if (showValidationErrors && (pin.length != 6 || pin != confirmPin)) {
+                    Text("PIN must be 6 digits and match", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                Spacer(Modifier.height(fieldSpacing))
             }
-            if (showValidationErrors && (pin.length != 6 || pin != confirmPin)) {
-                Text("PIN must be 6 digits and match", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
-            Spacer(Modifier.height(fieldSpacing))
 
             // Row 10: Terms and condition
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -536,15 +551,20 @@ fun CommonEmployeeForm(
             if (!isSelfEdit) {
                 OutlinedTextField(
                     value = kgid,
-                    onValueChange = { kgid = it.filter { ch -> ch.isDigit() } },
-                    label = { Text("KGID*") },
+                    onValueChange = {
+                         // Allow mostly digits but maybe letters for Officer ID (AGID) if needed?
+                         // Current KGID is digits only. AGID is usually string.
+                         // Let's allow alphanumeric for officers, digits only for employees.
+                         if (isOfficer) kgid = it else if (it.all { ch -> ch.isDigit() }) kgid = it
+                    },
+                    label = { Text(if (isOfficer) "Officer ID*" else "KGID*") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     isError = showValidationErrors && !isKgidValid(kgid),
                     enabled = isAdmin || isRegistration
                 )
                 if (showValidationErrors && !isKgidValid(kgid)) {
-                    Text("KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text(if(isOfficer) "ID required" else "KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 Spacer(Modifier.height(fieldSpacing))
             }
@@ -553,16 +573,16 @@ fun CommonEmployeeForm(
             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name*") }, modifier = Modifier.fillMaxWidth(), isError = showValidationErrors && name.isBlank())
             Spacer(Modifier.height(fieldSpacing))
 
-            // Email
+            // Email (Optional/Hidden for Officers if needed, but let's keep it optional)
             OutlinedTextField(
-                value = email,
+                value = email ?: "",
                 onValueChange = { email = it },
-                label = { Text("Email*") },
+                label = { Text(if(isOfficer) "Email (Optional)" else "Email*") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                isError = showValidationErrors && !isValidEmail(email)
+                isError = showValidationErrors && !isOfficer && !isValidEmail(email ?: "")
             )
-            if (showValidationErrors && !isValidEmail(email)) Text("Enter valid email", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            if (showValidationErrors && !isOfficer && !isValidEmail(email ?: "")) Text("Enter valid email", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(fieldSpacing))
 
             // Mobile1
@@ -702,19 +722,23 @@ fun CommonEmployeeForm(
             }
             Spacer(Modifier.height(fieldSpacing))
 
-            // Blood group
-            ExposedDropdownMenuBox(expanded = bloodGroupExpanded, onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded }) {
-                OutlinedTextField(value = bloodGroup.ifEmpty { "Select Blood Group" }, onValueChange = {}, readOnly = true, label = { Text("Blood Group") }, modifier = Modifier.fillMaxWidth().menuAnchor(), trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) })
-                ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
-                    bloodGroups.forEach { selection ->
-                        DropdownMenuItem(text = { Text(selection) }, onClick = {
-                            bloodGroup = selection
-                            bloodGroupExpanded = false
-                        })
+            Spacer(Modifier.height(fieldSpacing))
+
+            // Blood group (Hide for Officer)
+            if (!isOfficer) {
+                ExposedDropdownMenuBox(expanded = bloodGroupExpanded, onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded }) {
+                    OutlinedTextField(value = bloodGroup.ifEmpty { "Select Blood Group" }, onValueChange = {}, readOnly = true, label = { Text("Blood Group") }, modifier = Modifier.fillMaxWidth().menuAnchor(), trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) })
+                    ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
+                        bloodGroups.forEach { selection ->
+                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                bloodGroup = selection
+                                bloodGroupExpanded = false
+                            })
+                        }
                     }
                 }
+                Spacer(Modifier.height(sectionSpacing))
             }
-            Spacer(Modifier.height(sectionSpacing))
         }
 
         // Submit
@@ -735,7 +759,9 @@ fun CommonEmployeeForm(
                 showValidationErrors = true
                 
                 // Basic validation
-                if (!isValidEmail(email) || !isValidMobile(mobile1) || name.isBlank()) {
+                // Officer email is optional, Employee email is required
+                val isEmailValid = if (isOfficer && email.isNullOrBlank()) true else isValidEmail(email ?: "")
+                if (!isEmailValid || !isValidMobile(mobile1) || name.isBlank()) {
                     Toast.makeText(context, "Please fix validation errors", Toast.LENGTH_SHORT).show()
                     return@Button
                 }

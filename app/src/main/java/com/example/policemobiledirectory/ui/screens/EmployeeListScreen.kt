@@ -852,6 +852,10 @@ private fun EmployeeListContent(
                                         employee = contact.employee,
                                         officer = contact.officer,
                                         fontScale = fontScale,
+                                        isAdmin = isAdmin,
+                                        onEdit = if (isAdmin && contact.officer != null) {
+                                            { navController.navigate("${Routes.EDIT_OFFICER}/${contact.officer.agid}") }
+                                        } else null,
                                         onClick = {
                                             Toast.makeText(context, "${contact.name} selected", Toast.LENGTH_SHORT).show()
                                         }

@@ -7,9 +7,12 @@ import com.example.policemobiledirectory.utils.Constants
 import com.example.policemobiledirectory.api.ConstantsApiService
 import com.example.policemobiledirectory.api.ConstantsData
 import com.example.policemobiledirectory.utils.SecurityConfig
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,6 +23,7 @@ import java.util.concurrent.TimeUnit
  * 
  * Features:
  * - Fetches constants from Google Sheets via Apps Script API
+ * - Fetches units dynamically from Firestore
  * - Caches constants locally in SharedPreferences
  * - 30-day cache expiration (configurable)
  * - Automatic fallback to hardcoded Constants if cache is empty or expired
@@ -29,7 +33,8 @@ import java.util.concurrent.TimeUnit
 class ConstantsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val apiService: ConstantsApiService,
-    private val securityConfig: SecurityConfig
+    private val securityConfig: SecurityConfig,
+    private val firestore: FirebaseFirestore
 ) {
 
     private val prefs = context.getSharedPreferences("constants_cache", Context.MODE_PRIVATE)
@@ -38,6 +43,7 @@ class ConstantsRepository @Inject constructor(
     private val CACHE_EXPIRY_MS = TimeUnit.HOURS.toMillis(1)
     private val CACHE_KEY = "remote_constants"
     private val CACHE_TIMESTAMP_KEY = "cache_timestamp"
+    private val UNITS_CACHE_KEY = "units_cache"
 
     /**
      * Check if cache needs refresh (expired or doesn't exist)
@@ -58,6 +64,7 @@ class ConstantsRepository @Inject constructor(
         prefs.edit()
             .remove(CACHE_KEY)
             .remove(CACHE_TIMESTAMP_KEY)
+            .remove(UNITS_CACHE_KEY)
             .apply()
         Log.d("ConstantsRepository", "✅ Cache cleared - next refresh will fetch from API")
     }
@@ -68,7 +75,9 @@ class ConstantsRepository @Inject constructor(
      * Checks version and shows Toast if server version doesn't match local version
      */
     suspend fun refreshConstants(): Boolean = withContext(Dispatchers.IO) {
+        var success = false
         try {
+            // 1. Fetch Google Sheet Constants
             val response = apiService.getConstants(token = securityConfig.getSecretToken())
             
             if (response.success && response.data != null) {
@@ -95,14 +104,46 @@ class ConstantsRepository @Inject constructor(
                 
                 Log.d("ConstantsRepository", "✅ Constants refreshed from Google Sheet. Last updated: ${response.data.lastupdated}")
                 Log.d("ConstantsRepository", "Stations count by district: ${response.data.stationsbydistrict.mapValues { it.value.size }}")
-                true
+                success = true
             } else {
                 Log.e("ConstantsRepository", "❌ API returned success=false or null data")
-                false
             }
+
+            // 2. Fetch Units from Firestore
+            fetchUnitsFromFirestore()
+
         } catch (e: Exception) {
             Log.e("ConstantsRepository", "❌ Failed to fetch constants: ${e.message}", e)
-            false
+            success = false
+        }
+        return@withContext success
+    }
+
+    /**
+     * Fetch units from Firestore "units" collection
+     */
+    private suspend fun fetchUnitsFromFirestore() {
+        try {
+            Log.d("ConstantsRepository", "🔄 Fetching units from Firestore...")
+            val snapshot = firestore.collection("units")
+                .whereEqualTo("isActive", true)
+                .get()
+                .await()
+
+            val unitNames = snapshot.documents
+                .mapNotNull { it.getString("name") }
+                .distinct()
+                .sorted()
+
+            if (unitNames.isNotEmpty()) {
+                val json = Gson().toJson(unitNames)
+                prefs.edit().putString(UNITS_CACHE_KEY, json).apply()
+                Log.d("ConstantsRepository", "✅ Fetched ${unitNames.size} units from Firestore")
+            } else {
+                Log.w("ConstantsRepository", "⚠️ No active units found in Firestore")
+            }
+        } catch (e: Exception) {
+            Log.e("ConstantsRepository", "❌ Failed to fetch units from Firestore", e)
         }
     }
     
@@ -125,6 +166,9 @@ class ConstantsRepository @Inject constructor(
                         ).show()
                     }
                 }
+                // Also trigger unit fetch in background when this is called
+                fetchUnitsFromFirestore()
+                
                 response.data
             } else {
                 null
@@ -171,8 +215,24 @@ class ConstantsRepository @Inject constructor(
         return mergedDistricts
     }
 
+    /**
+     * Get units with fallback to hardcoded constants
+     * Now attempts to load from Firestore cache first
+     */
     fun getUnits(): List<String> {
-        return Constants.unitsList
+        val json = prefs.getString(UNITS_CACHE_KEY, null)
+        if (!json.isNullOrEmpty()) {
+            try {
+                val type = object : TypeToken<List<String>>() {}.type
+                val cachedUnits: List<String> = Gson().fromJson(json, type)
+                if (cachedUnits.isNotEmpty()) {
+                    return cachedUnits
+                }
+            } catch (e: Exception) {
+                Log.e("ConstantsRepository", "Failed to parse cached units", e)
+            }
+        }
+        return Constants.defaultUnitsList
     }
 
     /**

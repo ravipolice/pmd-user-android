@@ -33,7 +33,9 @@ data class Employee(
     val updatedAt: Date? = null,        // TIMESTAMP after migration
     val unit: String? = null,           // Explicit Unit field (Hybrid Strategy)
     val landline: String? = null,
-    val landline2: String? = null
+    val landline2: String? = null,
+    @get:PropertyName("isHidden")
+    val isHidden: Boolean = false       // Added for Hide/Unhide feature
 ) {
     // Computed property for display
     val displayRank: String
