@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
 
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
@@ -10,12 +11,12 @@ plugins {
 
 android {
     namespace = "com.example.policemobiledirectory"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.policemobiledirectory"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 2
         versionName = "1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -51,9 +52,7 @@ android {
         buildConfig = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
+    // composeOptions removed (handled by kotlin-compose plugin)
 
     packaging {
         resources {

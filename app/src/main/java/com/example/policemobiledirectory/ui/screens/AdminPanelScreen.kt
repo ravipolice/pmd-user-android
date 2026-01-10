@@ -73,11 +73,11 @@ fun AdminPanelScreen(
     LaunchedEffect(sheetToFirestoreStatus) {
         when (val status = sheetToFirestoreStatus) {
             is OperationStatus.Success -> {
-                coroutineScope.launch { snackbarHostState.showSnackbar(status.data) }
+                Toast.makeText(context, status.data, Toast.LENGTH_SHORT).show()
                 viewModel.resetSheetToFirestoreStatus()
             }
             is OperationStatus.Error -> {
-                coroutineScope.launch { snackbarHostState.showSnackbar(status.message) }
+                Toast.makeText(context, status.message, Toast.LENGTH_LONG).show()
                 viewModel.resetSheetToFirestoreStatus()
             }
             else -> Unit
@@ -87,26 +87,25 @@ fun AdminPanelScreen(
     LaunchedEffect(officersSyncStatus) {
         when (val status = officersSyncStatus) {
             is OperationStatus.Success -> {
-                coroutineScope.launch { snackbarHostState.showSnackbar(status.data) }
+                Toast.makeText(context, status.data, Toast.LENGTH_SHORT).show()
                 viewModel.resetOfficersSyncStatus()
             }
             is OperationStatus.Error -> {
-                coroutineScope.launch { snackbarHostState.showSnackbar(status.message) }
+                Toast.makeText(context, status.message, Toast.LENGTH_LONG).show()
                 viewModel.resetOfficersSyncStatus()
             }
             else -> Unit
         }
     }
 
-    // 🔹 Handle constants refresh status
     LaunchedEffect(constantsRefreshStatus) {
         when (val status = constantsRefreshStatus) {
             is OperationStatus.Success -> {
-                coroutineScope.launch { snackbarHostState.showSnackbar(status.data) }
+                Toast.makeText(context, status.data, Toast.LENGTH_SHORT).show()
                 constantsViewModel.resetRefreshStatus()
             }
             is OperationStatus.Error -> {
-                coroutineScope.launch { snackbarHostState.showSnackbar(status.message) }
+                Toast.makeText(context, status.message, Toast.LENGTH_LONG).show()
                 constantsViewModel.resetRefreshStatus()
             }
             else -> Unit
@@ -115,79 +114,74 @@ fun AdminPanelScreen(
 
     Scaffold(
         topBar = {
-            CommonTopAppBar(title = "Admin Panel", navController = navController)
+            TopAppBar(
+                title = { 
+                    Column {
+                        Text(
+                            text = "Admin Dashboard",
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Police Mobile Directory",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        Surface(modifier = Modifier.padding(paddingValues)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+        containerColor = MaterialTheme.colorScheme.background
+    ) { padding ->
+        
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(
+                start = 16.dp, 
+                end = 16.dp, 
+                top = padding.calculateTopPadding() + 16.dp, 
+                bottom = 24.dp
+            ),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            
+            // --- SECTION 1: STATISTICS ---
+            item(span = { GridItemSpan(2) }) {
+                Text(
+                    text = "Overview",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
 
-                if (isAdmin) {
-                    // 🔹 Admin Actions
-                    ButtonRow(
-                        icon = Icons.Filled.People,
-                        text = "Total Employees ($employeesCount)",
-                        onClick = { navController.navigate(Routes.EMPLOYEE_STATS) }
-                    )
-
-                    ButtonRow(
-                        icon = Icons.Filled.HourglassTop,
-                        text = "Pending Approvals ($pendingRegistrationsCount)",
-                        onClick = { navController.navigate(Routes.PENDING_APPROVALS) }
-                    )
-
-                    ButtonRow(
-                        icon = Icons.Filled.Notifications,
-                        text = "Send Notification",
-                        onClick = { navController.navigate(Routes.SEND_NOTIFICATION) }
-                    )
-
-                    ButtonRow(
-                        icon = Icons.Filled.UploadFile,
-                        text = "Upload to Database",
-                        onClick = { navController.navigate(Routes.UPLOAD_CSV) }
-                    )
-
-                    ButtonRow(
-                        icon = Icons.Filled.Link,
-                        text = "Add Useful Link",
-                        onClick = { navController.navigate(Routes.ADD_USEFUL_LINK) }
-                    )
-
-                    ButtonRow(
-                        icon = Icons.Filled.Description,
-                        text = "Upload Document",
-                        onClick = { navController.navigate(Routes.UPLOAD_DOCUMENT) }
-                    )
-
-                    ButtonRow(
-                        icon = Icons.Filled.CloudDownload,
-                        text = "Sync Employees Firestore → Sheet",
-                        enabled = firestoreToSheetStatus !is OperationStatus.Loading,
-                        isLoading = firestoreToSheetStatus is OperationStatus.Loading,
-                        onClick = { viewModel.syncFirebaseToSheet() }
-                    )
-
-                    ButtonRow(
-                        icon = Icons.Filled.CloudUpload,
-                        text = "Sync Employees Sheet → Firestore",
-                        enabled = sheetToFirestoreStatus !is OperationStatus.Loading,
-                        isLoading = sheetToFirestoreStatus is OperationStatus.Loading,
-                        onClick = { viewModel.syncSheetToFirebase() }
+            item(span = { GridItemSpan(2) }) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    DashboardStatCard(
+                        title = "Total Employees",
+                        count = totalEmployees.toString(),
+                        icon = Icons.Outlined.People,
+                        colorStart = Color(0xFF2196F3), // Blue
+                        colorEnd = Color(0xFF64B5F6),
+                        modifier = Modifier.weight(1f).clickable { 
+                            navController.navigate(Routes.EMPLOYEE_STATS) 
+                        }
                     )
                     
-                    ButtonRow(
-                        icon = Icons.Filled.Person,
-                        text = "Sync Officers Sheet → Firestore",
-                        enabled = officersSyncStatus !is OperationStatus.Loading,
-                        isLoading = officersSyncStatus is OperationStatus.Loading,
-                        onClick = { viewModel.syncOfficersSheetToFirebase() }
                     )
 
                     ButtonRow(

@@ -67,7 +67,7 @@ class SecurityConfig @Inject constructor(
             )
             
             val signatures = packageInfo.signatures
-            if (signatures.isEmpty()) return false
+            if (signatures == null || signatures.isEmpty()) return false
             
             val signature = signatures[0].toByteArray()
             val md = MessageDigest.getInstance("SHA-256")

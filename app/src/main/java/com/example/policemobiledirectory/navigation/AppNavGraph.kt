@@ -310,5 +310,15 @@ private fun AppNavHostContent(
         composable(Routes.USEFUL_LINKS) {
             UsefulLinksScreen(navController = navController, viewModel = employeeViewModel)
         }
+
+        // --- MANAGE CONSTANTS ---
+        composable(Routes.MANAGE_CONSTANTS) {
+            // Using hiltViewModel() to get scoped instance of ConstantsViewModel
+            val constantsViewModel: com.example.policemobiledirectory.viewmodel.ConstantsViewModel = hiltViewModel()
+            com.example.policemobiledirectory.ui.screens.ManageConstantsScreen(
+                navController = navController,
+                viewModel = constantsViewModel
+            )
+        }
     }
 }

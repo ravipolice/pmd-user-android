@@ -36,7 +36,7 @@ class AppSignatureVerifier @Inject constructor(
             )
             
             val signatures = packageInfo.signatures
-            if (signatures.isEmpty()) {
+            if (signatures == null || signatures.isEmpty()) {
                 Log.w(TAG, "No signatures found")
                 return false
             }
@@ -101,7 +101,7 @@ class AppSignatureVerifier @Inject constructor(
             )
             
             val signatures = packageInfo.signatures
-            if (signatures.isEmpty()) return null
+            if (signatures == null || signatures.isEmpty()) return null
             
             val signature = signatures[0].toByteArray()
             val md = MessageDigest.getInstance("SHA-256")

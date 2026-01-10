@@ -1,5 +1,7 @@
 package com.example.policemobiledirectory.model
 
+import com.google.firebase.firestore.PropertyName
+
 /**
  * Officer - Read-only contact information for police officers
  * Admin-managed, no authentication required

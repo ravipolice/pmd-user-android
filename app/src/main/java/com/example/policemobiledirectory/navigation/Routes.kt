@@ -33,5 +33,6 @@ object Routes {
     const val GALLERY_SCREEN = "gallery_screen"
     const val TERMS_AND_CONDITIONS = "terms_and_conditions"
     const val NUDI_CONVERTER = "nudi_converter"
+    const val MANAGE_CONSTANTS = "manage_constants" // ✅ New Route
 
 }

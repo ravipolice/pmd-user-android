@@ -144,6 +144,88 @@ class ConstantsViewModel @Inject constructor(
     fun resetRefreshStatus() {
         _refreshStatus.value = OperationStatus.Idle
     }
+
+    // =================================================================================
+    // NEW: ViewModel Wrappers for Manage Resources
+    // =================================================================================
+
+    fun addDistrict(name: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.addDistrict(name)
+            result.onSuccess {
+                refreshConstants()
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to add district: ${it.message}")
+            }
+        }
+    }
+
+    fun deleteDistrict(name: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.deleteDistrict(name)
+            result.onSuccess {
+                refreshConstants()
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to delete district: ${it.message}")
+            }
+        }
+    }
+
+    fun addStation(district: String, name: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.addStation(district, name)
+            result.onSuccess {
+                refreshConstants()
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to add station: ${it.message}")
+            }
+        }
+    }
+
+    fun deleteStation(district: String, name: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.deleteStation(district, name)
+            result.onSuccess {
+                refreshConstants()
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to delete station: ${it.message}")
+            }
+        }
+    }
+
+    fun addUnit(name: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.addUnit(name)
+            result.onSuccess {
+                refreshConstants()
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to add unit: ${it.message}")
+            }
+        }
+    }
+
+    fun deleteUnit(name: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.deleteUnit(name)
+            result.onSuccess {
+                refreshConstants()
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to delete unit: ${it.message}")
+            }
+        }
+    }
 }
 
 

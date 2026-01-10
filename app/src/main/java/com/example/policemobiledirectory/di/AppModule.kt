@@ -12,6 +12,7 @@ import com.example.policemobiledirectory.repository.ImageRepository
 import com.example.policemobiledirectory.repository.PendingRegistrationRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.PropertyName
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.storage.FirebaseStorage
 import dagger.Module
@@ -76,9 +77,10 @@ object AppModule {
     @Singleton
     fun provideConstantsRepository(
         @ApplicationContext context: Context,
+        firestore: FirebaseFirestore,
         apiService: ConstantsApiService,
         securityConfig: SecurityConfig
-    ): ConstantsRepository = ConstantsRepository(context, apiService, securityConfig)
+    ): ConstantsRepository = ConstantsRepository(context, apiService, securityConfig, firestore)
 
     @Provides
     @Singleton

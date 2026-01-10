@@ -14,8 +14,30 @@
 
 # Uncomment this to preserve the line number information for
 # debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# --- Android Core ---
+-keepattributes SourceFile,LineNumberTable
+-keep class androidx.lifecycle.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# --- Firebase ---
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
+
+# --- Gson ---
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class sun.misc.Unsafe { *; }
+-keep class com.google.gson.** { *; }
+
+# --- Retrofit ---
+-keep class retrofit2.** { *; }
+-dontwarn retrofit2.**
+
+# --- Coroutines ---
+-keep class kotlinx.coroutines.** { *; }
+
+# --- Models (Keep all data classes used in JSON parsing) ---
+-keep class com.example.policemobiledirectory.model.** { *; }
+-keep class com.example.policemobiledirectory.data.local.** { *; }
+
+# --- App Specific ---
+-keep class com.example.policemobiledirectory.di.** { *; }

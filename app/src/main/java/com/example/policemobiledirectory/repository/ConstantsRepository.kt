@@ -409,4 +409,100 @@ class ConstantsRepository @Inject constructor(
         val age = System.currentTimeMillis() - timestamp
         return TimeUnit.MILLISECONDS.toDays(age)
     }
+
+    // =================================================================================
+    // NEW: CRUD Operations for Managing Resources (Districts, Stations, Units)
+    // These methods interact directly with Firestore and invalidate the cache
+    // =================================================================================
+
+    // --- DISTRICTS ---
+    suspend fun addDistrict(name: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val district = mapOf("name" to name.trim())
+            // Use same ID as name for easy deduplication
+            firestore.collection("districts").document(name.trim())
+                .set(district)
+                .await()
+            clearCache() // Force refresh
+            Result.success("District '$name' added successfully")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteDistrict(name: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            firestore.collection("districts").document(name.trim())
+                .delete()
+                .await()
+            clearCache() // Force refresh
+            Result.success("District '$name' deleted successfully")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // --- STATIONS ---
+    suspend fun addStation(district: String, name: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val station = mapOf(
+                "name" to name.trim(),
+                "district" to district.trim()
+            )
+            // Composite ID: "District_StationName"
+            val id = "${district.trim()}_${name.trim()}"
+            firestore.collection("stations").document(id)
+                .set(station)
+                .await()
+            clearCache() // Force refresh
+            Result.success("Station '$name' added to $district")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteStation(district: String, name: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val id = "${district.trim()}_${name.trim()}"
+            firestore.collection("stations").document(id)
+                .delete()
+                .await()
+            clearCache() // Force refresh
+            Result.success("Station '$name' deleted")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // --- UNITS ---
+    suspend fun addUnit(name: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val unit = mapOf(
+                "name" to name.trim(),
+                "isActive" to true
+            )
+            firestore.collection("units").document(name.trim())
+                .set(unit)
+                .await()
+            clearCache() // Force refresh
+            // Also update local units cache immediately
+            fetchUnitsFromFirestore() 
+            Result.success("Unit '$name' added successfully")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteUnit(name: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            firestore.collection("units").document(name.trim())
+                .delete()
+                .await()
+            clearCache()
+            fetchUnitsFromFirestore()
+            Result.success("Unit '$name' deleted successfully")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
