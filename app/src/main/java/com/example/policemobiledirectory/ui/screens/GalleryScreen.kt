@@ -49,16 +49,13 @@ enum class ViewMode {
 @Composable
 fun GalleryScreen(
     navController: NavController,
-    viewModel: GalleryViewModel = hiltViewModel(),
-    isAdmin: Boolean = false
+    viewModel: GalleryViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     val galleryImages by viewModel.galleryImages.collectAsState()
     val galleryStatus by viewModel.galleryStatus.collectAsState()
-    val uploadStatus by viewModel.uploadStatus.collectAsState()
-    val deleteStatus by viewModel.deleteStatus.collectAsState()
 
     var showUploadDialog by remember { mutableStateOf(false) }
     var fullScreenImage by remember { mutableStateOf<String?>(null) }
@@ -85,47 +82,7 @@ fun GalleryScreen(
         }
     }
 
-    // Handle upload status
-    LaunchedEffect(uploadStatus) {
-        when (val status = uploadStatus) {
-            is OperationStatus.Success -> {
-                Toast.makeText(
-                    context,
-                    status.data ?: "Image uploaded successfully",
-                    Toast.LENGTH_SHORT
-                ).show()
-                viewModel.clearStatus()
-            }
 
-            is OperationStatus.Error -> {
-                Toast.makeText(context, status.message, Toast.LENGTH_SHORT).show()
-                viewModel.clearStatus()
-            }
-
-            else -> {}
-        }
-    }
-
-    // Handle delete status
-    LaunchedEffect(deleteStatus) {
-        when (val status = deleteStatus) {
-            is OperationStatus.Success -> {
-                Toast.makeText(
-                    context,
-                    status.data ?: "Image deleted successfully",
-                    Toast.LENGTH_SHORT
-                ).show()
-                viewModel.clearStatus()
-            }
-
-            is OperationStatus.Error -> {
-                Toast.makeText(context, status.message, Toast.LENGTH_SHORT).show()
-                viewModel.clearStatus()
-            }
-
-            else -> {}
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -166,13 +123,6 @@ fun GalleryScreen(
                 }
             )
         },
-        floatingActionButton = {
-            if (isAdmin) {
-                FloatingActionButton(onClick = { showUploadDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "Upload Image")
-                }
-            }
-        }
     ) { paddingValues ->
         Surface(
             modifier = Modifier
@@ -217,9 +167,7 @@ fun GalleryScreen(
                                     items(galleryImages.filter { it.isValid }) { image ->
                                         GalleryImageItem(
                                             image = image,
-                                            isAdmin = isAdmin,
-                                            onClick = { fullScreenImage = image.resolvedUrl ?: image.displayUrl },
-                                            onDelete = { deleteDialogImageTitle = image.resolvedTitle }
+                                            onClick = { fullScreenImage = image.resolvedUrl ?: image.displayUrl }
                                         )
                                     }
                                 }
@@ -234,9 +182,7 @@ fun GalleryScreen(
                                     items(galleryImages.filter { it.isValid }) { image ->
                                         GalleryImageListItem(
                                             image = image,
-                                            isAdmin = isAdmin,
-                                            onClick = { fullScreenImage = image.resolvedUrl ?: image.displayUrl },
-                                            onDelete = { deleteDialogImageTitle = image.resolvedTitle }
+                                            onClick = { fullScreenImage = image.resolvedUrl ?: image.displayUrl }
                                         )
                                     }
                                 }
@@ -245,106 +191,6 @@ fun GalleryScreen(
                     }
                 }
                 is OperationStatus.Idle -> EmptySection(icon = Icons.Default.PhotoLibrary, message = "No images loaded")
-            }
-
-            // 📤 Upload dialog with Camera/Gallery/File Manager
-            if (showUploadDialog) {
-                UploadGalleryDialog(
-                    onDismiss = { showUploadDialog = false },
-                    onUpload = { title: String, uri: Uri, mimeType: String, category: String?, description: String? ->
-                        scope.launch {
-                            // Use compressed version for gallery images to prevent timeout
-                            val base64 = uriToBase64Compressed(context, uri)
-                            if (base64 != null) {
-                                viewModel.uploadGalleryImage(
-                                    title,
-                                    base64,
-                                    mimeType,
-                                    category,
-                                    description
-                                )
-                                showUploadDialog = false
-                            } else {
-                                Toast.makeText(context, "Failed to read image", Toast.LENGTH_SHORT)
-                                    .show()
-                            }
-                        }
-                    }
-                )
-            }
-
-            // 👀 Fullscreen image dialog
-            val currentFullScreenImage = fullScreenImage
-            if (!currentFullScreenImage.isNullOrBlank()) {
-                // ✅ Convert Drive URL to direct image URL for fullscreen display
-                val fullScreenImageUrl = remember(currentFullScreenImage) {
-                    convertDriveUrlToDirectImageUrl(currentFullScreenImage)
-                }
-
-                Dialog(onDismissRequest = { fullScreenImage = null }) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = Color.Black.copy(alpha = 0.9f)
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (fullScreenImageUrl.isNotBlank()) {
-                                AsyncImage(
-                                    model = fullScreenImageUrl,
-                                    contentDescription = "Full Screen Image",
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentScale = ContentScale.Fit
-                                )
-                            } else {
-                                Text(
-                                    text = "Image not available",
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                            }
-                            IconButton(
-                                onClick = { fullScreenImage = null },
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(16.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "Close",
-                                    tint = Color.White
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 🗑️ Delete confirmation dialog
-            if (deleteDialogImageTitle != null) {
-                AlertDialog(
-                    onDismissRequest = { deleteDialogImageTitle = null },
-                    title = { Text("Delete Image?") },
-                    text = { Text("This will permanently remove the image from gallery.") },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                deleteDialogImageTitle?.let { title ->
-                                    viewModel.deleteGalleryImage(title)
-                                    deleteDialogImageTitle = null
-                                }
-                            }
-                        ) {
-                            Text("Delete", color = MaterialTheme.colorScheme.error)
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { deleteDialogImageTitle = null }) {
-                            Text("Cancel")
-                        }
-                    }
-                )
             }
         }
     }
@@ -584,35 +430,91 @@ fun ViewModeToggle(
 
 @Composable
 fun GalleryImageItem(
-        image: GalleryImage,
-        isAdmin: Boolean = false,
-        onClick: () -> Unit,
-        onDelete: () -> Unit
-    ) {
-        // ✅ Use displayUrl and convert Drive URL to direct image URL for display
-        val displayUrl = image.displayUrl
-        val imageUrl = remember(displayUrl) {
-            displayUrl?.let { convertDriveUrlToDirectImageUrl(it) } ?: ""
-        }
+    image: GalleryImage,
+    onClick: () -> Unit
+) {
+    // ✅ Use displayUrl and convert Drive URL to direct image URL for display
+    val displayUrl = image.displayUrl
+    val imageUrl = remember(displayUrl) {
+        displayUrl?.let { convertDriveUrlToDirectImageUrl(it) } ?: ""
+    }
 
-        Box(
+    Box(
+        modifier = Modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+    ) {
+        if (imageUrl.isNotBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "Gallery Image",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            // Show placeholder when URL is invalid
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Image,
+                    contentDescription = "No Image",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(48.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Gallery Image Item for List View - Horizontal layout with image and details
+ */
+@Composable
+fun GalleryImageListItem(
+    image: GalleryImage,
+    onClick: () -> Unit
+) {
+    // ✅ Use displayUrl and convert Drive URL to direct image URL for display
+    val displayUrl = image.displayUrl
+    val imageUrl = remember(displayUrl) {
+        displayUrl?.let { convertDriveUrlToDirectImageUrl(it) } ?: ""
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
             modifier = Modifier
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(12.dp))
-                .clickable { onClick() }
+                .fillMaxWidth()
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Image thumbnail
             if (imageUrl.isNotBlank()) {
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = "Gallery Image",
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 // Show placeholder when URL is invalid
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
@@ -620,322 +522,43 @@ fun GalleryImageItem(
                         imageVector = Icons.Default.Image,
                         contentDescription = "No Image",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(32.dp)
                     )
                 }
             }
 
-            // Only show delete button for admins
-            if (isAdmin) {
-                IconButton(
-                    onClick = { onDelete() },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.Black.copy(alpha = 0.5f))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        }
-    }
-
-/**
- * Gallery Image Item for List View - Horizontal layout with image and details
- */
-@Composable
-fun GalleryImageListItem(
-        image: GalleryImage,
-        isAdmin: Boolean = false,
-        onClick: () -> Unit,
-        onDelete: () -> Unit
-    ) {
-        // ✅ Use displayUrl and convert Drive URL to direct image URL for display
-        val displayUrl = image.displayUrl
-        val imageUrl = remember(displayUrl) {
-            displayUrl?.let { convertDriveUrlToDirectImageUrl(it) } ?: ""
-        }
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onClick() },
-            elevation = CardDefaults.cardElevation(2.dp),
-            colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // Image details
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Image thumbnail
-                if (imageUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = "Gallery Image",
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    // Show placeholder when URL is invalid
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Image,
-                            contentDescription = "No Image",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-
-                // Image details
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
+                Text(
+                    text = image.resolvedTitle,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
+                image.resolvedCategory?.let {
                     Text(
-                        text = image.resolvedTitle,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
+                        text = "Category: $it",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
-                    image.resolvedCategory?.let {
+                }
+                image.resolvedDescription?.let {
+                    if (it.isNotBlank()) {
                         Text(
-                            text = "Category: $it",
+                            text = it,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                    }
-                    image.resolvedDescription?.let {
-                        if (it.isNotBlank()) {
-                            Text(
-                                text = it,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                maxLines = 2
-                            )
-                        }
-                    }
-                }
-
-                // Delete button (only for admins)
-                if (isAdmin) {
-                    IconButton(
-                        onClick = { onDelete() },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            maxLines = 2
                         )
                     }
                 }
             }
         }
     }
+}
 
-@Composable
-fun UploadGalleryDialog(
-        onDismiss: () -> Unit,
-        onUpload: (String, Uri, String, String?, String?) -> Unit
-    ) {
-        val context = LocalContext.current
-        var title by remember { mutableStateOf("") }
-        var category by remember { mutableStateOf("") }
-        var description by remember { mutableStateOf("") }
-        var imageUri by remember { mutableStateOf<Uri?>(null) }
-        var mimeType by remember { mutableStateOf("image/jpeg") }
-        var showPickerOptions by remember { mutableStateOf(false) }
 
-        // 📷 Camera launcher
-        val cameraLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.TakePicture()
-        ) { success ->
-            if (success && imageUri != null) {
-                mimeType = "image/jpeg"
-            }
-        }
 
-        // 🖼️ Gallery launcher
-        val galleryLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent()
-        ) { uri: Uri? ->
-            uri?.let {
-                imageUri = it
-                mimeType = context.contentResolver.getType(it) ?: "image/jpeg"
-            }
-        }
-
-        // 📁 File Manager launcher
-        val fileManagerLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent()
-        ) { uri: Uri? ->
-            uri?.let {
-                imageUri = it
-                mimeType = context.contentResolver.getType(it) ?: "image/jpeg"
-            }
-        }
-
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val uri = imageUri
-                        if (title.isNotBlank() && uri != null) {
-                            onUpload(
-                                title,
-                                uri,
-                                mimeType,
-                                category.takeIf { it.isNotBlank() },
-                                description.takeIf { it.isNotBlank() })
-                        } else {
-                            Toast.makeText(
-                                context,
-                                "Please enter title and select an image",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
-                ) {
-                    Text("Upload")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
-                }
-            },
-            icon = { Icon(Icons.Default.PhotoCamera, contentDescription = null) },
-            title = { Text("Upload Gallery Image") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(
-                        value = title,
-                        onValueChange = { title = it },
-                        label = { Text("Title *") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    if (showPickerOptions) {
-                        // Camera, Gallery, File Manager options
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(
-                                onClick = {
-                                    val tempFile = java.io.File(
-                                        context.cacheDir,
-                                        "temp_camera_${System.currentTimeMillis()}.jpg"
-                                    )
-                                    val uri = androidx.core.content.FileProvider.getUriForFile(
-                                        context,
-                                        "${context.packageName}.fileprovider",
-                                        tempFile
-                                    )
-                                    imageUri = uri
-                                    cameraLauncher.launch(uri)
-                                    showPickerOptions = false
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    Icons.Default.CameraAlt,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text("Camera", style = MaterialTheme.typography.labelSmall)
-                            }
-
-                            Button(
-                                onClick = {
-                                    galleryLauncher.launch("image/*")
-                                    showPickerOptions = false
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    Icons.Default.PhotoLibrary,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text("Gallery", style = MaterialTheme.typography.labelSmall)
-                            }
-
-                            Button(
-                                onClick = {
-                                    fileManagerLauncher.launch("image/*")
-                                    showPickerOptions = false
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    Icons.Default.Folder,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text("Files", style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                    } else {
-                        Button(
-                            onClick = { showPickerOptions = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(if (imageUri == null) "Select Image" else "Change Image")
-                        }
-                    }
-
-                    if (imageUri != null) {
-                        AsyncImage(
-                            model = imageUri,
-                            contentDescription = "Selected Image",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                        )
-                    }
-
-                    OutlinedTextField(
-                        value = category,
-                        onValueChange = { category = it },
-                        label = { Text("Category (optional)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = description,
-                        onValueChange = { description = it },
-                        label = { Text("Description (optional)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 3
-                    )
-                }
-            }
-        )
-    }
 

@@ -16,9 +16,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.policemobiledirectory.ui.screens.*
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import kotlinx.coroutines.launch
-import com.example.policemobiledirectory.viewmodel.AddEditEmployeeViewModel
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.policemobiledirectory.ui.screens.AddEditEmployeeScreen
 import com.example.policemobiledirectory.ui.viewmodel.DocumentsViewModel
 import com.example.policemobiledirectory.ui.screens.DocumentsScreen
 
@@ -156,8 +153,7 @@ private fun AppNavHostContent(
             val viewModel: DocumentsViewModel = hiltViewModel()
             DocumentsScreen(
                 navController = navController,
-                viewModel = viewModel,
-                isAdmin = isAdmin
+                viewModel = viewModel
             )
         }
 
@@ -174,92 +170,7 @@ private fun AppNavHostContent(
             )
         }
 
-        // --- ADMIN PANEL ---
-        composable(Routes.ADMIN_PANEL) {
-            AdminPanelScreen(
-                navController = navController,
-                viewModel = employeeViewModel
-            )
-        }
 
-        // --- EMPLOYEE STATS ---
-        composable(Routes.EMPLOYEE_STATS) {
-            EmployeeStatsScreen(navController = navController, viewModel = hiltViewModel())
-        }
-
-        // --- PENDING APPROVALS ---
-        composable(Routes.PENDING_APPROVALS) {
-            PendingApprovalsScreen(navController = navController, viewModel = hiltViewModel())
-        }
-
-        // --- SEND NOTIFICATION ---
-        composable(Routes.SEND_NOTIFICATION) {
-            SendNotificationScreen(navController = navController, viewModel = hiltViewModel())
-        }
-
-        // --- UPLOAD CSV ---
-        composable(Routes.UPLOAD_CSV) {
-            UploadCsvScreen(navController = navController, viewModel = hiltViewModel())
-        }
-
-        // --- ADD USEFUL LINK ---
-        composable(Routes.ADD_USEFUL_LINK) {
-            AddUsefulLinkScreen(navController = navController, viewModel = hiltViewModel())
-        }
-
-        // --- UPLOAD DOCUMENT ---
-        composable(Routes.UPLOAD_DOCUMENT) {
-            UploadDocumentScreen(
-                navController = navController,
-                isAdmin = isAdmin
-            )
-        }
-
-        // --- ADD / EDIT EMPLOYEE ---
-        composable(
-            route = "${Routes.ADD_EMPLOYEE}?employeeId={employeeId}",
-            arguments = listOf(
-                navArgument("employeeId") {
-                    type = NavType.StringType
-                    defaultValue = ""
-                }
-            )
-        ) { backStackEntry ->
-            val employeeId = backStackEntry.arguments?.getString("employeeId")
-            val addEditViewModel: AddEditEmployeeViewModel = hiltViewModel()
-            // Use hiltViewModel() to get a fresh instance for this screen (not the shared parameter)
-            val addEditScreenEmployeeViewModel: EmployeeViewModel = hiltViewModel()
-
-            AddEditEmployeeScreen(
-                employeeId = employeeId,
-                navController = navController,
-                addEditViewModel = addEditViewModel,
-                employeeViewModel = addEditScreenEmployeeViewModel
-            )
-        }
-
-        // --- ADD / EDIT OFFICER ---
-        composable(
-            route = "${Routes.EDIT_OFFICER}/{officerId}",
-            arguments = listOf(
-                navArgument("officerId") {
-                    type = NavType.StringType
-                    defaultValue = ""
-                }
-            )
-        ) { backStackEntry ->
-            val officerId = backStackEntry.arguments?.getString("officerId") ?: ""
-            // Use hiltViewModel for Officer logic
-            val addEditOfficerViewModel: com.example.policemobiledirectory.viewmodel.AddEditOfficerViewModel = hiltViewModel()
-            val employeeViewModelForRefresh: EmployeeViewModel = hiltViewModel()
-
-            AddEditOfficerScreen(
-                officerId = officerId,
-                navController = navController,
-                viewModel = addEditOfficerViewModel,
-                employeeViewModel = employeeViewModelForRefresh
-            )
-        }
 
         // --- EMPLOYEE LIST (HOME) ---
         composable(Routes.EMPLOYEE_LIST) {
@@ -292,10 +203,10 @@ private fun AppNavHostContent(
 
         // --- Gallery Screen ---
         composable(Routes.GALLERY_SCREEN) {
-            val isAdmin by employeeViewModel.isAdmin.collectAsStateWithLifecycle()
+            val galleryViewModel: com.example.policemobiledirectory.ui.viewmodel.GalleryViewModel = hiltViewModel()
             GalleryScreen(
                 navController = navController,
-                isAdmin = isAdmin
+                viewModel = galleryViewModel
             )
         }
 
@@ -304,21 +215,10 @@ private fun AppNavHostContent(
             TermsAndConditionsScreen(navController = navController)
         }
 
-
-
         // --- USEFUL LINKS ---
         composable(Routes.USEFUL_LINKS) {
             UsefulLinksScreen(navController = navController, viewModel = employeeViewModel)
         }
 
-        // --- MANAGE CONSTANTS ---
-        composable(Routes.MANAGE_CONSTANTS) {
-            // Using hiltViewModel() to get scoped instance of ConstantsViewModel
-            val constantsViewModel: com.example.policemobiledirectory.viewmodel.ConstantsViewModel = hiltViewModel()
-            com.example.policemobiledirectory.ui.screens.ManageConstantsScreen(
-                navController = navController,
-                viewModel = constantsViewModel
-            )
-        }
     }
 }

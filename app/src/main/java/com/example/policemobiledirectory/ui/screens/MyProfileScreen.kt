@@ -14,7 +14,7 @@ import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.navigation.Routes
 import com.example.policemobiledirectory.repository.RepoResult
 import com.example.policemobiledirectory.ui.components.CommonEmployeeForm
-import com.example.policemobiledirectory.viewmodel.AddEditEmployeeViewModel
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
@@ -25,13 +25,12 @@ import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 @Composable
 fun MyProfileEditScreen(
     navController: NavController? = null,
-    employeeViewModel: EmployeeViewModel = hiltViewModel(),
-    addEditViewModel: AddEditEmployeeViewModel = hiltViewModel()
+    employeeViewModel: EmployeeViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val currentEmployee by employeeViewModel.currentUser.collectAsState()
-    val saveStatus by addEditViewModel.saveStatus.collectAsState()
-    val photoUploadStatus by addEditViewModel.photoUploadStatus.collectAsState()
+    val saveStatus by employeeViewModel.saveStatus.collectAsState()
+    val photoUploadStatus by employeeViewModel.uploadStatus.collectAsState()
     val isLoading = saveStatus is com.example.policemobiledirectory.repository.RepoResult.Loading || 
                     photoUploadStatus is com.example.policemobiledirectory.utils.OperationStatus.Loading
 
@@ -46,18 +45,14 @@ fun MyProfileEditScreen(
 
     // Show feedback messages
     LaunchedEffect(saveStatus) {
-        android.util.Log.e("MyProfileScreen", "═══════════════════════════════════════")
-        android.util.Log.e("MyProfileScreen", "📊📊📊 saveStatus CHANGED: $saveStatus")
-        android.util.Log.e("MyProfileScreen", "saveStatus type: ${saveStatus?.javaClass?.simpleName}")
         when (val status = saveStatus) {
             is RepoResult.Success -> {
-                android.util.Log.e("MyProfileScreen", "✅✅✅ SUCCESS! Showing toast")
                 Toast.makeText(
                     context,
                     "Profile updated successfully",
                     Toast.LENGTH_SHORT
                 ).show()
-                addEditViewModel.resetSaveStatus()
+                employeeViewModel.resetSaveStatus() // Reset status
                 // ✅ Refresh current user to show updated data (including metal number)
                 employeeViewModel.refreshCurrentUser()
                 employeeViewModel.refreshEmployees()
@@ -65,23 +60,14 @@ fun MyProfileEditScreen(
                 navController?.popBackStack()
             }
             is RepoResult.Error -> {
-                android.util.Log.e("MyProfileScreen", "❌❌❌ ERROR RECEIVED!")
-                android.util.Log.e("MyProfileScreen", "Error message: ${status.message}")
-                android.util.Log.e("MyProfileScreen", "Error exception: ${status.exception?.message}")
-                android.util.Log.e("MyProfileScreen", "Full error: $status")
                 Toast.makeText(
                     context,
                     status.message ?: "Failed to update profile",
                     Toast.LENGTH_LONG
                 ).show()
-                addEditViewModel.resetSaveStatus()
+                employeeViewModel.resetSaveStatus()
             }
-            is RepoResult.Loading -> {
-                android.util.Log.e("MyProfileScreen", "⏳⏳⏳ LOADING...")
-            }
-            else -> {
-                android.util.Log.e("MyProfileScreen", "📊 Other status: $status")
-            }
+            else -> {}
         }
     }
     
@@ -146,10 +132,8 @@ fun MyProfileEditScreen(
             initialEmployee = currentEmployee,
             onNavigateToTerms = null,
             onSubmit = { emp: Employee, photo: Uri? ->
-                android.util.Log.e("MyProfileScreen", "═══════════════════════════════════════")
-                android.util.Log.e("MyProfileScreen", "📤📤📤 onSubmit CALLBACK INVOKED! 📤📤📤")
                 try {
-                    addEditViewModel.saveEmployee(emp, photo)
+                    employeeViewModel.saveEmployee(emp, photo)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }

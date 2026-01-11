@@ -46,10 +46,8 @@ fun UsefulLinksScreen(
     viewModel: EmployeeViewModel
 ) {
     val usefulLinks by viewModel.usefulLinks.collectAsState()
-    val isAdmin by viewModel.isAdmin.collectAsState()
-    val pendingStatus by viewModel.pendingStatus.collectAsState()
-    val context = LocalContext.current
-    var showDeleteDialog by remember { mutableStateOf<String?>(null) }
+    // isAdmin and deleteDialog state removed
+
 
     // Get the current back stack entry to detect when screen comes back into focus
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -107,13 +105,6 @@ fun UsefulLinksScreen(
                     actionIconContentColor = Color.White
                 )
             )
-        },
-        floatingActionButton = {
-            if (isAdmin) {
-                FloatingActionButton(onClick = { navController.navigate("add_useful_link") }) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add Link")
-                }
-            }
         }
     ) { paddingValues ->
         Box(
@@ -140,51 +131,39 @@ fun UsefulLinksScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(usefulLinks) { link ->
-                        var showMenu by remember { mutableStateOf(false) }
-                        
-                    Box {
+                        Box {
                             Column(
                                 modifier = Modifier
                                     .width(90.dp)
-                                // Always open the link on tap; admins have a separate menu button
-                                .clickable {
-                                    handleLinkClick(context, link.playStoreUrl, link.apkUrl, link.name)
-                                },
+                                    .clickable {
+                                        handleLinkClick(context, link.playStoreUrl, link.apkUrl, link.name)
+                                    },
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 val iconModel = remember(link.iconUrl, link.playStoreUrl) {
                                     when {
-                                        // 1. Use stored iconUrl (best quality fetched via ViewModel metadata parsing)
                                         !link.iconUrl.isNullOrBlank() -> link.iconUrl
-
-                                        // 2. Fallback: Use Google's favicon service for Play Store URLs
                                         !link.playStoreUrl.isNullOrBlank() -> {
-                                            // Extract package name for better favicon URL
                                             val packageName = getPackageNameFromPlayUrl(link.playStoreUrl)
                                             if (!packageName.isNullOrBlank() && packageName != link.playStoreUrl) {
-                                                // Use Play Store domain with package ID for better icon
                                                 "https://www.google.com/s2/favicons?sz=128&domain_url=https://play.google.com/store/apps/details?id=$packageName"
                                             } else {
-                                                // Fallback to generic Play Store favicon
                                                 "https://www.google.com/s2/favicons?sz=128&domain_url=play.google.com"
                                             }
                                         }
-
                                         else -> null
                                     }
                                 }
 
-                                // ✅ Use generic placeholder instead of app logo - never show PMD logo for other apps
                                 val painter = rememberAsyncImagePainter(
                                     model = ImageRequest.Builder(context)
                                         .data(iconModel)
                                         .crossfade(true)
                                         .build(),
-                                    placeholder = null, // No placeholder - show loading state naturally
-                                    error = null // No error image - will show nothing if fails, not app logo
+                                    placeholder = null,
+                                    error = null
                                 )
 
-                                // ✅ Only show image if we have a valid icon URL, otherwise show placeholder box
                                 if (iconModel != null) {
                                     Image(
                                         painter = painter,
@@ -195,7 +174,6 @@ fun UsefulLinksScreen(
                                         contentScale = ContentScale.Crop
                                     )
                                 } else {
-                                    // Show a generic placeholder box instead of app logo
                                     Box(
                                         modifier = Modifier
                                             .size(64.dp)
@@ -223,86 +201,8 @@ fun UsefulLinksScreen(
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
-
-                            // ✅ Admin menu button + dropdown
-                            if (isAdmin) {
-                                IconButton(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .size(24.dp),
-                                    onClick = { showMenu = true }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.MoreVert,
-                                        contentDescription = "More"
-                                    )
-                                }
-
-                                DropdownMenu(
-                                    expanded = showMenu,
-                                    onDismissRequest = { showMenu = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Open") },
-                                        onClick = {
-                                            showMenu = false
-                                            handleLinkClick(context, link.playStoreUrl, link.apkUrl, link.name)
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { 
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(
-                                                    Icons.Filled.Delete,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(18.dp),
-                                                    tint = MaterialTheme.colorScheme.error
-                                                )
-                                                Spacer(Modifier.width(8.dp))
-                                                Text("Delete", color = MaterialTheme.colorScheme.error)
-                                            }
-                                        },
-                                        onClick = {
-                                            showMenu = false
-                                            if (link.documentId != null) {
-                                                showDeleteDialog = link.documentId
-                                            } else {
-                                                Toast.makeText(
-                                                    context,
-                                                    "Cannot delete: Missing document ID",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-                                        }
-                                    )
-                                }
-                            }
                         }
                     }
-                }
-                
-                // ✅ Delete confirmation dialog
-                showDeleteDialog?.let { docId ->
-                    AlertDialog(
-                        onDismissRequest = { showDeleteDialog = null },
-                        title = { Text("Delete Link") },
-                        text = { Text("Are you sure you want to delete this link? This action cannot be undone.") },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    viewModel.deleteUsefulLink(docId)
-                                    showDeleteDialog = null
-                                }
-                            ) {
-                                Text("Delete", color = MaterialTheme.colorScheme.error)
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showDeleteDialog = null }) {
-                                Text("Cancel")
-                            }
-                        }
-                    )
                 }
             }
         }

@@ -7,19 +7,9 @@ object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val EMPLOYEE_LIST = "employee_list"
-    const val ADD_EMPLOYEE = "add_employee"
-    const val EDIT_EMPLOYEE = "edit_employee"
-    const val EDIT_OFFICER = "edit_officer" // ✅ New route
     const val ABOUT = "about"
 
-    // --- Admin Screens ---
-    const val ADMIN_PANEL = "admin_panel"
-    const val EMPLOYEE_STATS = "employee_stats"
-    const val PENDING_APPROVALS = "pending_approvals"
-    const val SEND_NOTIFICATION = "send_notification"
-    const val UPLOAD_CSV = "upload_csv"
-    const val ADD_USEFUL_LINK = "add_useful_link"
-    const val UPLOAD_DOCUMENT = "upload_document"
+    // --- Admin Screens (REMOVED) ---
     const val MY_PROFILE = "my_profile"
     const val DOCUMENTS = "documents"
     const val USEFUL_LINKS = "useful_links"
@@ -33,6 +23,4 @@ object Routes {
     const val GALLERY_SCREEN = "gallery_screen"
     const val TERMS_AND_CONDITIONS = "terms_and_conditions"
     const val NUDI_CONVERTER = "nudi_converter"
-    const val MANAGE_CONSTANTS = "manage_constants" // ✅ New Route
-
 }

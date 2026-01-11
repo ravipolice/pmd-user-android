@@ -38,10 +38,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.material3.TopAppBar
 
 @Composable
+@Composable
 fun DocumentsScreen(
     navController: NavController,
-    viewModel: DocumentsViewModel,
-    isAdmin: Boolean = false
+    viewModel: DocumentsViewModel
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -49,11 +49,6 @@ fun DocumentsScreen(
     var searchQuery by remember { mutableStateOf("") }
     val documents by viewModel.documents.collectAsState()
     val documentsStatus by viewModel.documentsStatus.collectAsState()
-    val uploadStatus by viewModel.uploadStatus.collectAsState()
-    val deleteStatus by viewModel.deleteStatus.collectAsState()
-
-    var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
-    var showUploadDialog by remember { mutableStateOf(false) }
 
     // 🔍 Preview state
     var previewUrl by remember { mutableStateOf<String?>(null) }
@@ -80,35 +75,6 @@ fun DocumentsScreen(
     }
 
     // Handle delete status
-    LaunchedEffect(deleteStatus) {
-        when (val status = deleteStatus) {
-            is OperationStatus.Success -> {
-                Toast.makeText(context, status.data ?: "Document deleted successfully", Toast.LENGTH_SHORT).show()
-                viewModel.clearStatus()
-            }
-            is OperationStatus.Error -> {
-                Toast.makeText(context, status.message, Toast.LENGTH_SHORT).show()
-                viewModel.clearStatus()
-            }
-            else -> {}
-        }
-    }
-
-    // Handle upload status
-    LaunchedEffect(uploadStatus) {
-        when (val status = uploadStatus) {
-            is OperationStatus.Success -> {
-                Toast.makeText(context, status.data ?: "Document uploaded successfully", Toast.LENGTH_SHORT).show()
-                viewModel.clearStatus()
-            }
-            is OperationStatus.Error -> {
-                Toast.makeText(context, status.message, Toast.LENGTH_SHORT).show()
-                viewModel.clearStatus()
-            }
-            else -> {}
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -130,13 +96,6 @@ fun DocumentsScreen(
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            if (isAdmin) {
-                FloatingActionButton(onClick = { showUploadDialog = true }) {
-                    Icon(Icons.Default.UploadFile, contentDescription = "Upload")
-                }
-            }
         }
     ) { innerPadding ->
 
@@ -185,7 +144,6 @@ fun DocumentsScreen(
                                 items(filteredDocs) { doc ->
                                     DocumentItem(
                                         doc = doc,
-                                        isAdmin = isAdmin,
                                         onViewClick = {
                                             val url = doc.resolvedUrl
                                             previewUrl = url
@@ -221,8 +179,7 @@ fun DocumentsScreen(
                                                     downloadFile(context, url, title)
                                                 }
                                             } 
-                                        },
-                                        onDeleteClick = { showDeleteConfirm = doc.resolvedTitle }
+                                        }
                                     )
                                 }
                             }
@@ -232,44 +189,7 @@ fun DocumentsScreen(
                 }
             }
 
-            // 🗑 Delete confirmation
-            if (showDeleteConfirm != null) {
-                AlertDialog(
-                    onDismissRequest = { showDeleteConfirm = null },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            scope.launch {
-                                viewModel.deleteDocument(showDeleteConfirm!!)
-                                showDeleteConfirm = null
-                            }
-                        }) { Text("Delete") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDeleteConfirm = null }) { Text("Cancel") }
-                    },
-                    icon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                    title = { Text("Delete Document") },
-                    text = { Text("Are you sure you want to delete '${showDeleteConfirm}'?") }
-                )
-            }
 
-            // 📤 Upload dialog (admin only)
-            if (isAdmin && showUploadDialog) {
-                UploadDocumentDialog(
-                    onDismiss = { showUploadDialog = false },
-                    onUpload = { title, uri, mimeType, category, description ->
-                        scope.launch {
-                            val base64 = uriToBase64(context, uri)
-                            if (base64 != null) {
-                                viewModel.uploadDocument(title, base64, mimeType, category, description)
-                                showUploadDialog = false
-                            } else {
-                                Toast.makeText(context, "Failed to read file", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                )
-            }
 
             // 👀 Fullscreen preview dialog
             if (previewUrl != null && previewMimeType != null) {
@@ -290,10 +210,8 @@ fun DocumentsScreen(
 @Composable
 fun DocumentItem(
     doc: Document,
-    isAdmin: Boolean,
     onViewClick: () -> Unit,
-    onDownloadClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDownloadClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -340,15 +258,6 @@ fun DocumentItem(
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
-                    }
-                    if (isAdmin) {
-                        IconButton(onClick = onDeleteClick, modifier = Modifier.compactIcon()) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
                     }
                 }
             }
@@ -522,54 +431,5 @@ fun downloadFile(context: Context, url: String, title: String) {
     }
 }
 
-@Composable
-fun UploadDocumentDialog(
-    onDismiss: () -> Unit,
-    onUpload: (String, Uri, String, String, String) -> Unit
-) {
-    val context = LocalContext.current
-    var title by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var fileUri by remember { mutableStateOf<Uri?>(null) }
-    var mimeType by remember { mutableStateOf("application/pdf") }
 
-    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        fileUri = uri
-        uri?.let { mimeType = context.contentResolver.getType(it) ?: "application/pdf" }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (title.isNotBlank() && fileUri != null) {
-                        onUpload(title, fileUri!!, mimeType, category, description)
-                    } else {
-                        Toast.makeText(context, "Please select a file and title", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            ) { Text("Upload") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-        icon = { Icon(Icons.Default.UploadFile, contentDescription = null) },
-        title = { Text("Upload New Document") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") })
-                OutlinedTextField(value = category, onValueChange = { category = it }, label = { Text("Category (optional)") })
-                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description (optional)") })
-                Button(onClick = { filePicker.launch("*/*") }) {
-                    Icon(Icons.Default.AttachFile, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (fileUri == null) "Select File" else "Change File")
-                }
-                if (fileUri != null) {
-                    Text("Selected: ${fileUri.toString().substringAfterLast('/')}", style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-    )
-}
 

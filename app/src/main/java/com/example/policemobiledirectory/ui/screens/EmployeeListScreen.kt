@@ -56,7 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.policemobiledirectory.utils.OperationStatus
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import kotlinx.coroutines.launch
-import com.example.policemobiledirectory.ui.components.EmployeeCardAdmin
+
 import com.example.policemobiledirectory.ui.components.EmployeeCardUser
 import com.example.policemobiledirectory.ui.components.ContactCard
 import kotlinx.coroutines.CoroutineScope
@@ -206,30 +206,7 @@ fun EmployeeListScreen(
                 }
             )
         },
-        floatingActionButton = {
-            if (isAdmin) {
-                Box(
-                    modifier = Modifier.shadow(
-                        elevation = 12.dp,
-                        shape = androidx.compose.foundation.shape.CircleShape,
-                        spotColor = FABColor.copy(alpha = 0.5f),
-                        ambientColor = FABColor.copy(alpha = 0.3f)
-                    )
-                ) {
-                    FloatingActionButton(
-                        onClick = { navController.navigate("${Routes.ADD_EMPLOYEE}?employeeId=") },
-                        containerColor = FABColor,
-                        modifier = Modifier.size(64.dp) // Larger size
-                    ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Add Employee",
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-            }
-        }
+        floatingActionButton = {}
     ) { innerPadding ->
         Surface(
             modifier = Modifier
@@ -382,7 +359,7 @@ private fun EmployeeListContent(
     }
 
     val searchFields = SearchFilter.values().toList()
-    var employeeToDelete by remember { mutableStateOf<Employee?>(null) }
+
     val listState = rememberLazyListState()
 
     Column(
@@ -836,31 +813,17 @@ private fun EmployeeListContent(
                             contentPadding = PaddingValues(bottom = 16.dp)
                         ) {
                             items(filteredContacts, key = { it.id }) { contact ->
-                                if (isAdmin && contact.employee != null) {
-                                    // 🧑‍💼 Show admin version for employees only
-                                    EmployeeCardAdmin(
-                                        employee = contact.employee,
-                                        isAdmin = true,
-                                        fontScale = fontScale,
-                                        navController = navController,
-                                        onDelete = { employeeToDelete = contact.employee },
-                                        context = context
-                                    )
-                                } else {
-                                    // 👮‍♂️ Show unified contact card (works for both Employee and Officer)
-                                    ContactCard(
-                                        employee = contact.employee,
-                                        officer = contact.officer,
-                                        fontScale = fontScale,
-                                        isAdmin = isAdmin,
-                                        onEdit = if (isAdmin && contact.officer != null) {
-                                            { navController.navigate("${Routes.EDIT_OFFICER}/${contact.officer.agid}") }
-                                        } else null,
-                                        onClick = {
-                                            Toast.makeText(context, "${contact.name} selected", Toast.LENGTH_SHORT).show()
-                                        }
-                                    )
-                                }
+                                // 👮‍♂️ Show unified contact card (works for both Employee and Officer)
+                                ContactCard(
+                                    employee = contact.employee,
+                                    officer = contact.officer,
+                                    fontScale = fontScale,
+                                    isAdmin = false, // Always false for user app
+                                    onEdit = null,
+                                    onClick = {
+                                        Toast.makeText(context, "${contact.name} selected", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
                             }
                         }
                     }
@@ -869,47 +832,7 @@ private fun EmployeeListContent(
         }
 
         // 🔹 DELETE CONFIRMATION + SNACKBAR (Improved with Auto Refresh)
-        if (employeeToDelete != null) {
-            AlertDialog(
-                onDismissRequest = { employeeToDelete = null },
-                title = { Text("Confirm Delete") },
-                text = { Text("Delete ${employeeToDelete?.name}? This action cannot be undone.") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        val emp = employeeToDelete
-                        employeeToDelete = null
-                        if (emp != null) {
-                            coroutineScope.launch {
-                                try {
-                                    // ✅ Delete and refresh the employee list
-                                    viewModel.deleteEmployee(emp.kgid, emp.photoUrl)
-                                    viewModel.refreshEmployees()
 
-                                    // ✅ Show success message
-                                    snackbarHostState.showSnackbar(
-                                        message = "${emp.name} deleted successfully",
-                                        withDismissAction = true
-                                    )
-                                } catch (e: Exception) {
-                                    // 🚨 Handle failure gracefully
-                                    snackbarHostState.showSnackbar(
-                                        message = "Failed to delete ${emp.name}: ${e.message}",
-                                        withDismissAction = true
-                                    )
-                                }
-                            }
-                        }
-                    }) {
-                        Text("Delete")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { employeeToDelete = null }) {
-                        Text("Cancel")
-                    }
-                }
-            )
-        }
 
     }
 }

@@ -31,21 +31,14 @@ class NotificationViewModel @Inject constructor(
     private val firestore: FirebaseFirestore
 ) : ViewModel() {
 
-    private val _adminNotifications = MutableStateFlow<List<AppNotification>>(emptyList())
-    val adminNotifications = _adminNotifications.asStateFlow()
-
     private val _userNotifications = MutableStateFlow<List<AppNotification>>(emptyList())
     val userNotifications: StateFlow<List<AppNotification>> = _userNotifications.asStateFlow()
 
     private val _userNotificationsLastSeen = MutableStateFlow(0L)
     val userNotificationsLastSeen = _userNotificationsLastSeen.asStateFlow()
 
-    private val _adminNotificationsLastSeen = MutableStateFlow(0L)
-    val adminNotificationsLastSeen = _adminNotificationsLastSeen.asStateFlow()
-
     private var userNotificationsListener: ListenerRegistration? = null
     private var userNotificationsListenerKgid: String? = null
-    private var adminNotificationsListener: ListenerRegistration? = null
 
     init {
         // Observe notification seen timestamps
@@ -54,40 +47,6 @@ class NotificationViewModel @Inject constructor(
                 _userNotificationsLastSeen.value = lastSeen
             }
         }
-
-        viewModelScope.launch {
-            sessionManager.adminNotificationsSeenAt.collect { lastSeen ->
-                _adminNotificationsLastSeen.value = lastSeen
-            }
-        }
-    }
-
-    /**
-     * Update admin notification listener based on admin status
-     */
-    fun updateAdminNotificationListener(isAdmin: Boolean, currentUser: Employee?) {
-        if (!isAdmin) {
-            adminNotificationsListener?.remove()
-            adminNotificationsListener = null
-            _adminNotifications.value = emptyList()
-            return
-        }
-
-        if (adminNotificationsListener != null) return
-
-        adminNotificationsListener = firestore.collection("admin_notifications")
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    Log.e("AdminNotifications", "❌ Failed to fetch: ${e.message}")
-                    return@addSnapshotListener
-                }
-                val docs = snapshot?.documents ?: return@addSnapshotListener
-                val notifications = docs.mapNotNull { doc ->
-                    doc.data?.toAppNotification(doc.id)
-                }
-                _adminNotifications.value = notifications
-            }
     }
 
     /**
@@ -95,14 +54,6 @@ class NotificationViewModel @Inject constructor(
      */
     fun updateUserNotificationListener(user: Employee?) {
         val kgid = user?.kgid
-
-        if (user?.isAdmin == true) {
-            userNotificationsListener?.remove()
-            userNotificationsListener = null
-            userNotificationsListenerKgid = null
-            _userNotifications.value = emptyList()
-            return
-        }
 
         if (userNotificationsListenerKgid == kgid) return
 
@@ -141,61 +92,17 @@ class NotificationViewModel @Inject constructor(
             NotificationTarget.DISTRICT -> matches(notification.targetDistrict, user.district)
             NotificationTarget.STATION -> matches(notification.targetDistrict, user.district) &&
                     matches(notification.targetStation, user.station)
-            NotificationTarget.ADMIN -> user.isAdmin
+            NotificationTarget.ADMIN -> false // User app never sees admin notifications
         }
     }
 
-    fun markNotificationsRead(isAdminUser: Boolean, notifications: List<AppNotification>) {
-        val latestTimestamp = notifications.mapNotNull { it.timestamp }.maxOrNull()
-            ?: System.currentTimeMillis()
+    fun markNotificationsRead() {
+        // Just mark current time as seen for user notifications
+        val now = System.currentTimeMillis()
         viewModelScope.launch {
-            if (isAdminUser) {
-                if (latestTimestamp > _adminNotificationsLastSeen.value) {
-                    sessionManager.setAdminNotificationsSeen(latestTimestamp)
-                }
-            } else {
-                if (latestTimestamp > _userNotificationsLastSeen.value) {
-                    sessionManager.setUserNotificationsSeen(latestTimestamp)
-                }
+            if (now > _userNotificationsLastSeen.value) {
+                sessionManager.setUserNotificationsSeen(now)
             }
-        }
-    }
-
-    fun sendNotification(
-        title: String,
-        body: String,
-        target: NotificationTarget,
-        k: String? = null,
-        d: String? = null,
-        s: String? = null,
-        requesterKgid: String? = null
-    ) = viewModelScope.launch {
-        try {
-            val request = hashMapOf(
-                "title" to title,
-                "body" to body,
-                "targetType" to target.name,
-                "targetKgid" to k?.takeIf { it.isNotBlank() },
-                "targetDistrict" to d?.takeIf { it != "All" },
-                "targetStation" to s?.takeIf { it != "All" },
-                "timestamp" to System.currentTimeMillis(),
-                "requesterKgid" to (requesterKgid ?: "unknown")
-            )
-
-            // Separate collection for admin notifications
-            val collectionName = if (target == NotificationTarget.ADMIN)
-                "admin_notifications"
-            else
-                "notifications_queue"
-
-            firestore.collection(collectionName)
-                .add(request)
-                .await()
-
-            Log.d("NotificationViewModel", "✅ Notification sent successfully")
-        } catch (e: Exception) {
-            Log.e("NotificationViewModel", "❌ Error sending notification", e)
-            throw e
         }
     }
 
@@ -226,8 +133,6 @@ class NotificationViewModel @Inject constructor(
         super.onCleared()
         userNotificationsListener?.remove()
         userNotificationsListener = null
-        adminNotificationsListener?.remove()
-        adminNotificationsListener = null
     }
 }
 
