@@ -1,6 +1,7 @@
 package com.example.policemobiledirectory.di
 
 import android.content.Context
+import com.example.policemobiledirectory.R
 import com.example.policemobiledirectory.api.EmployeeApiService
 import com.example.policemobiledirectory.data.local.EmployeeDao
 import com.example.policemobiledirectory.data.local.PendingRegistrationDao
@@ -10,9 +11,11 @@ import com.example.policemobiledirectory.api.ConstantsApiService
 import com.example.policemobiledirectory.repository.EmployeeRepository
 import com.example.policemobiledirectory.repository.ImageRepository
 import com.example.policemobiledirectory.repository.PendingRegistrationRepository
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.PropertyName
 import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.storage.FirebaseStorage
 import dagger.Module
@@ -28,6 +31,26 @@ import com.example.policemobiledirectory.utils.SecurityConfig
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+
+
+
+
+
+
+
+
+    @Provides
+    @Singleton
+    fun provideGoogleSignInClient(
+        @ApplicationContext context: Context
+    ): GoogleSignInClient {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        return GoogleSignIn.getClient(context, gso)
+    }
 
     @Provides
     @Singleton

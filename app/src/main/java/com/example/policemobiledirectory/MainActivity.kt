@@ -23,6 +23,7 @@ import com.example.policemobiledirectory.navigation.Routes
 import com.example.policemobiledirectory.services.MyFirebaseMessagingService
 import com.example.policemobiledirectory.ui.theme.PMDTheme
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessaging
@@ -81,8 +82,13 @@ class MainActivity : ComponentActivity() {
         val credentialManager = CredentialManager.create(this)
         val googleIdOption = GetGoogleIdOption.Builder()
             .setServerClientId(getString(R.string.default_web_client_id))
-            .setFilterByAuthorizedAccounts(!wasLoggedOut)
-            .setAutoSelectEnabled(!wasLoggedOut)
+            .setFilterByAuthorizedAccounts(false) // Allow selecting any account (fixed)
+            .setAutoSelectEnabled(false) // Disable auto-select for explicit button clicks
+            .build()
+
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestEmail()
             .build()
 
         val request = GetCredentialRequest.Builder()

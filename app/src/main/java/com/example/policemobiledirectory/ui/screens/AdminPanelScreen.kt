@@ -1,23 +1,35 @@
 package com.example.policemobiledirectory.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.activity.compose.BackHandler
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.policemobiledirectory.navigation.Routes
-import com.example.policemobiledirectory.viewmodel.ConstantsViewModel
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.ui.components.DashboardActionCard
+import com.example.policemobiledirectory.ui.components.DashboardStatCard
 import com.example.policemobiledirectory.utils.OperationStatus
-import kotlinx.coroutines.launch
+import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.ConstantsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,27 +38,26 @@ fun AdminPanelScreen(
     viewModel: EmployeeViewModel = hiltViewModel(),
     constantsViewModel: ConstantsViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    
+    // Collect specific lists to get counts
+    // Use the correct StateFlows from EmployeeViewModel
+    val employees by viewModel.employees.collectAsState()
+    val pendingRegistrations by viewModel.pendingRegistrations.collectAsState()
     val isAdmin by viewModel.isAdmin.collectAsState()
-    val employeesList by viewModel.employees.collectAsState()
-    val pendingRegistrationsList by viewModel.pendingRegistrations.collectAsState()
+    
+    val totalEmployeesCount = employees.size
+    val pendingCount = pendingRegistrations.size
+    
+    // Status collection
+    // Renamed refreshStatus to employeeStatus to match ViewModel
+    val employeeStatus by viewModel.employeeStatus.collectAsState()
     val firestoreToSheetStatus by viewModel.firestoreToSheetStatus.collectAsState()
     val sheetToFirestoreStatus by viewModel.sheetToFirestoreStatus.collectAsState()
     val officersSyncStatus by viewModel.officersSyncStatus.collectAsState()
+    
+    // Constants status
     val constantsRefreshStatus by constantsViewModel.refreshStatus.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
-
-    // Handle back button to navigate to home screen
-    BackHandler {
-        // Navigate to home screen, clearing back stack up to (but not including) EMPLOYEE_LIST
-        navController.navigate(Routes.EMPLOYEE_LIST) {
-            popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
-            launchSingleTop = true
-        }
-    }
-
-    val employeesCount = employeesList.size
-    val pendingRegistrationsCount = pendingRegistrationsList.size
 
     // 🔹 Load admin data
     LaunchedEffect(isAdmin) {
@@ -56,59 +67,39 @@ fun AdminPanelScreen(
         }
     }
 
+    // Handle toast messages for operations
+    LaunchedEffect(employeeStatus) {
+        if (employeeStatus is OperationStatus.Error) {
+             Toast.makeText(context, (employeeStatus as OperationStatus.Error).message, Toast.LENGTH_SHORT).show()
+        }
+        // No reset for employeeStatus available/needed for now
+    }
+    
     LaunchedEffect(firestoreToSheetStatus) {
-        when (val status = firestoreToSheetStatus) {
-            is OperationStatus.Success -> {
-                coroutineScope.launch { snackbarHostState.showSnackbar(status.data) }
-                viewModel.resetFirestoreToSheetStatus()
-            }
-            is OperationStatus.Error -> {
-                coroutineScope.launch { snackbarHostState.showSnackbar(status.message) }
-                viewModel.resetFirestoreToSheetStatus()
-            }
-            else -> Unit
+        if (firestoreToSheetStatus is OperationStatus.Success) {
+            Toast.makeText(context, (firestoreToSheetStatus as OperationStatus.Success<String>).data, Toast.LENGTH_SHORT).show()
+            viewModel.resetFirestoreToSheetStatus()
         }
     }
-
+    
     LaunchedEffect(sheetToFirestoreStatus) {
-        when (val status = sheetToFirestoreStatus) {
-            is OperationStatus.Success -> {
-                Toast.makeText(context, status.data, Toast.LENGTH_SHORT).show()
-                viewModel.resetSheetToFirestoreStatus()
-            }
-            is OperationStatus.Error -> {
-                Toast.makeText(context, status.message, Toast.LENGTH_LONG).show()
-                viewModel.resetSheetToFirestoreStatus()
-            }
-            else -> Unit
+        if (sheetToFirestoreStatus is OperationStatus.Success) {
+            Toast.makeText(context, (sheetToFirestoreStatus as OperationStatus.Success<String>).data, Toast.LENGTH_SHORT).show()
+            viewModel.resetSheetToFirestoreStatus()
         }
     }
     
     LaunchedEffect(officersSyncStatus) {
-        when (val status = officersSyncStatus) {
-            is OperationStatus.Success -> {
-                Toast.makeText(context, status.data, Toast.LENGTH_SHORT).show()
-                viewModel.resetOfficersSyncStatus()
-            }
-            is OperationStatus.Error -> {
-                Toast.makeText(context, status.message, Toast.LENGTH_LONG).show()
-                viewModel.resetOfficersSyncStatus()
-            }
-            else -> Unit
+        if (officersSyncStatus is OperationStatus.Success) {
+            Toast.makeText(context, (officersSyncStatus as OperationStatus.Success<String>).data, Toast.LENGTH_SHORT).show()
+            viewModel.resetOfficersSyncStatus()
         }
     }
 
     LaunchedEffect(constantsRefreshStatus) {
-        when (val status = constantsRefreshStatus) {
-            is OperationStatus.Success -> {
-                Toast.makeText(context, status.data, Toast.LENGTH_SHORT).show()
-                constantsViewModel.resetRefreshStatus()
-            }
-            is OperationStatus.Error -> {
-                Toast.makeText(context, status.message, Toast.LENGTH_LONG).show()
-                constantsViewModel.resetRefreshStatus()
-            }
-            else -> Unit
+        if (constantsRefreshStatus is OperationStatus.Success) {
+            Toast.makeText(context, (constantsRefreshStatus as OperationStatus.Success<String>).data, Toast.LENGTH_SHORT).show()
+            constantsViewModel.resetRefreshStatus()
         }
     }
 
@@ -130,7 +121,7 @@ fun AdminPanelScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -173,7 +164,7 @@ fun AdminPanelScreen(
                 ) {
                     DashboardStatCard(
                         title = "Total Employees",
-                        count = totalEmployees.toString(),
+                        count = totalEmployeesCount.toString(),
                         icon = Icons.Outlined.People,
                         colorStart = Color(0xFF2196F3), // Blue
                         colorEnd = Color(0xFF64B5F6),
@@ -182,67 +173,137 @@ fun AdminPanelScreen(
                         }
                     )
                     
-                    )
-
-                    ButtonRow(
-                        icon = Icons.Filled.Refresh,
-                        text = "Refresh Constants (Clear Cache)",
-                        enabled = constantsRefreshStatus !is OperationStatus.Loading,
-                        isLoading = constantsRefreshStatus is OperationStatus.Loading,
-                        onClick = { constantsViewModel.clearCacheAndRefresh() }
-                    )
-
-                } else {
-                    // 🔸 Non-admin users — fallback message + redirect
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "You do not have access to this page.\nRedirecting...",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-
-                    // 🔹 Redirect after showing message
-                    LaunchedEffect(Unit) {
-                        navController.navigate(Routes.EMPLOYEE_LIST) {
-                            popUpTo(Routes.ADMIN_PANEL) { inclusive = true }
+                    DashboardStatCard(
+                        title = "Pending Approvals",
+                        count = pendingCount.toString(),
+                        icon = Icons.Outlined.PendingActions,
+                        colorStart = Color(0xFF009688), // Teal
+                        colorEnd = Color(0xFF4DB6AC),
+                        modifier = Modifier.weight(1f).clickable {
+                            navController.navigate(Routes.PENDING_APPROVALS)
                         }
-                    }
+                    )
+                }
+            }
+            
+            // --- SECTION 2: MANAGEMENT ---
+            item(span = { GridItemSpan(2) }) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Quick Actions",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            // Row 1
+            item {
+                DashboardActionCard(
+                    title = "Send Notification",
+                    icon = Icons.Outlined.NotificationsActive,
+                    color = Color(0xFFE91E63), // Pink
+                    onClick = { navController.navigate(Routes.SEND_NOTIFICATION) }
+                )
+            }
+            item {
+                DashboardActionCard(
+                    title = "Upload Database",
+                    icon = Icons.Outlined.CloudUpload,
+                    color = Color(0xFF3F51B5), // Indigo
+                    onClick = { navController.navigate(Routes.UPLOAD_CSV) }
+                )
+            }
+
+            // Row 2
+            item {
+                DashboardActionCard(
+                    title = "Manage Resources",
+                    icon = Icons.Outlined.Category, // Category/Folder
+                    color = Color(0xFFFF9800), // Orange
+                    onClick = { navController.navigate(Routes.MANAGE_CONSTANTS) }
+                )
+            }
+            item {
+                DashboardActionCard(
+                    title = "Add Useful Link",
+                    icon = Icons.Outlined.Link,
+                    color = Color(0xFF673AB7), // Deep Purple
+                    onClick = { navController.navigate(Routes.ADD_USEFUL_LINK) }
+                )
+            }
+
+            // Row 3
+            item {
+                DashboardActionCard(
+                    title = "Upload Document",
+                    icon = Icons.Outlined.Description,
+                    color = Color(0xFF00BCD4), // Cyan
+                    onClick = { navController.navigate(Routes.UPLOAD_DOCUMENT) }
+                )
+            }
+            item {
+                DashboardActionCard(
+                    title = "Sync Firestore \u2192 Sheet",
+                    icon = Icons.Default.CloudDownload,
+                    color = Color(0xFF4CAF50), // Green
+                    onClick = { viewModel.syncFirebaseToSheet() }
+                )
+            }
+
+            // Row 4
+            item {
+                DashboardActionCard(
+                    title = "Sync Sheet \u2192 Firestore",
+                    icon = Icons.Default.CloudUpload,
+                    color = Color(0xFF2196F3), // Blue
+                    onClick = { viewModel.syncSheetToFirebase() }
+                )
+            }
+            item {
+                DashboardActionCard(
+                    title = "Sync Officers (Sheet)",
+                    icon = Icons.Default.Badge,
+                    color = Color(0xFF9C27B0), // Purple
+                    onClick = { viewModel.syncOfficersSheetToFirebase() }
+                )
+            }
+            
+            // Footer Action
+            item(span = { GridItemSpan(2) }) {
+                Button(
+                    onClick = { constantsViewModel.clearCacheAndRefresh() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Refresh System Constants (Clear Cache)")
+                }
+            }
+            
+            // Version Info
+            item(span = { GridItemSpan(2) }) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Admin Panel v2.0 • Modern Grid",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    )
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun ButtonRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    text: String,
-    enabled: Boolean = true,
-    isLoading: Boolean = false,
-    onClick: () -> Unit
-) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(50.dp),
-        enabled = enabled
-    ) {
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(18.dp),
-                strokeWidth = 2.dp
-            )
-            Spacer(Modifier.width(12.dp))
-        } else if (icon != null) {
-            Icon(icon, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-        }
-        Text(text)
     }
 }
