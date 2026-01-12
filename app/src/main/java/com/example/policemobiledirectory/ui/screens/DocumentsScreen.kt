@@ -38,7 +38,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.material3.TopAppBar
 
 @Composable
-@Composable
 fun DocumentsScreen(
     navController: NavController,
     viewModel: DocumentsViewModel

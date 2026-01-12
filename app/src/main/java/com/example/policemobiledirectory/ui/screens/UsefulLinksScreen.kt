@@ -49,6 +49,9 @@ fun UsefulLinksScreen(
     // isAdmin and deleteDialog state removed
 
 
+    val context = LocalContext.current
+    val pendingStatus by viewModel.pendingStatus.collectAsState()
+
     // Get the current back stack entry to detect when screen comes back into focus
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -65,8 +68,9 @@ fun UsefulLinksScreen(
     LaunchedEffect(pendingStatus) {
         val status = pendingStatus
         when (status) {
-            is com.example.policemobiledirectory.utils.OperationStatus.Success -> {
-                Toast.makeText(context, status.data ?: "Success", Toast.LENGTH_SHORT).show()
+            is com.example.policemobiledirectory.utils.OperationStatus.Success<*> -> {
+                val data = status.data.toString()
+                Toast.makeText(context, data, Toast.LENGTH_SHORT).show()
                 viewModel.resetPendingStatus()
             }
             is com.example.policemobiledirectory.utils.OperationStatus.Error -> {

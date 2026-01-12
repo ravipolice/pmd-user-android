@@ -86,7 +86,10 @@ class ConstantsViewModel @Inject constructor(
     /**
      * Refresh constants from repository and update StateFlows
      */
-    private fun refreshConstants() {
+    /**
+     * Refresh constants from repository and update StateFlows
+     */
+    private suspend fun refreshConstants() {
         _districts.value = constantsRepository.getDistricts()
         _units.value = constantsRepository.getUnits()
         _stationsByDistrict.value = constantsRepository.getStationsByDistrict()

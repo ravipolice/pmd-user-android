@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.Flow
 interface EmployeeDao {
 
     // ---------- BASIC CRUD ----------
+    @Query("SELECT DISTINCT district FROM employees WHERE district IS NOT NULL AND district != '' ORDER BY district ASC")
+    suspend fun getDistinctDistricts(): List<String>
+
     @Query("SELECT * FROM employees ORDER BY name ASC")
     fun getAllEmployees(): Flow<List<EmployeeEntity>>
 

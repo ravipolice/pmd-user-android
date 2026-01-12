@@ -16,7 +16,6 @@ import com.example.policemobiledirectory.data.local.PendingRegistrationEntity
 import com.example.policemobiledirectory.navigation.Routes
 import com.example.policemobiledirectory.ui.components.CommonEmployeeForm
 import com.example.policemobiledirectory.utils.OperationStatus
-import com.example.policemobiledirectory.viewmodel.AddEditEmployeeViewModel
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import kotlinx.coroutines.launch
 
@@ -24,7 +23,6 @@ import kotlinx.coroutines.launch
 fun UserRegistrationScreen(
     navController: NavController,
     viewModel: EmployeeViewModel = hiltViewModel(),
-    addEditViewModel: AddEditEmployeeViewModel = hiltViewModel(),
     initialEmail: String = ""
 ) {
     val context = LocalContext.current
@@ -40,21 +38,21 @@ fun UserRegistrationScreen(
     // Handle registration status feedback
     LaunchedEffect(pendingStatus) {
         when (val status = pendingStatus) {
-            is OperationStatus.Success -> {
-                if (hasSubmittedState.value || status.data?.contains("submitted") == true || 
-                    status.data?.contains("approved") == true) {
+            is OperationStatus.Success<*> -> {
+                // Safe cast to String if needed, or just toString()
+                val data = status.data.toString()
+                if (hasSubmittedState.value || data.contains("submitted") == true || 
+                    data.contains("approved") == true) {
                     Toast.makeText(
                         context,
-                        status.data ?: "Registration submitted for admin approval",
+                        data,
                         Toast.LENGTH_SHORT
                     ).show()
                     hasSubmittedState.value = false
                     viewModel.resetPendingStatus()
-                    // Optionally navigate back after successful submission
-                    // navController.popBackStack()
                 }
                 // Silently handle load success
-                if (status.data == "Loaded") {
+                if (data == "Loaded") {
                     viewModel.resetPendingStatus()
                 }
             }
@@ -95,26 +93,22 @@ fun UserRegistrationScreen(
                     
                     // Upload photo if provided
                     if (photo != null) {
-                        var uploadSuccess = false
-                        addEditViewModel.imageRepository.uploadOfficerImage(photo, pending.kgid).collect { status ->
-                            when (status) {
-                                is OperationStatus.Success -> {
-                                    status.data?.let { url ->
-                                        finalPhotoUrl = url
-                                        uploadSuccess = true
-                                    }
-                                }
-                                is OperationStatus.Error -> {
-                                    Toast.makeText(
-                                        context,
-                                        "Photo upload failed: ${status.message}",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }
-                                else -> Unit
+                        // Use suspend function from ViewModel
+                        val result = viewModel.uploadOfficerImageSuspend(photo, pending.kgid)
+                        
+                        // Check result using typed check
+                        if (result is com.example.policemobiledirectory.repository.RepoResult.Success) {
+                            result.data?.let { url ->
+                                finalPhotoUrl = url
                             }
+                        } else if (result is com.example.policemobiledirectory.repository.RepoResult.Error) {
+                             Toast.makeText(
+                                context,
+                                "Photo upload failed: ${result.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@launch
                         }
-                        if (!uploadSuccess) return@launch
                     }
 
                     // Mark that we're submitting

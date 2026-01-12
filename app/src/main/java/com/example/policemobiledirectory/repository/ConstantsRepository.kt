@@ -17,6 +17,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import java.util.concurrent.TimeUnit
+import com.example.policemobiledirectory.data.local.EmployeeDao
 
 /**
  * ConstantsRepository - Manages dynamic constants synchronization
@@ -34,7 +35,8 @@ class ConstantsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val apiService: ConstantsApiService,
     private val securityConfig: SecurityConfig,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val employeeDao: EmployeeDao
 ) {
 
     private val prefs = context.getSharedPreferences("constants_cache", Context.MODE_PRIVATE)
@@ -195,24 +197,17 @@ class ConstantsRepository @Inject constructor(
     }
 
     /**
-     * Get ranks with fallback to hardcoded constants
+     * Get ranks from local Constants to ensure updated list is used
      */
     fun getRanks(): List<String> {
-        val cached = getCachedData()
-        return cached?.ranks?.sorted() ?: Constants.allRanksList
+        return Constants.allRanksList
     }
 
     /**
-     * Get districts with fallback to hardcoded constants
-     * Always returns districts in the same order as Constants.districtsList for consistency
+     * Get districts from local Constants to ensure updated list is used
      */
     fun getDistricts(): List<String> {
-        val cached = getCachedData()
-        val apiDistricts = cached?.districts?.sorted() ?: emptyList()
-        // Always start with hardcoded districts and merge API districts
-        val hardcodedDistricts = Constants.districtsList
-        val mergedDistricts = (hardcodedDistricts + apiDistricts).distinct().sorted()
-        return mergedDistricts
+        return Constants.districtsList
     }
 
     /**
@@ -246,29 +241,9 @@ class ConstantsRepository @Inject constructor(
         val cached = getCachedData()
         val hardcodedStations = Constants.stationsByDistrictMap
         
-        // DEBUG: Verify Chikkaballapura exists in hardcoded map
-        val chikkaInHardcoded = hardcodedStations.containsKey("Chikkaballapura")
-        val chikkaStationsCount = hardcodedStations["Chikkaballapura"]?.size ?: 0
-        val chikkaStationsList = hardcodedStations["Chikkaballapura"] ?: emptyList()
         
-        Log.d("ConstantsRepository", "🔍 DEBUG: Chikkaballapura in hardcoded map: $chikkaInHardcoded, Stations: $chikkaStationsCount")
-        if (!chikkaInHardcoded) {
-            Log.e("ConstantsRepository", "❌ CRITICAL: Chikkaballapura NOT in Constants.stationsByDistrictMap!")
-            Log.e("ConstantsRepository", "   Available keys (first 10): ${hardcodedStations.keys.sorted().take(10).joinToString(", ")}")
-            // Try to find it case-insensitively
-            val caseInsensitiveMatch = hardcodedStations.keys.find { it.equals("Chikkaballapura", ignoreCase = true) }
-            Log.e("ConstantsRepository", "   Case-insensitive match: $caseInsensitiveMatch")
-        } else {
-            Log.d("ConstantsRepository", "✅ Chikkaballapura found in hardcoded! First 5 stations: ${chikkaStationsList.take(5).joinToString(", ")}")
-        }
-        
-        // Verify Constants.districtsList contains Chikkaballapura
-        val inDistrictsList = Constants.districtsList.contains("Chikkaballapura")
-        Log.d("ConstantsRepository", "🔍 Chikkaballapura in Constants.districtsList: $inDistrictsList")
-        if (!inDistrictsList) {
-            val caseInsensitiveInList = Constants.districtsList.find { it.equals("Chikkaballapura", ignoreCase = true) }
-            Log.e("ConstantsRepository", "❌ Chikkaballapura NOT in districtsList! Case-insensitive match: $caseInsensitiveInList")
-        }
+        Log.d("ConstantsRepository", "🔍 DEBUG: Starting getStationsByDistrict with ${hardcodedStations.size} districts")
+
         
         // Create case-insensitive lookup for districts
         val districtLookup = hardcodedStations.keys.associateBy { it.lowercase() }
@@ -312,10 +287,7 @@ class ConstantsRepository @Inject constructor(
                 }
             }
             
-            // Log for Chikkaballapura specifically
-            if (district.equals("Chikkaballapura", ignoreCase = true)) {
-                Log.d("ConstantsRepository", "🔍 Chikkaballapura stations: ${baseStations.size} hardcoded, ${apiStations.size} from API, Final: ${(baseStations + district).distinct().sorted().size}")
-            }
+
             
             // Ensure district name is included, remove duplicates, sort
             (baseStations + district).distinct().sorted()
@@ -355,21 +327,7 @@ class ConstantsRepository @Inject constructor(
             normalizedMap[exactDistrictName] = stations.distinct().sorted()
         }
         
-        // Debug log for Chikkaballapura - verify it exists
-        val chikkaKey = normalizedMap.keys.find { it.equals("Chikkaballapura", ignoreCase = true) }
-        if (chikkaKey != null) {
-            normalizedMap[chikkaKey]?.let { stations ->
-                Log.d("ConstantsRepository", "✅ Chikkaballapura found! Key: '$chikkaKey', Stations count: ${stations.size}")
-                Log.d("ConstantsRepository", "   First 5 stations: ${stations.take(5).joinToString(", ")}")
-            }
-        } else {
-            Log.e("ConstantsRepository", "❌ ERROR: Chikkaballapura NOT found in normalized map!")
-            Log.e("ConstantsRepository", "   Available keys: ${normalizedMap.keys.sorted().joinToString(", ")}")
-            // Force add Chikkaballapura from hardcoded
-            val fallbackStations = (hardcodedStations["Chikkaballapura"]?.toList() ?: emptyList()) + "Chikkaballapura"
-            normalizedMap["Chikkaballapura"] = fallbackStations.distinct().sorted()
-            Log.w("ConstantsRepository", "⚠️ Added Chikkaballapura as fallback with ${fallbackStations.size} stations")
-        }
+
         
         // Verify all districts from Constants.districtsList are in the map
         Constants.districtsList.forEach { district ->

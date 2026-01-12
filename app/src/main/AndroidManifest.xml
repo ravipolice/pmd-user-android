@@ -44,7 +44,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.example.policemobiledirectory.fileprovider"
+            android:authorities="com.pmd.userapp.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

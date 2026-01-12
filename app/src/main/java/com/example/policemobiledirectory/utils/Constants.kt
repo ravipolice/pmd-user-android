@@ -23,13 +23,13 @@ object Constants {
     ).sorted()
 
     val districtsList = listOf(
-        "Bagalkot", "Ballari", "Belagavi City", "Belagavi Dist", "Bengaluru City", "Bengaluru Dist", "Bidar",
-        "Chamarajanagar", "Chikkaballapura", "Chikkamagaluru", "Chitradurga",
-        "Dakshina Kannada", "Davanagere", "Dharwad", "Gadag", "Hassan", "Haveri",
-        "Hubballi Dharwad City", "K.G.F", "Kalaburagi", "Kalaburagi City", "Kodagu", "Kolar", "Koppal", "Mandya",
-        "Mangaluru City", "Mysuru City", "Mysuru Dist",
-        "Raichur", "Ramanagara", "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada",
-        "Vijayanagara", "Vijayapur", "Yadgir"
+        "Bagalkot -NR", "Ballari -BR", "Belagavi City -COP", "Belagavi Dist -NR", "Bengaluru City -COP", "Bengaluru Dist -CR", "Bidar -NR",
+        "Chamarajanagar -SR", "Chikkaballapura -CR", "Chikkamagaluru -WR", "Chitradurga -ER",
+        "Dakshina Kannada -WR", "Davanagere -ER", "Dharwad -NR", "Gadag -NR", "Hassan -SR", "Haveri -ER",
+        "Hubballi Dharwad City -COP", "K.G.F -CR", "Kalaburagi -NER", "Kalaburagi City -COP", "Kodagu -SR", "Kolar -CR", "Koppal -BR", "Mandya -SR",
+        "Mangaluru City -COP", "Mysuru City -COP", "Mysuru Dist -SR",
+        "Raichur -NER", "Ramanagara -CR", "Shivamogga -ER", "Tumakuru -CR", "Udupi -WR", "Uttara Kannada -WR",
+        "Vijayanagara -BR", "Vijayapur -NR", "Yadgir -NER"
     ).sorted()
 
     // Functional Units for filtering
@@ -48,7 +48,7 @@ object Constants {
     // All stations (including common units) are hardcoded in each district's list
     val stationsByDistrictMap: Map<String, List<String>> = districtsList.associateWith { districtName ->
         val specificStations = when (districtName) {
-            "Bagalkot" -> listOf(
+            "Bagalkot -NR" -> listOf(
                 "Amengad PS", "Badami PS", "Bagalkot CEN Crime PS", "Bagalkot Rural PS",
                 "Bagalkot Town PS", "Bagalkot Traffic PS", "Bagalkot Women PS", "Banahatti PS",
                 "Bilagi PS", "Guledagudda PS", "Hungunda PS", "Ilakal PS", "Ilakal Rural PS",
@@ -59,7 +59,7 @@ object Constants {
                 "FPB Bagalkot", "MCU Bagalkot", "DCRB Bagalkot", "DSB Bagalkot", "SMMC Bagalkot",
                 "State INT Bagalkot", "DCRE Bagalkot", "Lokayukta Bagalkot", "ESCOM Bagalkot"
             )
-            "Ballari" -> listOf(
+            "Ballari -BR" -> listOf(
                 "APMC Yard PS", "Ballari CEN Crime PS", "Ballari Women PS", "Bellary Rural PS",
                 "Bellary Traffic PS", "Brucepet PS", "Choranuru PS", "Cowlbazar PS",
                 "Gandhinagar PS", "Hatcholli PS", "Kampli PS", "Kuduthini PS", "Kurugod PS",
@@ -69,7 +69,7 @@ object Constants {
                 "FPB Ballari", "MCU Ballari", "DCRB Ballari", "DSB Ballari", "SMMC Ballari",
                 "State INT Ballari", "DCRE Ballari", "Lokayukta Ballari", "ESCOM Ballari"
             )
-            "Belagavi City" -> listOf(
+            "Belagavi City -COP" -> listOf(
                 "APMC Yard PS", "Bagewadi PS", "Belagavi City CEN Crime PS", "Belagavi City Women PS", "Belagavi Rural PS", 
                 "Belgaum North Traffic PS", "Belgaum South Traffic PS", "Camp PS", "Kakati PS", "Khadebazar PS", 
                 "Malamaruthi PS", "Marihal PS", "Market PS", "Shahapura PS", "Tilakwadi PS", "Udyambag PS",
@@ -77,7 +77,7 @@ object Constants {
                 "FPB Belagavi City", "MCU Belagavi City", "DCRB Belagavi City", "DSB Belagavi City", "SMMC Belagavi City",
                 "State INT Belagavi City", "DCRE Belagavi City", "Lokayukta Belagavi City", "ESCOM Belagavi City"
             )
-            "Belagavi Dist" -> listOf(
+            "Belagavi Dist -NR" -> listOf(
                 "Ankalgi PS", "Ankali PS", "Athani PS", "Bailahongal PS", "Basaweshwar Chowk PS",
                 "Belagavi CEN Crime PS", "Belagavi Women PS", "Chikkodi PS", "Chikkodi Town Traffic PS",
                 "Doddawad PS", "Ghataprabha PS", "Gokak Rural PS", "Gokak Town PS", "Harugeri PS",
@@ -89,7 +89,7 @@ object Constants {
                 "FPB Belagavi Dist", "MCU Belagavi Dist", "DCRB Belagavi Dist", "DSB Belagavi Dist", "SMMC Belagavi Dist",
                 "State INT Belagavi Dist", "DCRE Belagavi Dist", "Lokayukta Belagavi Dist", "ESCOM Belagavi Dist"
             )
-            "Bengaluru City" -> listOf(
+            "Bengaluru City -COP" -> listOf(
                 "Adugodi PS", "Adugodi Traffic PS", "Airport Traffic PS", "Amruthahally PS", "Annapoorneshwari Nagar PS", 
                 "Ashoknagar PS", "Bagalagunte PS", "Bagalur PS", "Banasawadi Traffic PS", "Banashankari PS", 
                 "Banashankari Traffic PS", "Banaswadi PS", "Bandepalya PS", "Basavanagudi PS", "Basavanagudi Traffic PS", 
@@ -133,7 +133,7 @@ object Constants {
                 "FPB Bengaluru City", "MCU Bengaluru City", "DCRB Bengaluru City", "DSB Bengaluru City", "SMMC Bengaluru City",
                 "State INT Bengaluru City", "DCRE Bengaluru City", "Lokayukta Bengaluru City", "ESCOM Bengaluru City"
             )
-            "Bengaluru Dist" -> listOf(
+            "Bengaluru Dist -CR" -> listOf(
                 "Anekal PS", "Anugondanahalli PS", "Attibele PS", "Avalahally PS", "Bannerghatta PS",
                 "Bengaluru CEN Crime PS", "Bengaluru Dist Women PS", "Chennarayapatana PS", "Dobbespet PS",
                 "Doddaballapura Rural PS", "Doddaballapura Town PS", "Doddabelavangala PS", "Hebbagodi PS",
@@ -145,7 +145,7 @@ object Constants {
                 "FPB Bengaluru Dist", "MCU Bengaluru Dist", "DCRB Bengaluru Dist", "DSB Bengaluru Dist", "SMMC Bengaluru Dist",
                 "State INT Bengaluru Dist", "DCRE Bengaluru Dist", "Lokayukta Bengaluru Dist", "ESCOM Bengaluru Dist"
             )
-            "Bidar" -> listOf(
+            "Bidar -NR" -> listOf(
                 "Aurad PS", "Bagdal PS", "Basava Kalyana Rural PS", "Basava Kalyana Town PS",
                 "Basava Kalyana Traffic PS", "Bemalkhed PS", "Bhalki Rural PS", "Bhalki Town PS",
                 "Bidar CEN Crime PS", "Bidar Rural PS", "Bidar Town PS", "Bidar Traffic PS", "Bidar Women PS",
@@ -157,7 +157,7 @@ object Constants {
                 "FPB Bidar", "MCU Bidar", "DCRB Bidar", "DSB Bidar", "SMMC Bidar",
                 "State INT Bidar", "DCRE Bidar", "Lokayukta Bidar", "ESCOM Bidar"
             )
-            "Chamarajanagar" -> listOf(
+            "Chamarajanagar -SR" -> listOf(
                 "Begur PS", "Chamarajanagar CEN Crime PS", "Chamarajanagar East PS", "Chamarajanagar Rural PS",
                 "Chamarajanagar Town PS", "Chamarajanagar Traffic PS", "Chamrajanagar Women ps", "Gundlupete PS",
                 "Hanur PS", "Kollegala Rural PS", "Kollegala Town PS", "Kuderu PS", "M.M. Hills PS",
@@ -166,7 +166,7 @@ object Constants {
                 "FPB Chamarajanagar", "MCU Chamarajanagar", "DCRB Chamarajanagar", "DSB Chamarajanagar", "SMMC Chamarajanagar",
                 "State INT Chamarajanagar", "DCRE Chamarajanagar", "Lokayukta Chamarajanagar", "ESCOM Chamarajanagar"
             )
-            "Chikkaballapura" -> listOf(
+            "Chikkaballapura -CR" -> listOf(
                 "Bagepalli PS", "Batlahalli PS", "Chelur PS", "Chikkaballapura CEN Crime PS",
                 "Chikkaballapura Rural PS", "Chikkaballapura Town PS", "Chikkaballapura Traffic PS",
                 "Chikkaballapura Women PS", "Chintamani Rural PS", "Chintamani Town PS", "Dibburahalli PS",
@@ -177,7 +177,7 @@ object Constants {
                 "FPB Chikkaballapura", "MCU Chikkaballapura", "DCRB Chikkaballapura", "DSB Chikkaballapura", "SMMC Chikkaballapura",
                 "State INT Chikkaballapura", "DCRE Chikkaballapura", "Lokayukta Chikkaballapura", "ESCOM Chikkaballapura"
             )
-            "Chikkamagaluru" -> listOf(
+            "Chikkamagaluru -WR" -> listOf(
                 "Ajjampura PS", "Aldur PS", "Balehonnur PS", "Balur PS", "Banakal PS", "Basavanahalli PS",
                 "Birur PS", "Chickmagalur CEN Crime PS", "Chickmagalur Rural PS", "Chickmagalur Town PS",
                 "Chickmagalur Traffic PS", "Chickmagalur Women PS", "Gonibeedu PS", "Hariharapura PS",
@@ -189,7 +189,7 @@ object Constants {
                 "FPB Chikkamagaluru", "MCU Chikkamagaluru", "DCRB Chikkamagaluru", "DSB Chikkamagaluru", "SMMC Chikkamagaluru",
                 "State INT Chikkamagaluru", "DCRE Chikkamagaluru", "Lokayukta Chikkamagaluru", "ESCOM Chikkamagaluru"
             )
-            "Chitradurga" -> listOf(
+            "Chitradurga -ER" -> listOf(
                 "Abbinahole PS", "Bharamasagara PS", "Challakere PS", "Chikkajajur PS",
                 "Chitradurga CEN Crime PS", "Chitradurga Extension PS", "Chitradurga Kote PS",
                 "Chitradurga Rural PS", "Chitradurga Town PS", "Chitradurga Traffic PS",
@@ -200,7 +200,7 @@ object Constants {
                 "FPB Chitradurga", "MCU Chitradurga", "DCRB Chitradurga", "DSB Chitradurga", "SMMC Chitradurga",
                 "State INT Chitradurga", "DCRE Chitradurga", "Lokayukta Chitradurga", "ESCOM Chitradurga"
             )
-            "Dakshina Kannada" -> listOf(
+            "Dakshina Kannada -WR" -> listOf(
                 "Bantwala Rural PS", "Bantwala Town PS", "Bantwala Traffic PS", "Bellare PS", "Belthangadi PS",
                 "Belthangadi Traffic PS", "Dharmasthala PS", "DK CEN Crime PS", "DK Women PS", "Kadaba PS",
                 "Punjalkatte PS", "Puttur Rural PS", "Puttur Town PS", "Puttur Traffic PS", "Subramanya PS",
@@ -209,7 +209,7 @@ object Constants {
                 "FPB Dakshina Kannada", "MCU Dakshina Kannada", "DCRB Dakshina Kannada", "DSB Dakshina Kannada", "SMMC Dakshina Kannada",
                 "State INT Dakshina Kannada", "DCRE Dakshina Kannada", "Lokayukta Dakshina Kannada", "ESCOM Dakshina Kannada"
             )
-            "Davanagere" -> listOf(
+            "Davanagere -ER" -> listOf(
                 "Azad Nagar PS", "Basavanagara PS", "Basavapatna PS", "Bilichodu PS", "Channagiri PS",
                 "Davanagere CEN Crime PS", "Davanagere Extention PS", "Davanagere Rural PS",
                 "Davanagere South Traffic PS", "Davanagere Women PS", "Davangere North Traffic PS",
@@ -220,14 +220,14 @@ object Constants {
                 "FPB Davanagere", "MCU Davanagere", "DCRB Davanagere", "DSB Davanagere", "SMMC Davanagere",
                 "State INT Davanagere", "DCRE Davanagere", "Lokayukta Davanagere", "ESCOM Davanagere"
             )
-            "Dharwad" -> listOf(
+            "Dharwad -NR" -> listOf(
                 "Alnavar PS", "Annigeri PS", "Dharwad CEN Crime PS", "Dharwad Rural PS", "Dharwad Women PS",
                 "Garag PS", "Gudageri PS", "Hubli Rural PS", "Kalaghatagi PS", "Kundagol PS", "Navalgund PS",
                 "Control Room Dharwad", "DPO Dharwad", "Computer Sec Dharwad", "DAR Dharwad",
                 "FPB Dharwad", "MCU Dharwad", "DCRB Dharwad", "DSB Dharwad", "SMMC Dharwad",
                 "State INT Dharwad", "DCRE Dharwad", "Lokayukta Dharwad", "ESCOM Dharwad"
             )
-            "Gadag" -> listOf(
+            "Gadag -NR" -> listOf(
                 "Betageri PS", "Betageri Extention PS", "Gadag CEN Crime PS", "Gadag Rural PS",
                 "Gadag Town PS", "Gadag Traffic PS", "Gadag Women PS", "Gajendragad PS", "Lakshmeshwar PS",
                 "Mulagund PS", "Mundargi PS", "Naregal PS", "Nargund PS", "Ron PS", "Shirahatti PS",
@@ -235,7 +235,7 @@ object Constants {
                 "FPB Gadag", "MCU Gadag", "DCRB Gadag", "DSB Gadag", "SMMC Gadag",
                 "State INT Gadag", "DCRE Gadag", "Lokayukta Gadag", "ESCOM Gadag"
             )
-            "Hassan" -> listOf(
+            "Hassan -SR" -> listOf(
                 "Alur PS", "Arakalagud PS", "Arasikere Rural PS", "Arasikere Town PS", "Arehalli PS",
                 "Banavara PS", "Belur PS", "Channarayapatna Rural PS", "Channarayapatna Town PS",
                 "Channarayapatna Traffic PS", "Dudda PS", "Gandasi PS", "Goruru PS", "Halebeedu PS",
@@ -248,7 +248,7 @@ object Constants {
                 "FPB Hassan", "MCU Hassan", "DCRB Hassan", "DSB Hassan", "SMMC Hassan",
                 "State INT Hassan", "DCRE Hassan", "Lokayukta Hassan", "ESCOM Hassan"
             )
-            "Haveri" -> listOf(
+            "Haveri -ER" -> listOf(
                 "Adur PS", "Bankapura PS", "Byadagi PS", "Guttal PS", "Halageri PS", "Hanagal PS",
                 "Hansabhavi PS", "Haveri CEN Crime PS", "Haveri Rural PS", "Haveri Town PS",
                 "Haveri Traffic PS", "Haveri Women PS", "Hirekerur PS", "Hulagur PS", "Kaginele PS",
@@ -258,7 +258,7 @@ object Constants {
                 "FPB Haveri", "MCU Haveri", "DCRB Haveri", "DSB Haveri", "SMMC Haveri",
                 "State INT Haveri", "DCRE Haveri", "Lokayukta Haveri", "ESCOM Haveri"
             )
-            "Hubballi Dharwad City" -> listOf(
+            "Hubballi Dharwad City -COP" -> listOf(
                 "APMC Navanagar", "Ashoknagar PS", "Bendigeri PS", "CEN Crime PS Hubballi Dharwad City", 
                 "Dharwad Sub-Urban PS", "Dharwad Town PS", "Dharwad Traffic PS", "E and N Crime PS HD city", 
                 "Ghantikeri PS", "Gokul Road PS", "HD City Women PS", "Hubballi East Traffic PS", 
@@ -269,7 +269,7 @@ object Constants {
                 "FPB Hubballi Dharwad City", "MCU Hubballi Dharwad City", "DCRB Hubballi Dharwad City", "DSB Hubballi Dharwad City", "SMMC Hubballi Dharwad City",
                 "State INT Hubballi Dharwad City", "DCRE Hubballi Dharwad City", "Lokayukta Hubballi Dharwad City", "ESCOM Hubballi Dharwad City"
             )
-            "K.G.F" -> listOf(
+            "K.G.F -CR" -> listOf(
                 "Andersonpet PS", "Bangarpet PS", "BEML Nagar PS", "Bethamangala PS", "Budikote PS",
                 "Champion Reefs PS", "Kamasamudram PS", "KGF CEN Crime PS", "Kyasamballi PS",
                 "Marikuppam PS", "Oorgaum PS", "Robertsonpet PS",
@@ -277,7 +277,7 @@ object Constants {
                 "FPB K.G.F", "MCU K.G.F", "DCRB K.G.F", "DSB K.G.F", "SMMC K.G.F",
                 "State INT K.G.F", "DCRE K.G.F", "Lokayukta K.G.F", "ESCOM K.G.F"
             )
-            "Kalaburagi" -> listOf(
+            "Kalaburagi -NER" -> listOf(
                 "Afzalpur PS", "Alland PS", "Chincholi PS", "Chittapura PS", "Devalagangapur PS", "Jewargi PS",
                 "Kalaburagi CEN Crime PS", "Kalaburagi Women PS", "Kalagi PS", "Kamalapur PS", "Kunchavaram PS",
                 "Kurakunta PS", "Madanahipparga PS", "Madbool PS", "Mahagoan PS", "Malkhed PS", "Miryan PS",
@@ -287,7 +287,7 @@ object Constants {
                 "FPB Kalaburagi", "MCU Kalaburagi", "DCRB Kalaburagi", "DSB Kalaburagi", "SMMC Kalaburagi",
                 "State INT Kalaburagi", "DCRE Kalaburagi", "Lokayukta Kalaburagi", "ESCOM Kalaburagi"
             )
-            "Kalaburagi City" -> listOf(
+            "Kalaburagi City -COP" -> listOf(
                 "Ashoknagar PS", "Brahmapur PS", "Chowk PS", "Ferhatabad PS", "Kalaburagi City CENCrime PS", 
                 "Kalaburagi City Women PS", "Kalaburagi Traffic I PS", "Kalaburagi Traffic II PS", "MB Nagar PS", 
                 "Ragavendranagar PS", "Roza PS", "Station Bazar PS", "Sub Urban PS", "University PS",
@@ -295,7 +295,7 @@ object Constants {
                 "FPB Kalaburagi City", "MCU Kalaburagi City", "DCRB Kalaburagi City", "DSB Kalaburagi City", "SMMC Kalaburagi City",
                 "State INT Kalaburagi City", "DCRE Kalaburagi City", "Lokayukta Kalaburagi City", "ESCOM Kalaburagi City"
             )
-            "Kodagu" -> listOf(
+            "Kodagu -SR" -> listOf(
                 "Bhagamandala PS", "Gonikoppa PS", "Kodagu CEN Crime PS", "Kodagu Women PS",
                 "Kushalanagar Rural PS", "Kushalnagar Town PS", "Kushalnagar Traffic PS", "Kutta PS",
                 "Madikeri Rural PS", "Madikeri Town PS", "Madikeri Traffic PS", "Napoklu PS",
@@ -305,7 +305,7 @@ object Constants {
                 "FPB Kodagu", "MCU Kodagu", "DCRB Kodagu", "DSB Kodagu", "SMMC Kodagu",
                 "State INT Kodagu", "DCRE Kodagu", "Lokayukta Kodagu", "ESCOM Kodagu"
             )
-            "Kolar" -> listOf(
+            "Kolar -CR" -> listOf(
                 "Gownapalli PS", "Gulpet PS", "Kolar CEN Crime PS", "Kolar Rural PS", "Kolar Town PS",
                 "Kolar Traffic PS", "Kolar Women PS", "Malur PS", "Masti PS", "Mulbagal Rural PS",
                 "Mulbagal Town PS", "Nangli PS", "Rayalpad PS", "Srinivasapura PS", "Vemagal PS",
@@ -313,7 +313,7 @@ object Constants {
                 "FPB Kolar", "MCU Kolar", "DCRB Kolar", "DSB Kolar", "SMMC Kolar",
                 "State INT Kolar", "DCRE Kolar", "Lokayukta Kolar", "ESCOM Kolar"
             )
-            "Koppal" -> listOf(
+            "Koppal -BR" -> listOf(
                 "Alwandi PS", "Bevoor PS", "Gangavathi Rural PS", "Gangavathi Town PS", "Gangavathi Traffic PS",
                 "Hanumasagar PS", "Kanakagiri PS", "Karatagi PS", "Koppal CEN Crime PS", "Koppal Rural PS",
                 "Koppal Town PS", "Koppal Traffic PS", "Koppal Women PS", "Kuknoor PS", "Kushtagi PS",
@@ -322,7 +322,7 @@ object Constants {
                 "FPB Koppal", "MCU Koppal", "DCRB Koppal", "DSB Koppal", "SMMC Koppal",
                 "State INT Koppal", "DCRE Koppal", "Lokayukta Koppal", "ESCOM Koppal"
             )
-            "Mandya" -> listOf(
+            "Mandya -SR" -> listOf(
                 "Arakere PS", "Basaralu PS", "Belakavadi PS", "Bellur PS", "Besagaraghalli PS",
                 "Bindiganavile PS", "Halagur PS", "K.M. Doddi PS", "K.R. Pet Rural PS", "K.R. Pet Town PS",
                 "K.R. Sagar PS", "Keragodu PS", "Kesthur PS", "Kikkeri PS", "Kirugavalu PS", "Koppa PS",
@@ -335,7 +335,7 @@ object Constants {
                 "FPB Mandya", "MCU Mandya", "DCRB Mandya", "DSB Mandya", "SMMC Mandya",
                 "State INT Mandya", "DCRE Mandya", "Lokayukta Mandya", "ESCOM Mandya"
             )
-            "Mangaluru City" -> listOf(
+            "Mangaluru City -COP" -> listOf(
                 "Bajpe PS", "Barke PS", "CEN Crime PS Mangaluru City", "E and N Crime PS Mangaluru City", 
                 "Kankanady Town PS", "Kavoor PS", "Mangalore East PS", "Mangalore East Traffic PS", 
                 "Mangalore North PS", "Mangalore Rural PS", "Mangalore South PS", "Mangalore West Traffic PS", 
@@ -345,7 +345,7 @@ object Constants {
                 "FPB Mangaluru City", "MCU Mangaluru City", "DCRB Mangaluru City", "DSB Mangaluru City", "SMMC Mangaluru City",
                 "State INT Mangaluru City", "DCRE Mangaluru City", "Lokayukta Mangaluru City", "ESCOM Mangaluru City"
             )
-            "Mysuru City" -> listOf(
+            "Mysuru City -COP" -> listOf(
                 "Alanahally PS", "Ashokpuram PS", "CEN Crime PS Mysuru City", "Devaraja PS", "Deveraja Traffic PS", 
                 "E and N Crime PS Mysuru City", "Hebbal PS", "Jayalakshmipuram PS", "Krishnaraja PS", 
                 "Krishnaraja Traffic PS", "Kuvempunagar PS", "Lashkar PS", "Laxmipuram PS", "Mandi PS", 
@@ -356,7 +356,7 @@ object Constants {
                 "FPB Mysuru City", "MCU Mysuru City", "DCRB Mysuru City", "DSB Mysuru City", "SMMC Mysuru City",
                 "State INT Mysuru City", "DCRE Mysuru City", "Lokayukta Mysuru City", "ESCOM Mysuru City"
             )
-            "Mysuru Dist" -> listOf(
+            "Mysuru Dist -SR" -> listOf(
                 "Bannur PS", "Beechanahalli PS", "Bettadapura PS", "Biligere PS", "Bilikere PS", "Bylakuppe PS",
                 "H.D. Kote PS", "Hullahalli PS", "Hunusur Rural PS", "Hunusur Town PS", "Jayapura PS",
                 "K.R. Nagar PS", "Kowlande PS", "Mysuru CEN Crime PS", "Mysuru South PS", "Mysuru Women PS",
@@ -366,7 +366,7 @@ object Constants {
                 "FPB Mysuru Dist", "MCU Mysuru Dist", "DCRB Mysuru Dist", "DSB Mysuru Dist", "SMMC Mysuru Dist",
                 "State INT Mysuru Dist", "DCRE Mysuru Dist", "Lokayukta Mysuru Dist", "ESCOM Mysuru Dist"
             )
-            "Raichur" -> listOf(
+            "Raichur -NER" -> listOf(
                 "Balaganoor PS", "Devadurga PS", "Devadurga Traffic PS", "Gabbur PS", "Hutti PS", "Idapanur PS",
                 "Jalhalli PS", "Kowthal PS", "Lingasugur PS", "Manvi PS", "Market Yard PS", "Maski PS",
                 "Mudgal PS", "Netajinagar PS", "Raichur CEN Crime PS", "Raichur Rural PS", "Raichur Traffic PS",
@@ -377,7 +377,7 @@ object Constants {
                 "FPB Raichur", "MCU Raichur", "DCRB Raichur", "DSB Raichur", "SMMC Raichur",
                 "State INT Raichur", "DCRE Raichur", "Lokayukta Raichur", "ESCOM Raichur"
             )
-            "Ramanagara" -> listOf(
+            "Ramanagara -CR" -> listOf(
                 "Akkur PS", "Bidadi PS", "Channapatna East PS", "Channapatna Rural PS", "Channapatna Town PS",
                 "Channapatna Traffic PS", "Harohalli PS", "Ijoor PS", "Kaggalipura PS", "Kanakapura Rural PS",
                 "Kanakapura Town PS", "Kanakapura Traffic PS", "Kodihalli PS", "Kudur PS", "Kumbalagudu PS",
@@ -388,7 +388,7 @@ object Constants {
                 "FPB Ramanagara", "MCU Ramanagara", "DCRB Ramanagara", "DSB Ramanagara", "SMMC Ramanagara",
                 "State INT Ramanagara", "DCRE Ramanagara", "Lokayukta Ramanagara", "ESCOM Ramanagara"
             )
-            "Shivamogga" -> listOf(
+            "Shivamogga -ER" -> listOf(
                 "Agumbe PS", "Anandapura PS", "Anavatti PS", "Bhadravathi New Town PS",
                 "Bhadravathi Old Town PS", "Bhadravathi Rural PS", "Bhadravathi Traffic PS", "Doddapete PS",
                 "Holehonnur PS", "Hosamane PS", "Hosanagara PS", "Jayanagara PS", "Kargal PS", "Kote PS",
@@ -401,7 +401,7 @@ object Constants {
                 "FPB Shivamogga", "MCU Shivamogga", "DCRB Shivamogga", "DSB Shivamogga", "SMMC Shivamogga",
                 "State INT Shivamogga", "DCRE Shivamogga", "Lokayukta Shivamogga", "ESCOM Shivamogga"
             )
-            "Tumakuru" -> listOf(
+            "Tumakuru -CR" -> listOf(
                 "Amruthur PS", "Arasikere PS", "Badavanahalli PS", "Bellavi PS", "Chandrashekarpura PS",
                 "Chelur PS", "Chikkanayakanahalli PS", "Dandina Shivara PS", "Gubbi PS", "Handanakere PS",
                 "Hebbur PS", "Honnavalli PS", "Huliyar PS", "Huliyurdurga PS", "Jayanagara PS",
@@ -415,7 +415,7 @@ object Constants {
                 "FPB Tumakuru", "MCU Tumakuru", "DCRB Tumakuru", "DSB Tumakuru", "SMMC Tumakuru",
                 "State INT Tumakuru", "DCRE Tumakuru", "Lokayukta Tumakuru", "ESCOM Tumakuru"
             )
-            "Udupi" -> listOf(
+            "Udupi -WR" -> listOf(
                 "Ajekar PS", "Amasebailu PS", "Brahmavar PS", "Byndoor PS", "Gangolli PS", "Hebri PS",
                 "Hiriadka PS", "Kapu PS", "Karkala Rural PS", "Karkala Town PS", "Kollur PS", "Kota PS",
                 "Kundapura PS", "Kundapura Rural PS", "Kundapura Traffic PS", "Malpe PS", "Manipal PS",
@@ -425,7 +425,7 @@ object Constants {
                 "FPB Udupi", "MCU Udupi", "DCRB Udupi", "DSB Udupi", "SMMC Udupi",
                 "State INT Udupi", "DCRE Udupi", "Lokayukta Udupi", "ESCOM Udupi"
             )
-            "Uttara Kannada" -> listOf(
+            "Uttara Kannada -WR" -> listOf(
                 "Ambikanagar PS", "Ankola PS", "Banavasi PS", "Bhatkal Rural PS", "Bhatkal Town PS",
                 "Chittakula PS", "Dandeli Rural PS", "Dandeli Town PS", "Gokarna PS", "Haliyal PS",
                 "Honnavara PS", "Joida PS", "Kadra PS", "Karwar Railway PS", "Karwar Rural PS",
@@ -436,7 +436,7 @@ object Constants {
                 "FPB Uttara Kannada", "MCU Uttara Kannada", "DCRB Uttara Kannada", "DSB Uttara Kannada", "SMMC Uttara Kannada",
                 "State INT Uttara Kannada", "DCRE Uttara Kannada", "Lokayukta Uttara Kannada", "ESCOM Uttara Kannada"
             )
-            "Vijayanagara" -> listOf(
+            "Vijayanagara -BR" -> listOf(
                 "Arasikere PS", "Chigateri PS", "Chittavadagi PS", "Gudekote PS", "Hadagali PS",
                 "Hagaribommanahalli PS", "Halavagilu PS", "Hampi Tourism PS", "Hampi Traffic PS",
                 "Harapanahalli PS", "Hirehadagali PS", "Hosahalli PS", "Hospet Extention PS",
@@ -446,7 +446,7 @@ object Constants {
                 "FPB Vijayanagara", "MCU Vijayanagara", "DCRB Vijayanagara", "DSB Vijayanagara", "SMMC Vijayanagara",
                 "State INT Vijayanagara", "DCRE Vijayanagara", "Lokayukta Vijayanagara", "ESCOM Vijayanagara"
             )
-            "Vijayapur" -> listOf(
+            "Vijayapur -NR" -> listOf(
                 "Adarsh Nagar PS", "Alamatti PS", "Almel PS", "APMC PS", "Babaleshwar PS",
                 "Basavan Bagewadi PS", "Chadachan PS", "Devara Hipparagi PS", "Gandhi Chowk PS",
                 "Golgumbaz PS", "Hortti PS", "Indi PS", "Indi Rural PS", "Jalanagar PS", "Kalkeri PS",
@@ -457,7 +457,7 @@ object Constants {
                 "FPB Vijayapur", "MCU Vijayapur", "DCRB Vijayapur", "DSB Vijayapur", "SMMC Vijayapur",
                 "State INT Vijayapur", "DCRE Vijayapur", "Lokayukta Vijayapur", "ESCOM Vijayapur"
             )
-            "Yadgir" -> listOf(
+            "Yadgir -NER" -> listOf(
                 "Bheemarayanagudi PS", "Gogi PS", "Gurumitkal PS", "Hunasagi PS", "Kembhavi PS",
                 "Kodekal PS", "Narayanapura PS", "Saidapur PS", "Shahapur PS", "Shorapur PS",
                 "Wadigere PS", "Yadgiri CEN Crime PS", "Yadgiri Rural PS", "Yadgiri Town PS",

@@ -205,25 +205,15 @@ fun EmployeeRow(
                             )
                         }
 
-                        // Delete Button
+                        // Delete Button (Commented out/Removed for User App)
+                        /*
                         IconButton(
                             onClick = {
-                                viewModel.deleteEmployee(employee.kgid, employee.photoUrl)
+                                // viewModel.deleteEmployee(employee.kgid, employee.photoUrl)
                             },
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(
-                                    color = Color.White.copy(alpha = 0.2f),
-                                    shape = CircleShape
-                                )
-                        ) {
-                            Icon(
-                                Icons.Filled.Delete, 
-                                contentDescription = "Delete", 
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                            ...
+                        )
+                        */
                     }
                 }
             }

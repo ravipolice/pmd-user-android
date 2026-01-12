@@ -53,17 +53,17 @@ fun NavigationDrawer(
     val isAdmin by viewModel.isAdmin.collectAsState()
     val currentRoute = navController.currentDestination?.route
 
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
+    ModalDrawerSheet(
         modifier = Modifier
-            .fillMaxHeight()
-            .width(280.dp)
+            .width(280.dp),
+        drawerContainerColor = MaterialTheme.colorScheme.surface,
+        windowInsets = WindowInsets(0.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f))
+                .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
 
             // ============================================================

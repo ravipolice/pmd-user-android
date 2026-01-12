@@ -13,6 +13,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.policemobiledirectory.ui.screens.*
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import kotlinx.coroutines.launch
@@ -70,7 +71,6 @@ fun AppNavGraph(
                     // ✅ 2. Pass the callback down to the content host
                     onGoogleSignInClicked = onGoogleSignInClicked,
                     startDestination = startDestination,
-                    modifier = androidx.compose.ui.Modifier.padding(innerPadding)
                 )
             }
         }

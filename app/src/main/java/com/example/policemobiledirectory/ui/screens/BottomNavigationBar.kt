@@ -38,7 +38,9 @@ fun BottomNavigationBar(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    Box(
+    NavigationBar(
+        containerColor = BackgroundLight, // Light off-white background
+        contentColor = TextPrimary,
         modifier = Modifier
             .shadow(
                 elevation = 8.dp,
@@ -47,11 +49,6 @@ fun BottomNavigationBar(
                 ambientColor = CardShadow.copy(alpha = 0.5f)
             )
     ) {
-        NavigationBar(
-            containerColor = BackgroundLight, // Light off-white background
-            contentColor = TextPrimary,
-            modifier = Modifier
-        ) {
         bottomNavItems.forEach { item ->
             val isSelected = currentRoute == item.route
 
@@ -103,7 +100,6 @@ fun BottomNavigationBar(
                     }
                 }
             )
-        }
         }
     }
 }

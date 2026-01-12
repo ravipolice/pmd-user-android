@@ -135,6 +135,8 @@ open class EmployeeViewModel @Inject constructor(
         val rank: String
     )
 
+    private var adminNotificationsListener: ListenerRegistration? = null
+
 
     private val searchFiltersFlow = combine(
         _debouncedSearchQuery, // Use debounced query
@@ -280,6 +282,12 @@ open class EmployeeViewModel @Inject constructor(
     val userNotificationsLastSeen = _userNotificationsLastSeen.asStateFlow()
     private val _userNotifications = MutableStateFlow<List<AppNotification>>(emptyList())
     val userNotifications: StateFlow<List<AppNotification>> = _userNotifications.asStateFlow()
+
+    private val _adminNotifications = MutableStateFlow<List<AppNotification>>(emptyList())
+    val adminNotifications: StateFlow<List<AppNotification>> = _adminNotifications.asStateFlow()
+
+    private val _adminNotificationsLastSeen = MutableStateFlow(0L)
+    val adminNotificationsLastSeen: StateFlow<Long> = _adminNotificationsLastSeen.asStateFlow()
 
     val filteredEmployees: StateFlow<List<Employee>> = combine(_employees, searchFiltersFlow, _isAdmin) { employees, filters, isAdmin ->
         // Early exit if no employees
@@ -456,6 +464,13 @@ open class EmployeeViewModel @Inject constructor(
         viewModelScope.launch {
             sessionManager.userNotificationsSeenAt.collect { lastSeen ->
                 _userNotificationsLastSeen.value = lastSeen
+            }
+        }
+
+
+        viewModelScope.launch {
+            sessionManager.adminNotificationsSeenAt.collect { lastSeen ->
+                _adminNotificationsLastSeen.value = lastSeen
             }
         }
     }
@@ -1197,12 +1212,17 @@ open class EmployeeViewModel @Inject constructor(
         }
     }
 
-    private val _saveStatus = MutableStateFlow<RepoResult<String>?>(null)
-    val saveStatus: StateFlow<RepoResult<String>?> = _saveStatus.asStateFlow()
+    private val _saveStatus = MutableStateFlow<RepoResult<Boolean>?>(null)
+    val saveStatus: StateFlow<RepoResult<Boolean>?> = _saveStatus.asStateFlow()
 
     fun resetSaveStatus() {
         _saveStatus.value = null
     }
+
+    fun resetPendingStatus() {
+        _pendingStatus.value = OperationStatus.Idle
+    }
+
 
     fun saveEmployee(employee: Employee, photoUri: Uri?) {
         viewModelScope.launch {
@@ -1338,6 +1358,35 @@ open class EmployeeViewModel @Inject constructor(
     }
 
     // This generic helper can be used if needed, but isn't strictly necessary with the current implementations
+    fun markNotificationsRead(isAdmin: Boolean, notifications: List<AppNotification>) {
+        if (notifications.isEmpty()) return
+        val maxTimestamp = notifications.maxOfOrNull { it.timestamp ?: 0L } ?: 0L
+        viewModelScope.launch {
+            if (isAdmin) {
+                sessionManager.setAdminNotificationsSeen(maxTimestamp)
+            } else {
+                sessionManager.setUserNotificationsSeen(maxTimestamp)
+            }
+        }
+    }
+    
+    // Suspend function for direct image upload (used in registration)
+    suspend fun uploadOfficerImageSuspend(uri: Uri, kgid: String): RepoResult<String> {
+        return try {
+            val result = imageRepo.uploadOfficerImage(uri, kgid)
+                .filter { it is OperationStatus.Success || it is OperationStatus.Error }
+                .first()
+                
+            when (result) {
+                is OperationStatus.Success -> RepoResult.Success(result.data)
+                is OperationStatus.Error -> RepoResult.Error(null, result.message)
+                else -> RepoResult.Error(null, "Upload failed")
+            }
+        } catch (e: Exception) {
+            RepoResult.Error(e)
+        }
+    }
+
     private fun <T> launchOperationForResult(stateFlow: MutableStateFlow<OperationStatus<T>>, block: suspend () -> Flow<RepoResult<T>>) = viewModelScope.launch {
         stateFlow.value = OperationStatus.Loading
         block().collectLatest { result ->

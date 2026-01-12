@@ -79,8 +79,9 @@ object AppModule {
         @ApplicationContext context: Context,
         firestore: FirebaseFirestore,
         apiService: ConstantsApiService,
-        securityConfig: SecurityConfig
-    ): ConstantsRepository = ConstantsRepository(context, apiService, securityConfig, firestore)
+        securityConfig: SecurityConfig,
+        employeeDao: EmployeeDao
+    ): ConstantsRepository = ConstantsRepository(context, apiService, securityConfig, firestore, employeeDao)
 
     @Provides
     @Singleton
