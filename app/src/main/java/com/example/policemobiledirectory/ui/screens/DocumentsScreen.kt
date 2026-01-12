@@ -112,6 +112,7 @@ fun DocumentsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("Documents") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -137,7 +138,8 @@ fun DocumentsScreen(
                     Icon(Icons.Default.UploadFile, contentDescription = "Upload")
                 }
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(0.dp)
     ) { innerPadding ->
 
         Surface(

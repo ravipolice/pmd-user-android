@@ -45,8 +45,10 @@ fun AboutScreen(navController: NavController) {
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("About App") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {

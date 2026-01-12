@@ -64,6 +64,7 @@ fun NavigationDrawer(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f))
+                .navigationBarsPadding() // ✅ Fix: Account for system navigation bar to prevent overlap
         ) {
 
             // ============================================================

@@ -128,8 +128,10 @@ fun GalleryScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("Gallery") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {

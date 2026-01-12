@@ -195,24 +195,17 @@ class ConstantsRepository @Inject constructor(
     }
 
     /**
-     * Get ranks with fallback to hardcoded constants
+     * Get ranks from local Constants to ensure updated list is used
      */
     fun getRanks(): List<String> {
-        val cached = getCachedData()
-        return cached?.ranks?.sorted() ?: Constants.allRanksList
+        return Constants.allRanksList
     }
 
     /**
-     * Get districts with fallback to hardcoded constants
-     * Always returns districts in the same order as Constants.districtsList for consistency
+     * Get districts from local Constants to ensure updated list is used
      */
     fun getDistricts(): List<String> {
-        val cached = getCachedData()
-        val apiDistricts = cached?.districts?.sorted() ?: emptyList()
-        // Always start with hardcoded districts and merge API districts
-        val hardcodedDistricts = Constants.districtsList
-        val mergedDistricts = (hardcodedDistricts + apiDistricts).distinct().sorted()
-        return mergedDistricts
+        return Constants.districtsList
     }
 
     /**

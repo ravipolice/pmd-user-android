@@ -111,9 +111,11 @@ fun EmployeeListScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp), // ✅ Fix: Avoid double status bar padding (already handled by AppNavGraph)
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("PMD Home")
