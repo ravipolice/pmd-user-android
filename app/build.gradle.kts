@@ -14,7 +14,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.pmd.userapp"
+        applicationId = "com.example.policemobiledirectory"
         minSdk = 26
         targetSdk = 35
         versionCode = 2
