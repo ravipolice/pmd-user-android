@@ -13,8 +13,21 @@ android {
     namespace = "com.example.policemobiledirectory"
     compileSdk = 35
 
+    flavorDimensions += "version"
+    productFlavors {
+        create("admin") {
+            dimension = "version"
+            applicationId = "com.example.policemobiledirectory"
+            resValue("string", "app_name", "PMD Admin")
+        }
+        create("user") {
+            dimension = "version"
+            applicationId = "com.pmd.userapp"
+            resValue("string", "app_name", "PMD User")
+        }
+    }
+
     defaultConfig {
-        applicationId = "com.example.policemobiledirectory"
         minSdk = 26
         targetSdk = 35
         versionCode = 2
