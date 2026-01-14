@@ -16,6 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,6 +42,8 @@ fun AdminPanelScreen(
     constantsViewModel: ConstantsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf("Dashboard", "Officers")
     
     // Collect specific lists to get counts
     // Use the correct StateFlows from EmployeeViewModel
@@ -104,205 +109,242 @@ fun AdminPanelScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
-            TopAppBar(
-                title = { 
-                    Column {
-                        Text(
-                            text = "Admin Dashboard",
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Police Mobile Directory",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+            Column {
+                TopAppBar(
+                    windowInsets = WindowInsets(0.dp),
+                    title = { 
+                        Column {
+                            Text(
+                                text = "Admin Dashboard",
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Police Mobile Directory",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.navigateUp() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
-            )
+                
+                // Tabs
+                TabRow(selectedTabIndex = selectedTab) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = { Text(title) }
+                        )
+                    }
+                }
+            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(
-                start = 16.dp, 
-                end = 16.dp, 
-                top = padding.calculateTopPadding() + 16.dp, 
-                bottom = 24.dp
-            ),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            
-            // --- SECTION 1: STATISTICS ---
-            item(span = { GridItemSpan(2) }) {
+        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+            when (selectedTab) {
+                0 -> AdminDashboardGrid(
+                    navController = navController,
+                    viewModel = viewModel,
+                    constantsViewModel = constantsViewModel,
+                    totalEmployeesCount = totalEmployeesCount,
+                    pendingCount = pendingCount
+                )
+                1 -> OfficerListContent(
+                    viewModel = viewModel,
+                    constantsViewModel = constantsViewModel,
+                    onAddOfficer = { navController.navigate(Routes.ADD_OFFICER) },
+                    onEditOfficer = { id -> navController.navigate("${Routes.EDIT_OFFICER}/$id") }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AdminDashboardGrid(
+    navController: NavController,
+    viewModel: EmployeeViewModel,
+    constantsViewModel: ConstantsViewModel,
+    totalEmployeesCount: Int,
+    pendingCount: Int
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        
+        // --- SECTION 1: STATISTICS ---
+        item(span = { GridItemSpan(2) }) {
+            Text(
+                text = "Overview",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        item(span = { GridItemSpan(2) }) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                DashboardStatCard(
+                    title = "Total Employees",
+                    count = totalEmployeesCount.toString(),
+                    icon = Icons.Outlined.People,
+                    colorStart = Color(0xFF2196F3), // Blue
+                    colorEnd = Color(0xFF64B5F6),
+                    modifier = Modifier.weight(1f).clickable { 
+                        navController.navigate(Routes.EMPLOYEE_STATS) 
+                    }
+                )
+                
+                DashboardStatCard(
+                    title = "Pending Approvals",
+                    count = pendingCount.toString(),
+                    icon = Icons.Outlined.PendingActions,
+                    colorStart = Color(0xFF009688), // Teal
+                    colorEnd = Color(0xFF4DB6AC),
+                    modifier = Modifier.weight(1f).clickable {
+                        navController.navigate(Routes.PENDING_APPROVALS)
+                    }
+                )
+            }
+        }
+        
+        // --- SECTION 2: MANAGEMENT ---
+        item(span = { GridItemSpan(2) }) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Quick Actions",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        // Row 1
+        item {
+            DashboardActionCard(
+                title = "Send Notification",
+                icon = Icons.Outlined.NotificationsActive,
+                color = Color(0xFFE91E63), // Pink
+                onClick = { navController.navigate(Routes.SEND_NOTIFICATION) }
+            )
+        }
+        item {
+            DashboardActionCard(
+                title = "Upload Database",
+                icon = Icons.Outlined.CloudUpload,
+                color = Color(0xFF3F51B5), // Indigo
+                onClick = { navController.navigate(Routes.UPLOAD_CSV) }
+            )
+        }
+
+        // Row 2
+        item {
+            DashboardActionCard(
+                title = "Manage Resources",
+                icon = Icons.Outlined.Category, // Category/Folder
+                color = Color(0xFFFF9800), // Orange
+                onClick = { navController.navigate(Routes.MANAGE_CONSTANTS) }
+            )
+        }
+        item {
+            DashboardActionCard(
+                title = "Add Useful Link",
+                icon = Icons.Outlined.Link,
+                color = Color(0xFF673AB7), // Deep Purple
+                onClick = { navController.navigate(Routes.ADD_USEFUL_LINK) }
+            )
+        }
+
+        // Row 3
+        item {
+            DashboardActionCard(
+                title = "Upload Document",
+                icon = Icons.Outlined.Description,
+                color = Color(0xFF00BCD4), // Cyan
+                onClick = { navController.navigate(Routes.UPLOAD_DOCUMENT) }
+            )
+        }
+        item {
+            DashboardActionCard(
+                title = "Sync Firestore \u2192 Sheet",
+                icon = Icons.Default.CloudDownload,
+                color = Color(0xFF4CAF50), // Green
+                onClick = { viewModel.syncFirebaseToSheet() }
+            )
+        }
+
+        // Row 4
+        item {
+            DashboardActionCard(
+                title = "Sync Sheet \u2192 Firestore",
+                icon = Icons.Default.CloudUpload,
+                color = Color(0xFF2196F3), // Blue
+                onClick = { viewModel.syncSheetToFirebase() }
+            )
+        }
+        item {
+            DashboardActionCard(
+                title = "Sync Officers (Sheet)",
+                icon = Icons.Default.Badge,
+                color = Color(0xFF9C27B0), // Purple
+                onClick = { viewModel.syncOfficersSheetToFirebase() }
+            )
+        }
+        
+        // Footer Action
+        item(span = { GridItemSpan(2) }) {
+            Button(
+                onClick = { constantsViewModel.clearCacheAndRefresh() },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Refresh System Constants (Clear Cache)")
+            }
+        }
+        
+        // Version Info
+        item(span = { GridItemSpan(2) }) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text = "Overview",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    text = "Admin Panel v2.0 • Modern Grid",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                 )
-            }
-
-            item(span = { GridItemSpan(2) }) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    DashboardStatCard(
-                        title = "Total Employees",
-                        count = totalEmployeesCount.toString(),
-                        icon = Icons.Outlined.People,
-                        colorStart = Color(0xFF2196F3), // Blue
-                        colorEnd = Color(0xFF64B5F6),
-                        modifier = Modifier.weight(1f).clickable { 
-                            navController.navigate(Routes.EMPLOYEE_STATS) 
-                        }
-                    )
-                    
-                    DashboardStatCard(
-                        title = "Pending Approvals",
-                        count = pendingCount.toString(),
-                        icon = Icons.Outlined.PendingActions,
-                        colorStart = Color(0xFF009688), // Teal
-                        colorEnd = Color(0xFF4DB6AC),
-                        modifier = Modifier.weight(1f).clickable {
-                            navController.navigate(Routes.PENDING_APPROVALS)
-                        }
-                    )
-                }
-            }
-            
-            // --- SECTION 2: MANAGEMENT ---
-            item(span = { GridItemSpan(2) }) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Quick Actions",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-
-            // Row 1
-            item {
-                DashboardActionCard(
-                    title = "Send Notification",
-                    icon = Icons.Outlined.NotificationsActive,
-                    color = Color(0xFFE91E63), // Pink
-                    onClick = { navController.navigate(Routes.SEND_NOTIFICATION) }
-                )
-            }
-            item {
-                DashboardActionCard(
-                    title = "Upload Database",
-                    icon = Icons.Outlined.CloudUpload,
-                    color = Color(0xFF3F51B5), // Indigo
-                    onClick = { navController.navigate(Routes.UPLOAD_CSV) }
-                )
-            }
-
-            // Row 2
-            item {
-                DashboardActionCard(
-                    title = "Manage Resources",
-                    icon = Icons.Outlined.Category, // Category/Folder
-                    color = Color(0xFFFF9800), // Orange
-                    onClick = { navController.navigate(Routes.MANAGE_CONSTANTS) }
-                )
-            }
-            item {
-                DashboardActionCard(
-                    title = "Add Useful Link",
-                    icon = Icons.Outlined.Link,
-                    color = Color(0xFF673AB7), // Deep Purple
-                    onClick = { navController.navigate(Routes.ADD_USEFUL_LINK) }
-                )
-            }
-
-            // Row 3
-            item {
-                DashboardActionCard(
-                    title = "Upload Document",
-                    icon = Icons.Outlined.Description,
-                    color = Color(0xFF00BCD4), // Cyan
-                    onClick = { navController.navigate(Routes.UPLOAD_DOCUMENT) }
-                )
-            }
-            item {
-                DashboardActionCard(
-                    title = "Sync Firestore \u2192 Sheet",
-                    icon = Icons.Default.CloudDownload,
-                    color = Color(0xFF4CAF50), // Green
-                    onClick = { viewModel.syncFirebaseToSheet() }
-                )
-            }
-
-            // Row 4
-            item {
-                DashboardActionCard(
-                    title = "Sync Sheet \u2192 Firestore",
-                    icon = Icons.Default.CloudUpload,
-                    color = Color(0xFF2196F3), // Blue
-                    onClick = { viewModel.syncSheetToFirebase() }
-                )
-            }
-            item {
-                DashboardActionCard(
-                    title = "Sync Officers (Sheet)",
-                    icon = Icons.Default.Badge,
-                    color = Color(0xFF9C27B0), // Purple
-                    onClick = { viewModel.syncOfficersSheetToFirebase() }
-                )
-            }
-            
-            // Footer Action
-            item(span = { GridItemSpan(2) }) {
-                Button(
-                    onClick = { constantsViewModel.clearCacheAndRefresh() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Refresh System Constants (Clear Cache)")
-                }
-            }
-            
-            // Version Info
-            item(span = { GridItemSpan(2) }) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Admin Panel v2.0 • Modern Grid",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    )
-                }
             }
         }
     }

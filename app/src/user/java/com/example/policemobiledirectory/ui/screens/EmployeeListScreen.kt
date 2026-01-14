@@ -52,7 +52,7 @@ import com.example.policemobiledirectory.ui.theme.BackgroundLight
 import com.example.policemobiledirectory.ui.theme.SecondaryYellow
 import com.example.policemobiledirectory.utils.Constants
 import com.example.policemobiledirectory.viewmodel.ConstantsViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
 import com.example.policemobiledirectory.utils.OperationStatus
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import kotlinx.coroutines.launch
@@ -82,7 +82,7 @@ fun EmployeeListScreen(
     val isAdmin by viewModel.isAdmin.collectAsStateWithLifecycle()
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
+
     
     // Notification counts
     val userNotifications by viewModel.userNotifications.collectAsStateWithLifecycle()
@@ -111,9 +111,11 @@ fun EmployeeListScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("PMD Home")
@@ -222,7 +224,7 @@ fun EmployeeListScreen(
                 isAdmin = isAdmin,
                 fontScale = fontScale,
                 snackbarHostState = snackbarHostState,
-                coroutineScope = coroutineScope
+
             )
         }
     }
@@ -237,8 +239,9 @@ private fun EmployeeListContent(
     isAdmin: Boolean,
     fontScale: Float,
     snackbarHostState: SnackbarHostState,
-    coroutineScope: CoroutineScope
+
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val filteredEmployees by viewModel.filteredEmployees.collectAsStateWithLifecycle()
     val filteredContacts by viewModel.filteredContacts.collectAsStateWithLifecycle()
     val allContacts by viewModel.allContacts.collectAsStateWithLifecycle()
@@ -381,37 +384,39 @@ private fun EmployeeListContent(
                 onExpandedChange = { unitExpanded = !unitExpanded },
                 modifier = Modifier
                     .weight(1f)
-                    .shadow(
-                        elevation = 2.dp,
-                        shape = RoundedCornerShape(15.dp),
-                        spotColor = CardShadow,
-                        ambientColor = CardShadow.copy(alpha = 0.5f)
-                    )
+
             ) {
-                OutlinedTextField(
-                    value = selectedUnit,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Groups, null, Modifier.size(16.dp), PrimaryTeal)
-                            Spacer(Modifier.width(4.dp))
-                            Text("Unit")
-                        }
-                    },
-                    leadingIcon = { Icon(Icons.Default.Groups, null, tint = PrimaryTeal) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    singleLine = true,
-                    maxLines = 1,
-                    shape = RoundedCornerShape(15.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BorderTeal,
-                        unfocusedBorderColor = BorderTeal,
-                        focusedLabelColor = PrimaryTeal,
-                        unfocusedLabelColor = PrimaryTeal
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                        .border(1.5.dp, Color.Red, RoundedCornerShape(15.dp))
+                ) {
+                    OutlinedTextField(
+                        value = selectedUnit,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Groups, null, Modifier.size(16.dp), PrimaryTeal)
+                                Spacer(Modifier.width(4.dp))
+                                Text("Unit")
+                            }
+                        },
+                        leadingIcon = { Icon(Icons.Default.Groups, null, tint = PrimaryTeal) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        maxLines = 1,
+                        shape = RoundedCornerShape(15.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedLabelColor = PrimaryTeal,
+                            unfocusedLabelColor = PrimaryTeal
+                        )
                     )
-                )
+                }
                 ExposedDropdownMenu(
                     expanded = unitExpanded,
                     onDismissRequest = { unitExpanded = false }
@@ -438,37 +443,39 @@ private fun EmployeeListContent(
                 onExpandedChange = { districtExpanded = !districtExpanded },
                 modifier = Modifier
                     .weight(1f)
-                    .shadow(
-                        elevation = 2.dp,
-                        shape = RoundedCornerShape(15.dp),
-                        spotColor = CardShadow,
-                        ambientColor = CardShadow.copy(alpha = 0.5f)
-                    )
+
             ) {
-                OutlinedTextField(
-                    value = selectedDistrict,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp), PrimaryTeal)
-                            Spacer(Modifier.width(4.dp))
-                            Text("District")
-                        }
-                    },
-                    leadingIcon = { Icon(Icons.Default.LocationOn, null, tint = PrimaryTeal) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    singleLine = true,
-                    maxLines = 1,
-                    shape = RoundedCornerShape(15.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BorderTeal,
-                        unfocusedBorderColor = BorderTeal,
-                        focusedLabelColor = PrimaryTeal,
-                        unfocusedLabelColor = PrimaryTeal
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                        .border(1.5.dp, Color.Red, RoundedCornerShape(15.dp))
+                ) {
+                    OutlinedTextField(
+                        value = selectedDistrict,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp), PrimaryTeal)
+                                Spacer(Modifier.width(4.dp))
+                                Text("District")
+                            }
+                        },
+                        leadingIcon = { Icon(Icons.Default.LocationOn, null, tint = PrimaryTeal) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        maxLines = 1,
+                        shape = RoundedCornerShape(15.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedLabelColor = PrimaryTeal,
+                            unfocusedLabelColor = PrimaryTeal
+                        )
                     )
-                )
+                }
                 ExposedDropdownMenu(
                     expanded = districtExpanded,
                     onDismissRequest = { districtExpanded = false }
@@ -503,38 +510,40 @@ private fun EmployeeListContent(
                 },
                 modifier = Modifier
                     .weight(1f)
-                    .shadow(
-                        elevation = 2.dp,
-                        shape = RoundedCornerShape(15.dp),
-                        spotColor = CardShadow,
-                        ambientColor = CardShadow.copy(alpha = 0.5f)
-                    )
+
             ) {
-                OutlinedTextField(
-                    value = selectedStation,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Business, null, Modifier.size(16.dp), PrimaryTeal)
-                            Spacer(Modifier.width(4.dp))
-                            Text("Station")
-                        }
-                    },
-                    leadingIcon = { Icon(Icons.Default.Business, null, tint = PrimaryTeal) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    enabled = selectedDistrict != "All",
-                    singleLine = true,
-                    maxLines = 1,
-                    shape = RoundedCornerShape(15.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BorderTeal,
-                        unfocusedBorderColor = BorderTeal,
-                        focusedLabelColor = PrimaryTeal,
-                        unfocusedLabelColor = PrimaryTeal
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                        .border(1.5.dp, Color.Red, RoundedCornerShape(15.dp))
+                ) {
+                    OutlinedTextField(
+                        value = selectedStation,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Business, null, Modifier.size(16.dp), PrimaryTeal)
+                                Spacer(Modifier.width(4.dp))
+                                Text("Station")
+                            }
+                        },
+                        leadingIcon = { Icon(Icons.Default.Business, null, tint = PrimaryTeal) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = selectedDistrict != "All",
+                        singleLine = true,
+                        maxLines = 1,
+                        shape = RoundedCornerShape(15.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedLabelColor = PrimaryTeal,
+                            unfocusedLabelColor = PrimaryTeal
+                        )
                     )
-                )
+                }
                 ExposedDropdownMenu(
                     expanded = stationExpanded,
                     onDismissRequest = { stationExpanded = false }
@@ -558,37 +567,39 @@ private fun EmployeeListContent(
                 onExpandedChange = { rankExpanded = !rankExpanded },
                 modifier = Modifier
                     .weight(1f)
-                    .shadow(
-                        elevation = 2.dp,
-                        shape = RoundedCornerShape(15.dp),
-                        spotColor = CardShadow,
-                        ambientColor = CardShadow.copy(alpha = 0.5f)
-                    )
+
             ) {
-                OutlinedTextField(
-                    value = selectedRank,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.MilitaryTech, null, Modifier.size(16.dp), PrimaryTeal)
-                            Spacer(Modifier.width(4.dp))
-                            Text("Rank")
-                        }
-                    },
-                    leadingIcon = { Icon(Icons.Default.MilitaryTech, null, tint = PrimaryTeal) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    singleLine = true,
-                    maxLines = 1,
-                    shape = RoundedCornerShape(15.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BorderTeal,
-                        unfocusedBorderColor = BorderTeal,
-                        focusedLabelColor = PrimaryTeal,
-                        unfocusedLabelColor = PrimaryTeal
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                        .border(1.5.dp, Color.Red, RoundedCornerShape(15.dp))
+                ) {
+                    OutlinedTextField(
+                        value = selectedRank,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.MilitaryTech, null, Modifier.size(16.dp), PrimaryTeal)
+                                Spacer(Modifier.width(4.dp))
+                                Text("Rank")
+                            }
+                        },
+                        leadingIcon = { Icon(Icons.Default.MilitaryTech, null, tint = PrimaryTeal) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        maxLines = 1,
+                        shape = RoundedCornerShape(15.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedLabelColor = PrimaryTeal,
+                            unfocusedLabelColor = PrimaryTeal
+                        )
                     )
-                )
+                }
                 ExposedDropdownMenu(
                     expanded = rankExpanded,
                     onDismissRequest = { rankExpanded = false }
@@ -625,44 +636,44 @@ private fun EmployeeListContent(
             else -> KeyboardType.Text
         }
         
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = {
-                searchQuery = it
-                viewModel.updateSearchQuery(it)
-            },
-            placeholder = { Text("Search by $searchLabel") },
-            leadingIcon = { 
-                Icon(Icons.Default.Search, contentDescription = "Search", tint = PrimaryTeal) 
-            },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = {
-                        searchQuery = ""
-                        viewModel.updateSearchQuery("")
-                    }) { 
-                        Icon(Icons.Default.Clear, contentDescription = "Clear", tint = PrimaryTeal) 
-                    }
-                }
-            },
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(
-                    elevation = 2.dp,
-                    shape = RoundedCornerShape(15.dp),
-                    spotColor = CardShadow,
-                    ambientColor = CardShadow.copy(alpha = 0.5f)
-                ),
-            singleLine = true,
-            shape = RoundedCornerShape(15.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = BorderTeal,
-                unfocusedBorderColor = BorderTeal,
-                focusedLabelColor = PrimaryTeal,
-                unfocusedLabelColor = PrimaryTeal
+                .border(1.5.dp, Color.Red, RoundedCornerShape(15.dp))
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = {
+                    searchQuery = it
+                    viewModel.updateSearchQuery(it)
+                },
+                placeholder = { Text("Search by $searchLabel") },
+                leadingIcon = { 
+                    Icon(Icons.Default.Search, contentDescription = "Search", tint = PrimaryTeal) 
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = {
+                            searchQuery = ""
+                            viewModel.updateSearchQuery("")
+                        }) { 
+                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = PrimaryTeal) 
+                        }
+                    }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                modifier = Modifier
+                    .fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(15.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedLabelColor = PrimaryTeal,
+                    unfocusedLabelColor = PrimaryTeal
+                )
             )
-        )
+        }
 
         // 🔹 FILTER CHIPS (Compact Wrapping Layout)
         FlowRow(

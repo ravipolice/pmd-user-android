@@ -503,7 +503,7 @@ class ConstantsRepository @Inject constructor(
      * This could be extended to support dynamic configuration in the future
      */
     fun getRanksRequiringMetalNumber(): List<String> {
-        return Constants.ranksRequiringMetalNumber
+        return Constants.ranksRequiringMetalNumber.toList()
     }
 
     /**
