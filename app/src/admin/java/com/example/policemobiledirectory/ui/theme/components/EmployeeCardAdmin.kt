@@ -1,4 +1,4 @@
-package com.example.policemobiledirectory.ui.components
+package com.example.policemobiledirectory.ui.theme.components
 
 import android.content.Context
 import android.content.Intent
@@ -288,20 +288,10 @@ fun EmployeeCardAdmin(
                         }
                     }
                 }
+            }
         }
     }
     }
-}
-
-    // 🗑️ Delete confirmation dialog
-    DeleteEmployeeDialog(
-        showDialog = showDeleteDialog,
-        onDismiss = { showDeleteDialog = false },
-        onConfirm = {
-            showDeleteDialog = false
-            onDelete(employee)
-        }
-    )
 }
 
 /* ===================== HELPERS ===================== */

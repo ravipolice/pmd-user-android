@@ -41,8 +41,9 @@ class ConstantsRepository @Inject constructor(
 
     private val prefs = context.getSharedPreferences("constants_cache", Context.MODE_PRIVATE)
     
-    // Cache expiration: 1 hour (reduced from 30 days to ensure updates appear)
+    // Cache expiration: 15 minutes for units (faster updates), 1 hour for others
     private val CACHE_EXPIRY_MS = TimeUnit.HOURS.toMillis(1)
+    private val UNITS_CACHE_EXPIRY_MS = TimeUnit.MINUTES.toMillis(15)
     private val CACHE_KEY = "remote_constants"
     private val CACHE_TIMESTAMP_KEY = "cache_timestamp"
     private val UNITS_CACHE_KEY = "units_cache"
@@ -80,39 +81,47 @@ class ConstantsRepository @Inject constructor(
      * Checks version and shows Toast if server version doesn't match local version
      */
     suspend fun refreshConstants(): Boolean = withContext(Dispatchers.IO) {
-        var success = false
+        var firestoreSuccess = false
+        
         try {
-            // 1. Fetch Google Sheet Constants
-            val response = apiService.getConstants(token = securityConfig.getSecretToken())
-            
-            if (response.success && response.data != null) {
-                // Check version
-                val serverVersion = response.data.version
-                if (serverVersion != Constants.LOCAL_CONSTANTS_VERSION) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            context,
-                            "New constant update available. Please Sync.",
-                            Toast.LENGTH_LONG
-                        ).show()
+            // 1. Fetch Google Sheet Constants (LEGACY - DISABLED)
+            /*
+            try {
+                val response = apiService.getConstants(token = securityConfig.getSecretToken())
+                
+                if (response.success && response.data != null) {
+                    // Check version
+                    val serverVersion = response.data.version
+                    if (serverVersion != Constants.LOCAL_CONSTANTS_VERSION) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                "New constant update available. Please Sync.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        Log.d("ConstantsRepository", "⚠️ Version mismatch: Server=$serverVersion, Local=${Constants.LOCAL_CONSTANTS_VERSION}")
                     }
-                    Log.d("ConstantsRepository", "⚠️ Version mismatch: Server=$serverVersion, Local=${Constants.LOCAL_CONSTANTS_VERSION}")
+                    
+                    val json = Gson().toJson(response.data)
+                    val now = System.currentTimeMillis()
+                    
+                    prefs.edit()
+                        .putString(CACHE_KEY, json)
+                        .putLong(CACHE_TIMESTAMP_KEY, now)
+                        .apply()
+                    
+                    Log.d("ConstantsRepository", "✅ Constants refreshed from Google Sheet. Last updated: ${response.data.lastupdated}")
+                    Log.d("ConstantsRepository", "Stations count by district: ${response.data.stationsbydistrict.mapValues { it.value.size }}")
+                    sheetSuccess = true
+                } else {
+                    Log.e("ConstantsRepository", "❌ API returned success=false or null data")
                 }
-                
-                val json = Gson().toJson(response.data)
-                val now = System.currentTimeMillis()
-                
-                prefs.edit()
-                    .putString(CACHE_KEY, json)
-                    .putLong(CACHE_TIMESTAMP_KEY, now)
-                    .apply()
-                
-                Log.d("ConstantsRepository", "✅ Constants refreshed from Google Sheet. Last updated: ${response.data.lastupdated}")
-                Log.d("ConstantsRepository", "Stations count by district: ${response.data.stationsbydistrict.mapValues { it.value.size }}")
-                success = true
-            } else {
-                Log.e("ConstantsRepository", "❌ API returned success=false or null data")
+            } catch (e: Exception) {
+                Log.e("ConstantsRepository", "⚠️ Google Sheet sync failed (non-fatal): ${e.message}")
             }
+            */
+            Log.d("ConstantsRepository", "ℹ️ Google Sheets sync disabled. Fetching from Firestore only.")
 
             // 2. Fetch Units from Firestore
             fetchUnitsFromFirestore()
@@ -122,12 +131,17 @@ class ConstantsRepository @Inject constructor(
 
             // 4. Fetch Ranks from Firestore
             fetchRanksFromFirestore()
+            
+            // If we reached here without crashing, Firestore operations likely succeeded
+            firestoreSuccess = true
 
         } catch (e: Exception) {
             Log.e("ConstantsRepository", "❌ Failed to fetch constants: ${e.message}", e)
-            success = false
+            return@withContext false
         }
-        return@withContext success
+        
+        // Return true if Firestore succeeded
+        return@withContext firestoreSuccess
     }
 
     /**
@@ -148,7 +162,11 @@ class ConstantsRepository @Inject constructor(
 
             if (unitNames.isNotEmpty()) {
                 val json = Gson().toJson(unitNames)
-                prefs.edit().putString(UNITS_CACHE_KEY, json).apply()
+                val now = System.currentTimeMillis()
+                prefs.edit()
+                    .putString(UNITS_CACHE_KEY, json)
+                    .putLong("${UNITS_CACHE_KEY}_timestamp", now)
+                    .apply()
                 Log.d("ConstantsRepository", "✅ Fetched ${unitNames.size} units from Firestore")
             } else {
                 Log.w("ConstantsRepository", "⚠️ No active units found in Firestore")
@@ -324,10 +342,15 @@ class ConstantsRepository @Inject constructor(
     /**
      * Get units with fallback to hardcoded constants
      * Now attempts to load from Firestore cache first
+     * Uses shorter cache expiry (15 minutes) for faster updates
      */
     fun getUnits(): List<String> {
         val json = prefs.getString(UNITS_CACHE_KEY, null)
-        if (!json.isNullOrEmpty()) {
+        val timestamp = prefs.getLong("${UNITS_CACHE_KEY}_timestamp", 0)
+        val now = System.currentTimeMillis()
+
+        // Check if cache is valid (not expired)
+        if (!json.isNullOrEmpty() && timestamp > 0 && (now - timestamp) < UNITS_CACHE_EXPIRY_MS) {
             try {
                 val type = object : TypeToken<List<String>>() {}.type
                 val cachedUnits: List<String> = Gson().fromJson(json, type)
@@ -338,6 +361,9 @@ class ConstantsRepository @Inject constructor(
                 Log.e("ConstantsRepository", "Failed to parse cached units", e)
             }
         }
+
+        // Cache expired or invalid, return hardcoded list and trigger background refresh
+        Log.d("ConstantsRepository", "Units cache expired or invalid, using hardcoded list")
         return Constants.defaultUnitsList
     }
 

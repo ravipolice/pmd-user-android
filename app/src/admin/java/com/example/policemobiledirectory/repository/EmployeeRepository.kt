@@ -93,6 +93,7 @@ open class EmployeeRepository @Inject constructor(
             SearchFilter.STATION -> employeeDao.searchByStation(searchQuery)
             SearchFilter.METAL_NUMBER -> employeeDao.searchByMetalNumber(searchQuery)
             SearchFilter.RANK -> employeeDao.searchByRank(searchQuery)
+            SearchFilter.BLOOD_GROUP -> employeeDao.searchByBloodGroup(searchQuery)
         }
     }
 
@@ -282,10 +283,13 @@ open class EmployeeRepository @Inject constructor(
     suspend fun deleteEmployee(kgid: String, photoUrl: String?) = withContext(ioDispatcher) {
         try {
             // ✅ 1️⃣ Delete from Google Sheet (via Apps Script API)
+            // ✅ 1️⃣ Delete from Google Sheet (LEGACY - DISABLED)
+            /*
             apiService.deleteEmployee(
                 token = securityConfig.getSecretToken(),
                 kgid = kgid
             )
+            */
 
             // ✅ 2️⃣ Delete from Firestore
             firestore.collection("employees").document(kgid).delete().await()
@@ -763,6 +767,8 @@ open class EmployeeRepository @Inject constructor(
             employeeDao.deleteByKgid(kgid)
             
             // Delete from Google Sheet if API is available
+            // Delete from Google Sheet if API is available (LEGACY - DISABLED)
+            /*
             try {
                 apiService.deleteEmployee(
                     token = securityConfig.getSecretToken(),
@@ -771,6 +777,7 @@ open class EmployeeRepository @Inject constructor(
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to delete from Google Sheet: ${e.message}")
             }
+            */
             
             Log.i(TAG, "Successfully deleted employee: $kgid ($email)")
             RepoResult.Success(true)

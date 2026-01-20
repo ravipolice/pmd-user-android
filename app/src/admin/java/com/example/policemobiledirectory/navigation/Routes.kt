@@ -9,7 +9,7 @@ object Routes {
     const val EMPLOYEE_LIST = "employee_list"
     const val ADD_EMPLOYEE = "add_employee"
     const val EDIT_EMPLOYEE = "edit_employee"
-    const val EDIT_OFFICER = "edit_officer" // ✅ New route
+    const val ADD_OFFICER = "add_officer"
     const val ABOUT = "about"
 
     // --- Admin Screens ---

@@ -77,6 +77,7 @@ fun CommonEmployeeForm(
     onNavigateToTerms: (() -> Unit)? = null, // ✅ Callback to navigate to terms
     constantsViewModel: ConstantsViewModel = hiltViewModel(),
     isOfficer: Boolean = false, // ✅ New parameter for Officer mode
+    isEdit: Boolean = false, // ✅ New parameter to handle ID field editability
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -180,31 +181,50 @@ fun CommonEmployeeForm(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // photo
-        Box(
-            modifier = Modifier
-                .size(140.dp)
-                .shadow(6.dp, CircleShape)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable { showSourceDialog = true },
-            contentAlignment = Alignment.Center
-        ) {
-            when {
-                croppedPhotoUri != null -> Image(
-                    painter = rememberAsyncImagePainter(croppedPhotoUri),
-                    contentDescription = "Selected",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+        Box(contentAlignment = Alignment.BottomEnd) {
+            Box(
+                modifier = Modifier
+                    .size(140.dp)
+                    .shadow(6.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { showSourceDialog = true },
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    croppedPhotoUri != null -> Image(
+                        painter = rememberAsyncImagePainter(croppedPhotoUri),
+                        contentDescription = "Selected",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
 
-                !currentPhotoUrl.isNullOrBlank() -> Image(
-                    painter = rememberAsyncImagePainter(currentPhotoUrl),
-                    contentDescription = "Existing",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                    !currentPhotoUrl.isNullOrBlank() -> Image(
+                        painter = rememberAsyncImagePainter(currentPhotoUrl),
+                        contentDescription = "Existing",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
 
-                else -> Text("Tap to select")
+                    else -> Text("Tap to select")
+                }
+            }
+
+            // Camera Icon Badge
+            Box(
+                modifier = Modifier
+                    .offset(x = 0.dp, y = 0.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .clickable { showSourceDialog = true }
+                    .padding(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PhotoCamera,
+                    contentDescription = "Change Photo",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
 
@@ -308,7 +328,7 @@ fun CommonEmployeeForm(
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     isError = showValidationErrors && !isKgidValid(kgid),
-                    enabled = isAdmin || isRegistration
+                    enabled = (isAdmin || isRegistration) && !isEdit
                 )
 
                 // Rank
@@ -436,7 +456,7 @@ fun CommonEmployeeForm(
                     modifier = Modifier.weight(1f)
                 ) {
                     OutlinedTextField(
-                        value = unit.ifEmpty { "Unit (Optional)" },
+                        value = unit.ifEmpty { "Unit" },
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Unit") },
@@ -561,7 +581,7 @@ fun CommonEmployeeForm(
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     isError = showValidationErrors && !isKgidValid(kgid),
-                    enabled = isAdmin || isRegistration
+                    enabled = (isAdmin || isRegistration) && !isEdit
                 )
                 if (showValidationErrors && !isKgidValid(kgid)) {
                     Text(if(isOfficer) "ID required" else "KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -704,7 +724,7 @@ fun CommonEmployeeForm(
             // Unit
             ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = !unitExpanded }) {
                 OutlinedTextField(
-                    value = unit.ifEmpty { "Unit (Optional)" },
+                    value = unit.ifEmpty { "Unit" },
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Unit") },

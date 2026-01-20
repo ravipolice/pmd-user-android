@@ -35,21 +35,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 val data = snapshot.data ?: emptyMap<String, Any>()
 
                 when (action) {
-                    "APPROVE" -> {
-                        val empData = HashMap(data)
-                        empData["isApproved"] = true
-                        empData["kgid"] = kgid
-                        empData["approvedAt"] = System.currentTimeMillis()
-
-                        db.collection("employees").document(kgid).set(empData).await()
-                        pendingRef.delete().await()
-                        Log.i("NotifActionReceiver", "✅ Approved KGID=$kgid")
-                    }
-
-                    "REJECT" -> {
-                        pendingRef.update("rejected", true, "rejectedAt", System.currentTimeMillis())
-                            .await()
-                        Log.i("NotifActionReceiver", "❌ Rejected KGID=$kgid")
+                    "APPROVE", "REJECT" -> {
+                        // These actions are not supported in the User app
+                        Log.w("NotifActionReceiver", "Action $action is not supported in the User app.")
                     }
 
                     else -> Log.w("NotifActionReceiver", "Unknown action $action")

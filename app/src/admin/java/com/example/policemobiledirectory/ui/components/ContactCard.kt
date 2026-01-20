@@ -33,6 +33,8 @@ import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.model.Officer
 import com.example.policemobiledirectory.ui.theme.*
 import com.example.policemobiledirectory.utils.IntentUtils
+import com.example.policemobiledirectory.utils.getBloodGroupColor
+import com.example.policemobiledirectory.utils.getFormattedBloodGroup
 
 /**
  * Unified contact card that works for both Employee and Officer
@@ -128,34 +130,13 @@ fun ContactCard(
         Box(
             modifier = Modifier.background(color = backgroundColor)
         ) {
-            // 🔹 Blood Group badge in red circle at top right corner of card (for employees only)
-            employee?.bloodGroup?.takeIf { it.isNotBlank() }?.let { bg ->
-                val formattedBg = if (bg.trim() == "??") {
-                    "??"
-                } else {
-                    bg.uppercase()
-                        .replace("POSITIVE", "+")
-                        .replace("NEGATIVE", "–")
-                        .replace("VE", "")
-                        .replace("(", "")
-                        .replace(")", "")
-                        .trim()
-                        .let { clean ->
-                            when (clean) {
-                                "A" -> "A+"
-                                "B" -> "B+"
-                                "O" -> "O+"
-                                "AB" -> "AB+"
-                                "A-" -> "A–"
-                                "B-" -> "B–"
-                                "O-" -> "O–"
-                                "AB-" -> "AB–"
-                                else -> clean
-                            }
-                        }
-                }
+            // 🔹 Blood Group badge in red circle at top right corner of card
+            val bloodGroup = employee?.bloodGroup ?: officer?.bloodGroup
+            bloodGroup?.takeIf { it.isNotBlank() }?.let { bg ->
+                val formattedBg = getFormattedBloodGroup(bg)
+                val badgeColor = getBloodGroupColor(bg)
                 Surface(
-                    color = MaterialTheme.colorScheme.error,
+                    color = badgeColor,
                     shape = CircleShape,
                     modifier = Modifier
                         .size(24.dp)

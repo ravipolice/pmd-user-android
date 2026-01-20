@@ -70,4 +70,7 @@ interface EmployeeDao {
 
     @Query("SELECT * FROM employees WHERE LOWER(metalNumber) LIKE :query ORDER BY name ASC LIMIT 50")
     fun searchByMetalNumber(query: String): Flow<List<EmployeeEntity>>
+
+    @Query("SELECT * FROM employees WHERE LOWER(bloodGroup) LIKE :query ORDER BY name ASC LIMIT 50")
+    fun searchByBloodGroup(query: String): Flow<List<EmployeeEntity>>
 }

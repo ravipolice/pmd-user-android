@@ -108,6 +108,7 @@ object SearchEngine {
             SearchFilter.RANK -> calculateFieldScore(employee.rank, queryLower) * FieldWeights.RANK_EXACT
             SearchFilter.STATION -> calculateFieldScore(employee.station, queryLower) * FieldWeights.STATION_EXACT
             SearchFilter.METAL_NUMBER -> calculateFieldScore(employee.metalNumber, queryLower) * 0.6
+            SearchFilter.BLOOD_GROUP -> calculateFieldScore(employee.bloodGroup, queryLower) * 0.4
         }
     }
     
@@ -206,6 +207,7 @@ object SearchEngine {
             SearchFilter.RANK -> if (employee.rank?.lowercase()?.contains(queryLower) == true) matched.add("rank")
             SearchFilter.STATION -> if (employee.station?.lowercase()?.contains(queryLower) == true) matched.add("station")
             SearchFilter.METAL_NUMBER -> if (employee.metalNumber?.lowercase()?.contains(queryLower) == true) matched.add("metalNumber")
+            SearchFilter.BLOOD_GROUP -> if (employee.bloodGroup?.lowercase()?.contains(queryLower) == true) matched.add("bloodGroup")
         }
         
         return matched

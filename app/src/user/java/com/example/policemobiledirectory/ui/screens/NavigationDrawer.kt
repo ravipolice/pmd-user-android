@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -53,9 +54,12 @@ fun NavigationDrawer(
     val isAdmin by viewModel.isAdmin.collectAsState()
     val currentRoute = navController.currentDestination?.route
 
+
+
     ModalDrawerSheet(
         modifier = Modifier
             .width(280.dp),
+        drawerShape = RectangleShape,
         drawerContainerColor = MaterialTheme.colorScheme.surface,
         windowInsets = WindowInsets(0.dp)
     ) {
@@ -236,21 +240,7 @@ fun NavigationDrawer(
                 // Admin Panel link removed
 
 
-                DrawerItem(
-                    icon = Icons.Default.Translate,
-                    text = "Nudi Converter",
-                    selected = currentRoute == Routes.NUDI_CONVERTER,
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
-                            navController.navigate(Routes.NUDI_CONVERTER) {
-                                launchSingleTop = true
-                                restoreState = true
-                                popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
-                            }
-                        }
-                    }
-                )
+
 
                 DrawerItem(
                     icon = Icons.Default.Info,
@@ -372,6 +362,22 @@ fun NavigationDrawer(
                     text = "Contact Support",
                     onClick = { showSupportDialog = true }
                 )
+
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // App Version Display
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Version: ${com.example.policemobiledirectory.BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            fontSize = 12.sp
+                        )
+                    )
+                }
             }
         }
     }

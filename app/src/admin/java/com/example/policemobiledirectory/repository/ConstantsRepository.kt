@@ -80,39 +80,46 @@ class ConstantsRepository @Inject constructor(
      * Checks version and shows Toast if server version doesn't match local version
      */
     suspend fun refreshConstants(): Boolean = withContext(Dispatchers.IO) {
-        var success = false
+        var firestoreSuccess = false
+        
         try {
-            // 1. Fetch Google Sheet Constants
-            val response = apiService.getConstants(token = securityConfig.getSecretToken())
-            
-            if (response.success && response.data != null) {
-                // Check version
-                val serverVersion = response.data.version
-                if (serverVersion != Constants.LOCAL_CONSTANTS_VERSION) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            context,
-                            "New constant update available. Please Sync.",
-                            Toast.LENGTH_LONG
-                        ).show()
+            // 1. Fetch Google Sheet Constants (LEGACY - DISABLED)
+            /*
+            try {
+                val response = apiService.getConstants(token = securityConfig.getSecretToken())
+                
+                if (response.success && response.data != null) {
+                    // Check version
+                    val serverVersion = response.data.version
+                    if (serverVersion != Constants.LOCAL_CONSTANTS_VERSION) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                "New constant update available. Please Sync.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        Log.d("ConstantsRepository", "⚠️ Version mismatch: Server=$serverVersion, Local=${Constants.LOCAL_CONSTANTS_VERSION}")
                     }
-                    Log.d("ConstantsRepository", "⚠️ Version mismatch: Server=$serverVersion, Local=${Constants.LOCAL_CONSTANTS_VERSION}")
+                    
+                    val json = Gson().toJson(response.data)
+                    val now = System.currentTimeMillis()
+                    
+                    prefs.edit()
+                        .putString(CACHE_KEY, json)
+                        .putLong(CACHE_TIMESTAMP_KEY, now)
+                        .apply()
+                    
+                    Log.d("ConstantsRepository", "✅ Constants refreshed from Google Sheet. Last updated: ${response.data.lastupdated}")
+                    sheetSuccess = true
+                } else {
+                    Log.e("ConstantsRepository", "❌ API returned success=false or null data")
                 }
-                
-                val json = Gson().toJson(response.data)
-                val now = System.currentTimeMillis()
-                
-                prefs.edit()
-                    .putString(CACHE_KEY, json)
-                    .putLong(CACHE_TIMESTAMP_KEY, now)
-                    .apply()
-                
-                Log.d("ConstantsRepository", "✅ Constants refreshed from Google Sheet. Last updated: ${response.data.lastupdated}")
-                Log.d("ConstantsRepository", "Stations count by district: ${response.data.stationsbydistrict.mapValues { it.value.size }}")
-                success = true
-            } else {
-                Log.e("ConstantsRepository", "❌ API returned success=false or null data")
+            } catch (e: Exception) {
+                Log.e("ConstantsRepository", "⚠️ Google Sheet sync failed (non-fatal): ${e.message}")
             }
+            */
+            Log.d("ConstantsRepository", "ℹ️ Google Sheets sync disabled. Fetching from Firestore only.")
 
             // 2. Fetch Units from Firestore
             fetchUnitsFromFirestore()
@@ -122,12 +129,17 @@ class ConstantsRepository @Inject constructor(
 
             // 4. Fetch Districts from Firestore
             fetchDistrictsFromFirestore()
+            
+            // If we reached here without crashing, Firestore operations likely succeeded
+            firestoreSuccess = true
 
         } catch (e: Exception) {
             Log.e("ConstantsRepository", "❌ Failed to fetch constants: ${e.message}", e)
-            success = false
+            return@withContext false
         }
-        return@withContext success
+        
+        // Return true if Firestore succeeded
+        return@withContext firestoreSuccess
     }
 
     /**
@@ -609,6 +621,55 @@ class ConstantsRepository @Inject constructor(
             clearCache()
             fetchUnitsFromFirestore()
             Result.success("Unit '$name' deleted successfully")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    // --- UPDATE OPERATIONS (Rename) ---
+    /*
+     * Since Firestore IDs are the names themselves (or composites of names),
+     * renaming effectively means creating a new document and deleting the old one.
+     * This changes the ID, so external references would break if they rely on ID.
+     * Assuming these are just string constants used in dropdowns, this is acceptable.
+     */
+
+    suspend fun updateDistrict(oldName: String, newName: String): Result<String> = withContext(Dispatchers.IO) {
+        if (oldName == newName) return@withContext Result.success("No change")
+        try {
+            // 1. Create new
+            addDistrict(newName).getOrThrow()
+            // 2. Delete old
+            deleteDistrict(oldName).getOrThrow()
+            
+            Result.success("Renamed district '$oldName' to '$newName'")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateStation(district: String, oldName: String, newName: String): Result<String> = withContext(Dispatchers.IO) {
+        if (oldName == newName) return@withContext Result.success("No change")
+        try {
+            // 1. Create new
+            addStation(district, newName).getOrThrow()
+            // 2. Delete old
+            deleteStation(district, oldName).getOrThrow()
+            
+            Result.success("Renamed station '$oldName' to '$newName'")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateUnit(oldName: String, newName: String): Result<String> = withContext(Dispatchers.IO) {
+         if (oldName == newName) return@withContext Result.success("No change")
+        try {
+            // 1. Create new
+            addUnit(newName).getOrThrow()
+            // 2. Delete old
+            deleteUnit(oldName).getOrThrow()
+            
+            Result.success("Renamed unit '$oldName' to '$newName'")
         } catch (e: Exception) {
             Result.failure(e)
         }

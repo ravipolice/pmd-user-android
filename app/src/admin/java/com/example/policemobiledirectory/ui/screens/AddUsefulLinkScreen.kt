@@ -144,8 +144,10 @@ fun AddUsefulLinkScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("Add New Link") },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {

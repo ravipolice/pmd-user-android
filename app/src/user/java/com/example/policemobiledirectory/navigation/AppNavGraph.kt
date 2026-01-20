@@ -186,10 +186,7 @@ private fun AppNavHostContent(
             AboutScreen(navController = navController)
         }
 
-        // --- NUDI CONVERTER ---
-        composable(Routes.NUDI_CONVERTER) {
-            NudiConverterScreen(navController = navController)
-        }
+
 
         // --- MY PROFILE ---
         composable(Routes.MY_PROFILE) {
@@ -198,7 +195,8 @@ private fun AppNavHostContent(
 
         // --- NOTIFICATIONS ---
         composable(Routes.NOTIFICATIONS) {
-            NotificationsScreen(navController = navController, viewModel = employeeViewModel)
+            val viewModel: com.example.policemobiledirectory.viewmodel.NotificationsViewModel = hiltViewModel()
+            NotificationsScreen(navController = navController, viewModel = viewModel)
         }
 
         // --- Gallery Screen ---

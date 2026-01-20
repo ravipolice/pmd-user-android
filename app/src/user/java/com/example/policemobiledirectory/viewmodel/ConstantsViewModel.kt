@@ -1,15 +1,19 @@
 package com.example.policemobiledirectory.viewmodel
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import com.example.policemobiledirectory.repository.ConstantsRepository
 import com.example.policemobiledirectory.utils.Constants
@@ -22,8 +26,13 @@ import com.example.policemobiledirectory.utils.OperationStatus
 @HiltViewModel
 class ConstantsViewModel @Inject constructor(
     private val constantsRepository: ConstantsRepository,
+    private val firestore: FirebaseFirestore,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
+
+    private val prefs = appContext.getSharedPreferences("constants_cache", Context.MODE_PRIVATE)
+    private val gson = Gson()
+    private val UNITS_CACHE_KEY = "units_cache"
 
     private val _ranks = MutableStateFlow(constantsRepository.getRanks())
     val ranks: StateFlow<List<String>> = _ranks.asStateFlow()
@@ -146,6 +155,50 @@ class ConstantsViewModel @Inject constructor(
      */
     fun resetRefreshStatus() {
         _refreshStatus.value = OperationStatus.Idle
+    }
+
+    /**
+     * Force refresh units only from Firestore (bypasses cache)
+     */
+    fun forceRefreshUnits() {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            try {
+                // Clear units cache specifically
+                prefs.edit()
+                    .remove(UNITS_CACHE_KEY)
+                    .remove("${UNITS_CACHE_KEY}_timestamp")
+                    .apply()
+
+                // Fetch units from Firestore
+                val snapshot = firestore.collection("units")
+                    .whereEqualTo("isActive", true)
+                    .get()
+                    .await()
+
+                val unitNames = snapshot.documents
+                    .mapNotNull { it.getString("name") }
+                    .distinct()
+                    .sorted()
+
+                if (unitNames.isNotEmpty()) {
+                    val json = Gson().toJson(unitNames)
+                    val now = System.currentTimeMillis()
+                    prefs.edit()
+                        .putString(UNITS_CACHE_KEY, json)
+                        .putLong("${UNITS_CACHE_KEY}_timestamp", now)
+                        .apply()
+
+                    // Update StateFlow
+                    _units.value = unitNames
+                    _refreshStatus.value = OperationStatus.Success("Units refreshed successfully. Found ${unitNames.size} units")
+                } else {
+                    _refreshStatus.value = OperationStatus.Error("No units found in database")
+                }
+            } catch (e: Exception) {
+                _refreshStatus.value = OperationStatus.Error("Error refreshing units: ${e.message ?: "Unknown error"}")
+            }
+        }
     }
 }
 

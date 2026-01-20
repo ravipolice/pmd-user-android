@@ -180,31 +180,50 @@ fun CommonEmployeeForm(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // photo
-        Box(
-            modifier = Modifier
-                .size(140.dp)
-                .shadow(6.dp, CircleShape)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable { showSourceDialog = true },
-            contentAlignment = Alignment.Center
-        ) {
-            when {
-                croppedPhotoUri != null -> Image(
-                    painter = rememberAsyncImagePainter(croppedPhotoUri),
-                    contentDescription = "Selected",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+        Box(contentAlignment = Alignment.BottomEnd) {
+            Box(
+                modifier = Modifier
+                    .size(140.dp)
+                    .shadow(6.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { showSourceDialog = true },
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    croppedPhotoUri != null -> Image(
+                        painter = rememberAsyncImagePainter(croppedPhotoUri),
+                        contentDescription = "Selected",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
 
-                !currentPhotoUrl.isNullOrBlank() -> Image(
-                    painter = rememberAsyncImagePainter(currentPhotoUrl),
-                    contentDescription = "Existing",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                    !currentPhotoUrl.isNullOrBlank() -> Image(
+                        painter = rememberAsyncImagePainter(currentPhotoUrl),
+                        contentDescription = "Existing",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
 
-                else -> Text("Tap to select")
+                    else -> Text("Tap to select")
+                }
+            }
+
+            // Camera Icon Badge
+            Box(
+                modifier = Modifier
+                    .offset(x = 0.dp, y = 0.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .clickable { showSourceDialog = true }
+                    .padding(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PhotoCamera,
+                    contentDescription = "Change Photo",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
 
@@ -436,7 +455,7 @@ fun CommonEmployeeForm(
                     modifier = Modifier.weight(1f)
                 ) {
                     OutlinedTextField(
-                        value = unit.ifEmpty { "Unit (Optional)" },
+                        value = unit.ifEmpty { "Unit" },
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Unit") },
@@ -469,12 +488,13 @@ fun CommonEmployeeForm(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
-                            value = bloodGroup.ifEmpty { "Blood Group" },
+                            value = bloodGroup.ifEmpty { "Select Blood Group" },
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Blood Group") },
+                            label = { Text("Blood Group*") },
                             modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) }
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) },
+                            isError = showValidationErrors && bloodGroup.isBlank()
                         )
                         ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
                             bloodGroups.forEach { selection ->
@@ -485,6 +505,9 @@ fun CommonEmployeeForm(
                             }
                         }
                     }
+                }
+                if (showValidationErrors && bloodGroup.isBlank()) {
+                    Text("Blood Group is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 if (showValidationErrors && station.isBlank()) {
                     Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -526,25 +549,7 @@ fun CommonEmployeeForm(
                 Spacer(Modifier.height(fieldSpacing))
             }
 
-            // Row 10: Terms and condition
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = acceptedTerms, onCheckedChange = { acceptedTerms = it })
-                Spacer(Modifier.width(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("I accept ")
-                    Text(
-                        text = "Terms & Conditions",
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        modifier = Modifier.clickable {
-                            onNavigateToTerms?.invoke()
-                        }
-                    )
-                }
-            }
-            Spacer(Modifier.height(sectionSpacing))
+
         } else {
             // Non-registration form (admin/self-edit) - keep original order
             // KGID (admin & registration only)
@@ -701,25 +706,26 @@ fun CommonEmployeeForm(
             if (showValidationErrors && station.isBlank()) Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(fieldSpacing))
 
-            // Unit
-            ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = !unitExpanded }) {
-                OutlinedTextField(
-                    value = unit.ifEmpty { "Unit (Optional)" },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Unit") },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) }
-                )
-                ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
-                    units.forEach { selection ->
-                        DropdownMenuItem(text = { Text(selection) }, onClick = {
-                            unit = selection
-                            unitExpanded = false
-                        })
+                // Unit
+                ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = !unitExpanded }) {
+                    OutlinedTextField(
+                        value = unit.ifEmpty { "Unit" },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Unit") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) }
+                    )
+                    ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
+                        units.forEach { selection ->
+                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                unit = selection
+                                unitExpanded = false
+                            })
+                        }
                     }
                 }
-            }
+
             Spacer(Modifier.height(fieldSpacing))
 
             Spacer(Modifier.height(fieldSpacing))
@@ -727,7 +733,15 @@ fun CommonEmployeeForm(
             // Blood group (Hide for Officer)
             if (!isOfficer) {
                 ExposedDropdownMenuBox(expanded = bloodGroupExpanded, onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded }) {
-                    OutlinedTextField(value = bloodGroup.ifEmpty { "Select Blood Group" }, onValueChange = {}, readOnly = true, label = { Text("Blood Group") }, modifier = Modifier.fillMaxWidth().menuAnchor(), trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) })
+                    OutlinedTextField(
+                        value = bloodGroup.ifEmpty { "Select Blood Group" },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Blood Group*") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) },
+                        isError = showValidationErrors && bloodGroup.isBlank()
+                    )
                     ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
                         bloodGroups.forEach { selection ->
                             DropdownMenuItem(text = { Text(selection) }, onClick = {
@@ -737,8 +751,33 @@ fun CommonEmployeeForm(
                         }
                     }
                 }
+                if (showValidationErrors && bloodGroup.isBlank()) {
+                    Text("Blood Group is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
                 Spacer(Modifier.height(sectionSpacing))
             }
+        }
+
+        // Terms and condition (for registration)
+        if (isRegistration) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = acceptedTerms, onCheckedChange = { acceptedTerms = it })
+                Spacer(Modifier.width(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("I accept ")
+                    Text(
+                        text = "Terms & Conditions",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        modifier = Modifier.clickable {
+                            onNavigateToTerms?.invoke()
+                        }
+                    )
+                }
+            }
+            Spacer(Modifier.height(sectionSpacing))
         }
 
         // Submit
@@ -772,15 +811,17 @@ fun CommonEmployeeForm(
                     return@Button
                 }
                 
-                // Registration-specific validation
-                if (isRegistration) {
+                // General validation
+                // ADMINS: Bypass mandatory checks for rank/district/station/metal
+                // REGISTRATION & USER EDIT: Enforce checks
+                if (!isAdmin) {
                     // Validate rank
                     if (rank.isBlank()) {
                         Toast.makeText(context, "Rank is required", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    // Validate metal number if required for selected rank
-                    if (showMetalNumberField && metalNumber.isBlank()) {
+                    // Validate metal number if required for selected rank (except for Officers who don't use it)
+                    if (showMetalNumberField && metalNumber.isBlank() && !isOfficer) {
                         Toast.makeText(context, "Metal number is required for this rank", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
@@ -794,6 +835,15 @@ fun CommonEmployeeForm(
                         Toast.makeText(context, "Station is required", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
+                    // Validate blood group (except for Officers)
+                    if (bloodGroup.isBlank() && !isOfficer) {
+                        Toast.makeText(context, "Blood Group is required", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                }
+
+                // Registration-specific validation
+                if (isRegistration) {
                     // Validate PIN
                     if (pin.length != 6 || pin != confirmPin) {
                         Toast.makeText(context, "PIN mismatch or invalid", Toast.LENGTH_SHORT).show()
@@ -971,6 +1021,8 @@ fun CommonEmployeeForm(
                 TextButton(onClick = { showSourceDialog = false }) { Text("Close") }
             })
         }
+        
+        Spacer(Modifier.height(120.dp)) // ✅ Ensure button is not hidden by anything
     }
 }
 

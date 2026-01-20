@@ -16,6 +16,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlin.random.Random
+import kotlinx.coroutines.launch
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
@@ -162,28 +163,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(mainPendingIntent)
 
-        // Optional: Add Approve / Reject actions
-        kgid?.let {
-            val approveIntent = Intent(this, NotificationActionReceiver::class.java).apply {
-                action = "APPROVE"
-                putExtra("KGID", kgid)
-            }
-            val approvePendingIntent =
-                PendingIntent.getBroadcast(this, kgid.hashCode(), approveIntent, pendingIntentFlags)
-            notificationBuilder.addAction(0, "APPROVE", approvePendingIntent)
-
-            val rejectIntent = Intent(this, NotificationActionReceiver::class.java).apply {
-                action = "REJECT"
-                putExtra("KGID", kgid)
-            }
-            val rejectPendingIntent = PendingIntent.getBroadcast(
-                this,
-                kgid.hashCode() + 1,
-                rejectIntent,
-                pendingIntentFlags
-            )
-            notificationBuilder.addAction(0, "REJECT", rejectPendingIntent)
-        }
+        // Actions removed for User App (Admin only)
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -199,5 +179,30 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         val notificationId = kgid?.hashCode() ?: Random.nextInt()
         notificationManager.notify(notificationId, notificationBuilder.build())
+        
+        // Save to Database
+        saveNotificationToDatabase(title, messageBody, kgid)
+    }
+
+    private fun saveNotificationToDatabase(title: String?, message: String?, kgid: String?) {
+        if (title.isNullOrBlank() && message.isNullOrBlank()) return
+
+        val database = com.example.policemobiledirectory.data.local.AppDatabase.getInstance(applicationContext)
+        val notificationDao = database.notificationDao()
+        
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                notificationDao.insertNotification(
+                    com.example.policemobiledirectory.data.local.NotificationEntity(
+                        title = title ?: "Notification",
+                        message = message ?: "",
+                        targetKgid = kgid
+                    )
+                )
+                Log.d(TAG, "Notification saved to database")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving notification to database", e)
+            }
+        }
     }
 }

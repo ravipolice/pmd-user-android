@@ -82,19 +82,30 @@ data class Employee(
      * Supports filters: name, kgid, rank, mobile, district, station, email
      */
     fun matches(query: String, filter: String): Boolean {
-        val q = query.trim().lowercase()
+        // Legacy wrapper
+        return matchesOptimized(query.trim().lowercase(), filter)
+    }
 
+    /**
+     * Optimized matching function (query is already lowercase)
+     */
+    fun matchesOptimized(queryLower: String, filter: String): Boolean {
         return when (filter.lowercase()) {
-            "name" -> name.lowercase().contains(q)
-            "kgid" -> kgid.lowercase().contains(q)
-            "rank" -> (rank ?: "").lowercase().contains(q)
-            "mobile" -> listOfNotNull(mobile1, mobile2).any { it.lowercase().contains(q) }
-            "district" -> (district ?: "").lowercase().contains(q)
-            "station" -> (station ?: "").lowercase().contains(q)
-            "email" -> email.lowercase().contains(q)
+            "name" -> {
+                val nameLower = name.lowercase()
+                nameLower.startsWith(queryLower) || nameLower.contains(queryLower)
+            }
+            "kgid" -> kgid.lowercase().contains(queryLower)
+            "rank" -> (rank ?: "").lowercase().contains(queryLower)
+            "mobile" -> listOfNotNull(mobile1, mobile2).any { it.lowercase().contains(queryLower) }
+            "district" -> (district ?: "").lowercase().contains(queryLower)
+            "station" -> (station ?: "").lowercase().contains(queryLower)
+            "email" -> email.lowercase().contains(queryLower)
+            "metal" -> (metalNumber ?: "").lowercase().contains(queryLower)
+            "blood" -> (bloodGroup ?: "").lowercase().contains(queryLower)
             else -> listOfNotNull(
-                name, kgid, rank, mobile1, mobile2, district, station, email
-            ).any { it.lowercase().contains(q) }
+                name, kgid, rank, mobile1, mobile2, district, station, email, metalNumber, bloodGroup
+            ).any { it.lowercase().contains(queryLower) }
         }
     }
 }

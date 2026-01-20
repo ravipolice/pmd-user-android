@@ -4,71 +4,55 @@ package com.example.policemobiledirectory.ui.screens
 
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.text.style.TextAlign
+
 import com.example.policemobiledirectory.data.local.SearchFilter
 import com.example.policemobiledirectory.model.Employee
-import com.example.policemobiledirectory.ui.theme.*
-import com.example.policemobiledirectory.ui.theme.ErrorRed
-import com.example.policemobiledirectory.ui.theme.CardShadow
-import com.example.policemobiledirectory.ui.theme.BorderTeal
-import com.example.policemobiledirectory.ui.theme.ChipSelectedStart
-import com.example.policemobiledirectory.ui.theme.ChipSelectedEnd
-import com.example.policemobiledirectory.ui.theme.ChipUnselected
-import com.example.policemobiledirectory.ui.theme.BorderChipUnselected
-import com.example.policemobiledirectory.ui.theme.GlassOpacity
-import com.example.policemobiledirectory.ui.theme.PrimaryTeal
-import com.example.policemobiledirectory.ui.theme.PrimaryTealDark
-import com.example.policemobiledirectory.ui.theme.FABColor
-import com.example.policemobiledirectory.ui.theme.BorderTeal
-import com.example.policemobiledirectory.ui.theme.BackgroundLight
-import com.example.policemobiledirectory.ui.theme.SecondaryYellow
-import com.example.policemobiledirectory.utils.Constants
-import com.example.policemobiledirectory.viewmodel.ConstantsViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.policemobiledirectory.utils.OperationStatus
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
-import kotlinx.coroutines.launch
-import com.example.policemobiledirectory.ui.components.EmployeeCardAdmin
-import com.example.policemobiledirectory.ui.components.EmployeeCardUser
-import com.example.policemobiledirectory.ui.components.ContactCard
-import kotlinx.coroutines.CoroutineScope
 import com.example.policemobiledirectory.navigation.Routes
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.offset
-import androidx.compose.material.icons.Icons.Default
-import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
+import com.example.policemobiledirectory.ui.theme.*
+import com.example.policemobiledirectory.ui.theme.components.ContactCard
+import com.example.policemobiledirectory.ui.theme.components.EmployeeCardAdmin
+import com.example.policemobiledirectory.utils.Constants
+import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.ConstantsViewModel
+import com.example.policemobiledirectory.utils.OperationStatus
+import com.example.policemobiledirectory.ui.theme.CardStyle
+import androidx.compose.foundation.combinedClickable
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmployeeListScreen(
     navController: NavController,
@@ -77,18 +61,19 @@ fun EmployeeListScreen(
     constantsViewModel: ConstantsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val filteredEmployees by viewModel.filteredEmployees.collectAsStateWithLifecycle()
-    val employeeStatus by viewModel.employeeStatus.collectAsStateWithLifecycle()
-    val isAdmin by viewModel.isAdmin.collectAsStateWithLifecycle()
-    val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
+    val filteredEmployees by viewModel.filteredEmployees.collectAsState()
+    val employeeStatus by viewModel.employeeStatus.collectAsState()
+    val isAdmin by viewModel.isAdmin.collectAsState()
+    val fontScale by viewModel.fontScale.collectAsState()
+    val stationsForDistrict by viewModel.stationsForSelectedDistrict.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
+
     
     // Notification counts
-    val userNotifications by viewModel.userNotifications.collectAsStateWithLifecycle()
-    val adminNotifications by viewModel.adminNotifications.collectAsStateWithLifecycle()
-    val userNotificationsSeenAt by viewModel.userNotificationsLastSeen.collectAsStateWithLifecycle()
-    val adminNotificationsSeenAt by viewModel.adminNotificationsLastSeen.collectAsStateWithLifecycle()
+    val userNotifications by viewModel.userNotifications.collectAsState()
+    val adminNotifications by viewModel.adminNotifications.collectAsState()
+    val userNotificationsSeenAt by viewModel.userNotificationsLastSeen.collectAsState()
+    val adminNotificationsSeenAt by viewModel.adminNotificationsLastSeen.collectAsState()
     val notificationCount = if (isAdmin) {
         adminNotifications.count { (it.timestamp ?: 0L) > adminNotificationsSeenAt }
     } else {
@@ -106,12 +91,12 @@ fun EmployeeListScreen(
             // Refresh data when screen comes back into focus
             viewModel.refreshEmployees()
             viewModel.refreshOfficers()
+            constantsViewModel.forceRefresh()
         }
-        // Constants.kt is the primary source - no automatic syncing
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp), // ✅ Fix: Avoid double status bar padding (already handled by AppNavGraph)
+        contentWindowInsets = WindowInsets(0.dp), // ✅ Fix: Avoid double status bar padding
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -127,20 +112,20 @@ fun EmployeeListScreen(
                                     contentDescription = "Notifications"
                                 )
                             }
-                            // Notification badge - circular with white border (Yellow theme)
+                            // Notification badge
                             if (notificationCount > 0) {
                                 Box(
                                     modifier = Modifier
                                         .size(20.dp)
                                         .offset(x = 12.dp, y = (-12).dp)
                                         .background(
-                                            color = SecondaryYellow, // Yellow for notification badge
-                                            shape = androidx.compose.foundation.shape.CircleShape
+                                            color = SecondaryYellow,
+                                            shape = CircleShape
                                         )
                                         .border(
                                             width = 2.dp,
                                             color = Color.White,
-                                            shape = androidx.compose.foundation.shape.CircleShape
+                                            shape = CircleShape
                                         ),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -157,10 +142,10 @@ fun EmployeeListScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent, // Will use gradient background
-                    titleContentColor = androidx.compose.ui.graphics.Color.White,
-                    navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
-                    actionIconContentColor = androidx.compose.ui.graphics.Color.White
+                    containerColor = Color.Transparent,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 ),
                 modifier = Modifier.background(
                     brush = Brush.linearGradient(
@@ -174,29 +159,20 @@ fun EmployeeListScreen(
                     IconButton(onClick = { 
                         viewModel.refreshEmployees()
                         viewModel.refreshOfficers()
-                        constantsViewModel.forceRefresh()  // ← Also refresh constants from Google Sheet
+                        constantsViewModel.forceRefresh()
                     }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                     
-                    // Single Font Size Button with Dropdown Menu
+                    // Font Size Selector
                     FontSizeSelectorButton(
                         currentFontScale = fontScale,
-                        onFontScaleSelected = { scale ->
-                            viewModel.setFontScale(scale)
-                        },
+                        onFontScaleSelected = { scale: Float -> viewModel.setFontScale(scale) },
                         onFontScaleToggle = {
-                            // Cycle through common presets: 0.8, 1.0, 1.2, 1.4, 1.6, 1.8
                             val presets = listOf(0.8f, 1.0f, 1.2f, 1.4f, 1.6f, 1.8f)
                             val current = fontScale
-                            val currentIndex = presets.indexOfFirst { 
-                                kotlin.math.abs(it - current) < 0.05f 
-                            }
-                            val nextIndex = if (currentIndex >= 0 && currentIndex < presets.size - 1) {
-                                currentIndex + 1
-                            } else {
-                                0 // Cycle back to first
-                            }
+                            val currentIndex = presets.indexOfFirst { kotlin.math.abs(it - current) < 0.05f }
+                            val nextIndex = if (currentIndex >= 0 && currentIndex < presets.size - 1) currentIndex + 1 else 0
                             viewModel.setFontScale(presets[nextIndex])
                         },
                         contentColor = MaterialTheme.colorScheme.onPrimary
@@ -204,7 +180,7 @@ fun EmployeeListScreen(
                     
                     // Style Selector
                     CardStyleSelectorButton(
-                        currentStyle = viewModel.currentCardStyle.collectAsStateWithLifecycle().value,
+                        currentStyle = viewModel.currentCardStyle.collectAsState().value,
                         onStyleSelected = { viewModel.updateCardStyle(it) }
                     )
 
@@ -219,7 +195,7 @@ fun EmployeeListScreen(
                 Box(
                     modifier = Modifier.shadow(
                         elevation = 12.dp,
-                        shape = androidx.compose.foundation.shape.CircleShape,
+                        shape = CircleShape,
                         spotColor = FABColor.copy(alpha = 0.5f),
                         ambientColor = FABColor.copy(alpha = 0.3f)
                     )
@@ -227,7 +203,7 @@ fun EmployeeListScreen(
                     FloatingActionButton(
                         onClick = { navController.navigate("${Routes.ADD_EMPLOYEE}?employeeId=") },
                         containerColor = FABColor,
-                        modifier = Modifier.size(64.dp) // Larger size
+                        modifier = Modifier.size(64.dp)
                     ) {
                         Icon(
                             Icons.Default.Add,
@@ -243,7 +219,7 @@ fun EmployeeListScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            color = BackgroundLight // Light off-white background
+            color = BackgroundLight
         ) {
             EmployeeListContent(
                 navController = navController,
@@ -252,8 +228,7 @@ fun EmployeeListScreen(
                 context = context,
                 isAdmin = isAdmin,
                 fontScale = fontScale,
-                snackbarHostState = snackbarHostState,
-                coroutineScope = coroutineScope
+                snackbarHostState = snackbarHostState
             )
         }
     }
@@ -300,128 +275,32 @@ private fun EmployeeListContent(
     context: Context,
     isAdmin: Boolean,
     fontScale: Float,
-    snackbarHostState: SnackbarHostState,
-    coroutineScope: CoroutineScope
+    snackbarHostState: SnackbarHostState
 ) {
-    val filteredEmployees by viewModel.filteredEmployees.collectAsStateWithLifecycle()
-    val filteredContacts by viewModel.filteredContacts.collectAsStateWithLifecycle()
-    val allContacts by viewModel.allContacts.collectAsStateWithLifecycle()
-    val employeeStatus by viewModel.employeeStatus.collectAsStateWithLifecycle()
-    val officerStatus by viewModel.officerStatus.collectAsStateWithLifecycle()
-    val searchFilter by viewModel.searchFilter.collectAsStateWithLifecycle()
-    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
-    val cardStyle by viewModel.currentCardStyle.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
+    val filteredContacts by viewModel.filteredContacts.collectAsState()
+    val employeeStatus by viewModel.employeeStatus.collectAsState()
+    val officerStatus by viewModel.officerStatus.collectAsState()
+    val searchParams by viewModel.searchParams.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
+    val cardStyle by viewModel.currentCardStyle.collectAsState()
 
     // Get constants from ViewModel
-    val districts by constantsViewModel.districts.collectAsStateWithLifecycle()
-    val units by constantsViewModel.units.collectAsStateWithLifecycle()
-    val stationsByDistrict by constantsViewModel.stationsByDistrict.collectAsStateWithLifecycle()
-    val ranks by constantsViewModel.ranks.collectAsStateWithLifecycle()
-
-    var searchQuery by remember { mutableStateOf("") }
+    val districts by constantsViewModel.districts.collectAsState()
+    val units by constantsViewModel.units.collectAsState()
+    val ranks by constantsViewModel.ranks.collectAsState()
     
-    // 🔹 UNIT SELECTION STATE
-    var selectedUnit by remember { mutableStateOf("All") }
+    // State for dropdown expansion
     var unitExpanded by remember { mutableStateOf(false) }
-    val unitsList = remember(units) { units } // Units are already "All" + list in ViewModel/Repo or just list
-    val selectedUnitState by viewModel.selectedUnit.collectAsStateWithLifecycle()
-    
-    // Sync selectedUnit with ViewModel
-    LaunchedEffect(selectedUnitState) {
-        selectedUnit = selectedUnitState
-    }
-
-    var selectedDistrict by remember { mutableStateOf("All") }
     var districtExpanded by remember { mutableStateOf(false) }
-    // Show "All" only for admins, regular users see only districts
-    val districtsList = remember(isAdmin, districts) {
-        if (isAdmin) {
-            listOf("All") + districts
-        } else {
-            districts
-        }
-    }
-
-    var selectedStation by remember { mutableStateOf("All") }
     var stationExpanded by remember { mutableStateOf(false) }
-    
-    // 🔹 FILTER STATIONS BY DISTRICT AND UNIT
-    val stationsForDistrict = remember(selectedDistrict, selectedUnit, stationsByDistrict) {
-        // 1. Get stations for the selected district (or all districts if "All")
-        val districtStations = if (selectedDistrict == "All") {
-             // If "All" districts, we effectively don't filter by district yet, OR we rely on ViewModel filtering.
-             // But for the dropdown, showing *all* stations from *all* districts is too much.
-             // Strategy: If District is All, show Empty or All? 
-             // Current app showed "All". Let's stick to that, but maybe limit distinct names?
-             listOf("All") 
-        } else {
-            val stations = stationsByDistrict[selectedDistrict]
-                ?: stationsByDistrict.keys.find { it.equals(selectedDistrict, ignoreCase = true) }?.let { stationsByDistrict[it] }
-                ?: emptyList()
-            listOf("All") + stations
-        }
-        
-        // 2. Filter these stations by Unit keyword (Hybrid Strategy in UI)
-        if (selectedUnit == "All" || selectedUnit == "Law & Order") {
-            // "Law & Order" is the default bucket. Ideally, we'd check if a station falls into ANY other unit.
-            // But doing that inverse check in the UI is expensive.
-            // For the dropdown, simple containment is usually enough, or we just show all stations in the district.
-            // Let's stick to: "Law & Order" shows everything in the district for now, or we can make it stricter later.
-            districtStations
-        } else {
-             // For specific units, filter by station name keywords as per the Hybrid Strategy fallback
-             val expectedKeywords = when(selectedUnit) {
-                 "Traffic" -> listOf("Traffic")
-                 "Control Room" -> listOf("Control Room") 
-                 "CEN Crime / Cyber" -> listOf("CEN", "Cyber")
-                 "Women Police" -> listOf("Women")
-                 "DPO / Admin" -> listOf("DPO", "Computer", "Admin", "Office")
-                 "DAR" -> listOf("DAR")
-                 "DCRB" -> listOf("DCRB")
-                 "DSB / Intelligence" -> listOf("DSB", "Intelligence", "INT")
-                 "Special Units" -> listOf("FPB", "MCU", "SMMC", "DCRE", "Lokayukta", "ESCOM")
-                 else -> listOf(selectedUnit)
-             }
-             
-             districtStations.filter { station -> 
-                 station == "All" || expectedKeywords.any { station.contains(it, ignoreCase = true) }
-             }
-        }
-    }
-
-    var selectedRank by remember { mutableStateOf("All") }
     var rankExpanded by remember { mutableStateOf(false) }
-    val allRanks = remember(ranks) { listOf("All") + ranks }
-    val selectedRankState by viewModel.selectedRank.collectAsStateWithLifecycle()
     
-    // Sync selectedRank with ViewModel
-    LaunchedEffect(selectedRankState) {
-        selectedRank = selectedRankState
-    }
+    // Derived UI-specific lists
+    // val unitsList by constantsViewModel.units.collectAsState() // Removed duplicate
+    val stationsForDistrict by viewModel.stationsForSelectedDistrict.collectAsState()
+    val allRanks = remember(ranks) { listOf("All") + ranks }
 
-    // Initialize district to user's registered district when currentUser loads (for non-admins)
-    // For admins, default to "All"; for regular users, default to their registered district
-    LaunchedEffect(currentUser, isAdmin, districts) {
-        if (isAdmin) {
-            // Admin: default to "All" if not already set
-            if (selectedDistrict == "All") {
-                viewModel.updateSelectedDistrict("All")
-            }
-        } else {
-            // Regular user: set to their registered district (if it exists in the list)
-            val userDistrict = currentUser?.district?.takeIf { it.isNotBlank() }
-            if (userDistrict != null && districts.contains(userDistrict)) {
-                // User's district is valid and exists in the list
-                selectedDistrict = userDistrict
-                viewModel.updateSelectedDistrict(userDistrict)
-            } else {
-                // Fallback: use first district if user has no district set or district is invalid
-                val fallbackDistrict = districts.firstOrNull() ?: "All"
-                selectedDistrict = fallbackDistrict
-                viewModel.updateSelectedDistrict(fallbackDistrict)
-            }
-        }
-    }
 
     val searchFields = SearchFilter.values().toList()
     var employeeToDelete by remember { mutableStateOf<Employee?>(null) }
@@ -441,115 +320,77 @@ private fun EmployeeListContent(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             // UNIT Dropdown
-            ExposedDropdownMenuBox(
-                expanded = unitExpanded,
-                onExpandedChange = { unitExpanded = !unitExpanded },
+            Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .shadow(
-                        elevation = 2.dp,
-                        shape = RoundedCornerShape(15.dp),
-                        spotColor = CardShadow,
-                        ambientColor = CardShadow.copy(alpha = 0.5f)
-                    )
+                    .weight(0.4f)
+                    .zIndex(10f)
             ) {
-                OutlinedTextField(
-                    value = selectedUnit,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Groups, null, Modifier.size(16.dp), PrimaryTeal)
-                            Spacer(Modifier.width(4.dp))
-                            Text("Unit")
-                        }
-                    },
-                    leadingIcon = { Icon(Icons.Default.Groups, null, tint = PrimaryTeal) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    singleLine = true,
-                    maxLines = 1,
-                    shape = RoundedCornerShape(15.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BorderTeal,
-                        unfocusedBorderColor = BorderTeal,
-                        focusedLabelColor = PrimaryTeal,
-                        unfocusedLabelColor = PrimaryTeal
-                    )
-                )
-                ExposedDropdownMenu(
+                ExposedDropdownMenuBox(
                     expanded = unitExpanded,
-                    onDismissRequest = { unitExpanded = false }
+                    onExpandedChange = { unitExpanded = !unitExpanded },
                 ) {
-                    unitsList.forEach { unit ->
-                        DropdownMenuItem(
-                            text = { Text(unit) },
-                            onClick = {
-                                selectedUnit = unit
-                                // Reset district and station if needed, or keep?
-                                // Usually keep District, but Station might change.
-                                // Logic handled in ViewModel updateSelectedUnit + UI stationsForDistrict
-                                unitExpanded = false
-                                viewModel.updateSelectedUnit(unit)
-                            }
+                    OutlinedTextField(
+                        value = searchParams.unit,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Unit") },
+                        leadingIcon = null,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        singleLine = true,
+                        maxLines = 1,
+                        shape = RoundedCornerShape(15.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryTeal,
+                            unfocusedBorderColor = Color.LightGray,
+                            focusedLabelColor = PrimaryTeal,
+                            unfocusedLabelColor = PrimaryTeal
                         )
+                    )
+                    ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
+                        units.forEach { unit ->
+                            DropdownMenuItem(text = { Text(unit) }, onClick = { unitExpanded = false; viewModel.updateSelectedUnit(unit) })
+                        }
                     }
                 }
             }
 
             // DISTRICT Dropdown
-            ExposedDropdownMenuBox(
-                expanded = districtExpanded,
-                onExpandedChange = { districtExpanded = !districtExpanded },
+            Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .shadow(
-                        elevation = 2.dp,
-                        shape = RoundedCornerShape(15.dp),
-                        spotColor = CardShadow,
-                        ambientColor = CardShadow.copy(alpha = 0.5f)
-                    )
+                    .weight(0.6f)
+                    .zIndex(10f)
             ) {
-                OutlinedTextField(
-                    value = selectedDistrict,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp), PrimaryTeal)
-                            Spacer(Modifier.width(4.dp))
-                            Text("District")
-                        }
-                    },
-                    leadingIcon = { Icon(Icons.Default.LocationOn, null, tint = PrimaryTeal) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    singleLine = true,
-                    maxLines = 1,
-                    shape = RoundedCornerShape(15.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BorderTeal,
-                        unfocusedBorderColor = BorderTeal,
-                        focusedLabelColor = PrimaryTeal,
-                        unfocusedLabelColor = PrimaryTeal
-                    )
-                )
-                ExposedDropdownMenu(
+                ExposedDropdownMenuBox(
                     expanded = districtExpanded,
-                    onDismissRequest = { districtExpanded = false }
+                    onExpandedChange = { districtExpanded = !districtExpanded },
                 ) {
-                    districtsList.forEach { district ->
-                        DropdownMenuItem(
-                            text = { Text(district) },
-                            onClick = {
-                                selectedDistrict = district
-                                // Reset station
-                                selectedStation = "All"
-                                districtExpanded = false
-                                viewModel.updateSelectedDistrict(district)
-                                viewModel.updateSelectedStation("All")
-                            }
+                    OutlinedTextField(
+                        value = searchParams.district,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("District") },
+                        leadingIcon = null,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        singleLine = true,
+                        maxLines = 1,
+                        shape = RoundedCornerShape(15.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryTeal,
+                            unfocusedBorderColor = Color.LightGray,
+                            focusedLabelColor = PrimaryTeal,
+                            unfocusedLabelColor = PrimaryTeal
                         )
+                    )
+                    ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
+                        districts.forEach { district ->
+                            DropdownMenuItem(text = { Text(district) }, onClick = { districtExpanded = false; viewModel.updateSelectedDistrict(district); viewModel.updateSelectedStation("All") })
+                        }
                     }
                 }
             }
@@ -561,231 +402,170 @@ private fun EmployeeListContent(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             // STATION Dropdown
-            ExposedDropdownMenuBox(
-                expanded = stationExpanded,
-                onExpandedChange = {
-                    if (selectedDistrict != "All") stationExpanded = !stationExpanded
-                },
+            Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .shadow(
-                        elevation = 2.dp,
-                        shape = RoundedCornerShape(15.dp),
-                        spotColor = CardShadow,
-                        ambientColor = CardShadow.copy(alpha = 0.5f)
-                    )
+                    .weight(0.6f)
+                    .zIndex(9f)
             ) {
-                OutlinedTextField(
-                    value = selectedStation,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Business, null, Modifier.size(16.dp), PrimaryTeal)
-                            Spacer(Modifier.width(4.dp))
-                            Text("Station")
-                        }
-                    },
-                    leadingIcon = { Icon(Icons.Default.Business, null, tint = PrimaryTeal) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    enabled = selectedDistrict != "All",
-                    singleLine = true,
-                    maxLines = 1,
-                    shape = RoundedCornerShape(15.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BorderTeal,
-                        unfocusedBorderColor = BorderTeal,
-                        focusedLabelColor = PrimaryTeal,
-                        unfocusedLabelColor = PrimaryTeal
-                    )
-                )
-                ExposedDropdownMenu(
+                ExposedDropdownMenuBox(
                     expanded = stationExpanded,
-                    onDismissRequest = { stationExpanded = false }
+                    onExpandedChange = {
+                        if (searchParams.district != "All") stationExpanded = !stationExpanded
+                    },
                 ) {
-                    stationsForDistrict.forEach { station ->
-                        DropdownMenuItem(
-                            text = { Text(station) },
-                            onClick = {
-                                selectedStation = station
-                                stationExpanded = false
-                                viewModel.updateSelectedStation(station)
-                            }
+                    OutlinedTextField(
+                        value = searchParams.station,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Station") },
+                        leadingIcon = null,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        enabled = searchParams.district != "All",
+                        singleLine = true,
+                        maxLines = 1,
+                        shape = RoundedCornerShape(15.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryTeal,
+                            unfocusedBorderColor = Color.LightGray,
+                            focusedLabelColor = PrimaryTeal,
+                            unfocusedLabelColor = PrimaryTeal
                         )
+                    )
+                    ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
+                        stationsForDistrict.forEach { station ->
+                            DropdownMenuItem(text = { Text(station) }, onClick = { stationExpanded = false; viewModel.updateSelectedStation(station) })
+                        }
                     }
                 }
             }
             
             // RANK Dropdown
-            ExposedDropdownMenuBox(
-                expanded = rankExpanded,
-                onExpandedChange = { rankExpanded = !rankExpanded },
+            Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .shadow(
-                        elevation = 2.dp,
-                        shape = RoundedCornerShape(15.dp),
-                        spotColor = CardShadow,
-                        ambientColor = CardShadow.copy(alpha = 0.5f)
-                    )
+                    .weight(0.4f)
+                    .zIndex(9f)
             ) {
-                OutlinedTextField(
-                    value = selectedRank,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.MilitaryTech, null, Modifier.size(16.dp), PrimaryTeal)
-                            Spacer(Modifier.width(4.dp))
-                            Text("Rank")
-                        }
-                    },
-                    leadingIcon = { Icon(Icons.Default.MilitaryTech, null, tint = PrimaryTeal) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    singleLine = true,
-                    maxLines = 1,
-                    shape = RoundedCornerShape(15.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BorderTeal,
-                        unfocusedBorderColor = BorderTeal,
-                        focusedLabelColor = PrimaryTeal,
-                        unfocusedLabelColor = PrimaryTeal
-                    )
-                )
-                ExposedDropdownMenu(
+                ExposedDropdownMenuBox(
                     expanded = rankExpanded,
-                    onDismissRequest = { rankExpanded = false }
+                    onExpandedChange = { rankExpanded = !rankExpanded },
                 ) {
-                    allRanks.forEach { rank ->
-                        DropdownMenuItem(
-                            text = { Text(rank) },
-                            onClick = {
-                                selectedRank = rank
-                                rankExpanded = false
-                                viewModel.updateSelectedRank(rank)
-                            }
+                    OutlinedTextField(
+                        value = searchParams.rank,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Rank") },
+                        leadingIcon = null,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        singleLine = true,
+                        maxLines = 1,
+                        shape = RoundedCornerShape(15.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryTeal,
+                            unfocusedBorderColor = Color.LightGray,
+                            focusedLabelColor = PrimaryTeal,
+                            unfocusedLabelColor = PrimaryTeal
                         )
+                    )
+                    ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
+                        allRanks.forEach { rank ->
+                            DropdownMenuItem(text = { Text(rank) }, onClick = { rankExpanded = false; viewModel.updateSelectedRank(rank) })
+                        }
                     }
                 }
             }
         }
 
         // 🔹 ROW 3: SEARCH BAR
-        
-        val searchLabel = when (searchFilter) {
+
+        val searchLabel = when (searchParams.filter) {
             SearchFilter.METAL_NUMBER -> "Metal"
             SearchFilter.KGID -> "KGID"
             SearchFilter.MOBILE -> "Mobile"
             SearchFilter.STATION -> "Station"
             SearchFilter.RANK -> "Rank"
             SearchFilter.NAME -> "Name"
-            else -> searchFilter.name.lowercase().replaceFirstChar { it.uppercase() }
+            SearchFilter.BLOOD_GROUP -> "Blood"
         }
 
         // Determine keyboard type based on selected filter
-        val keyboardType = when (searchFilter) {
+        val keyboardType = when (searchParams.filter) {
             SearchFilter.MOBILE, SearchFilter.METAL_NUMBER -> KeyboardType.Number
             else -> KeyboardType.Text
         }
         
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = {
-                searchQuery = it
-                viewModel.updateSearchQuery(it)
-            },
-            placeholder = { Text("Search by $searchLabel") },
-            leadingIcon = { 
-                Icon(Icons.Default.Search, contentDescription = "Search", tint = PrimaryTeal) 
-            },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = {
-                        searchQuery = ""
-                        viewModel.updateSearchQuery("")
-                    }) { 
-                        Icon(Icons.Default.Clear, contentDescription = "Clear", tint = PrimaryTeal) 
-                    }
-                }
-            },
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(
-                    elevation = 2.dp,
-                    shape = RoundedCornerShape(15.dp),
-                    spotColor = CardShadow,
-                    ambientColor = CardShadow.copy(alpha = 0.5f)
-                ),
-            singleLine = true,
-            shape = RoundedCornerShape(15.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = BorderTeal,
-                unfocusedBorderColor = BorderTeal,
-                focusedLabelColor = PrimaryTeal,
-                unfocusedLabelColor = PrimaryTeal
-            )
-        )
-
-        // 🔹 FILTER CHIPS (Compact Wrapping Layout)
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 2.dp, bottom = 2.dp)
+                .border(1.dp, Color.LightGray, RoundedCornerShape(15.dp))
+                .shadow(elevation = 2.dp, shape = RoundedCornerShape(15.dp))
         ) {
-            searchFields.forEach { filter ->
-                // Skip KGID for non-admins
-                if (filter == SearchFilter.KGID && !isAdmin) return@forEach
-                // Skip RANK since we have a rank dropdown
-                if (filter == SearchFilter.RANK) return@forEach
+            OutlinedTextField(
+                value = searchParams.query,
+                onValueChange = {
+                    viewModel.updateSearchQuery(it)
+                },
+                placeholder = { Text("Search by $searchLabel") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = "Search", tint = PrimaryTeal)
+                },
+                trailingIcon = {
+                    if (searchParams.query.isNotEmpty()) {
+                        IconButton(onClick = {
+                            viewModel.updateSearchQuery("")
+                        }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = PrimaryTeal)
+                        }
+                    }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(15.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedLabelColor = PrimaryTeal,
+                    unfocusedLabelColor = PrimaryTeal
+                )
+            )
+        }
 
-                val selected = searchFilter == filter
+        // 🔹 FILTER CHIPS
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            contentPadding = PaddingValues(horizontal = 2.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)
+        ) {
+            items(SearchFilter.values().toList()) { filter ->
+                if (filter == SearchFilter.KGID && !isAdmin) return@items
+                if (filter == SearchFilter.RANK) return@items
+
+                val selected = searchParams.filter == filter
                 val labelText = when (filter) {
                     SearchFilter.METAL_NUMBER -> "Metal"
                     SearchFilter.KGID -> "KGID"
+                    SearchFilter.BLOOD_GROUP -> "Blood"
                     else -> filter.name.lowercase().replaceFirstChar { it.uppercase() }
                 }
 
-                // Glassmorphism chip with gradient for selected
-                Box(
-                    modifier = Modifier
-                        .shadow(
-                            elevation = if (selected) 4.dp else 0.dp,
-                            shape = RoundedCornerShape(20.dp),
-                            spotColor = if (selected) CardShadow else Color.Transparent,
-                            ambientColor = if (selected) CardShadow.copy(alpha = 0.5f) else Color.Transparent
-                        )
-                ) {
+                Box(modifier = Modifier.shadow(elevation = if (selected) 4.dp else 0.dp, shape = RoundedCornerShape(20.dp))) {
                     FilterChip(
                         selected = selected,
                         onClick = { viewModel.updateSearchFilter(filter) },
                         enabled = true,
-                        label = {
-                            Text(
-                                labelText,
-                                fontSize = 13.sp,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
+                        label = { Text(labelText, fontSize = 13.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal) },
                         shape = RoundedCornerShape(20.dp),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = if (selected) Color.Transparent else ChipUnselected,
                             selectedLabelColor = Color.White,
                             containerColor = ChipUnselected,
                             labelColor = if (selected) Color.White else PrimaryTeal
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
-                            selected = selected,
-                            borderColor = BorderChipUnselected,
-                            disabledBorderColor = BorderChipUnselected,
-                            selectedBorderColor = Color.Transparent,
-                            borderWidth = if (selected) 0.dp else 1.dp,
-                            selectedBorderWidth = 0.dp
                         ),
                         modifier = if (selected) {
                             Modifier.background(
@@ -802,159 +582,84 @@ private fun EmployeeListContent(
             }
         }
 
-
-        // 🔹 UNIFIED CONTACTS LIST (Employees + Officers)
+        // 🔹 UNIFIED CONTACTS LIST
         Box(modifier = Modifier.weight(1f)) {
-            val isLoading = employeeStatus is OperationStatus.Loading || officerStatus is OperationStatus.Loading
-            val hasError = employeeStatus is OperationStatus.Error || officerStatus is OperationStatus.Error
-            val errorMessage = when {
-                employeeStatus is OperationStatus.Error -> (employeeStatus as OperationStatus.Error).message
-                officerStatus is OperationStatus.Error -> (officerStatus as OperationStatus.Error).message
-                else -> null
-            }
-            
             when {
-                isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    CircularProgressIndicator()
+                employeeStatus is OperationStatus.Loading || officerStatus is OperationStatus.Loading -> {
+                     Box(Modifier.fillMaxSize(), Alignment.Center) {
+                         CircularProgressIndicator(color = PrimaryTeal)
+                     }
                 }
-                hasError -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Text("Error: ${errorMessage ?: "Unknown error"}", color = MaterialTheme.colorScheme.error)
+                employeeStatus is OperationStatus.Error || officerStatus is OperationStatus.Error -> {
+                    val errorMessage = (employeeStatus as? OperationStatus.Error)?.message 
+                        ?: (officerStatus as? OperationStatus.Error)?.message 
+                        ?: "Unknown Error"
+                        
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Error: $errorMessage", color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = { viewModel.refreshEmployees(); viewModel.refreshOfficers() }) {
+                            Text("Retry")
+                        }
+                    }
+                }
+                filteredContacts.isEmpty() -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                         Column(
+                             horizontalAlignment = Alignment.CenterHorizontally, 
+                             verticalArrangement = Arrangement.spacedBy(8.dp)
+                         ) {
+                             Text("No contacts found", fontSize = 16.sp)
+                             if (searchParams.query.isNotEmpty() || searchParams.district != "All" || searchParams.unit != "All") {
+                                 TextButton(onClick = { 
+                                     viewModel.clearFilters()
+                                 }) {
+                                     Text("Reset All Filters")
+                                 }
+                             }
+                         }
+                    }
                 }
                 else -> {
-                    if (filteredContacts.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.padding(24.dp)
-                            ) {
-                                if (allContacts.isEmpty()) {
-                                    Text(
-                                        "No contacts available.",
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                        fontSize = 16.sp
-                                    )
-                                    Text(
-                                        "Try refreshing the list.",
-                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                                        fontSize = 14.sp
-                                    )
-                                } else {
-                                    Text(
-                                        "No contacts match your filters.",
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                        fontSize = 16.sp
-                                    )
-                                    Text(
-                                        "Try adjusting district, station, rank, or search filters.",
-                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                                        fontSize = 14.sp,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Button(
-                                        onClick = {
-                                            viewModel.updateSelectedDistrict("All")
-                                            viewModel.updateSelectedStation("All")
-                                            viewModel.updateSelectedRank("All")
-                                            viewModel.updateSearchQuery("")
-                                        },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = PrimaryTeal
-                                        )
-                                    ) {
-                                        Text("Reset All Filters")
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(bottom = 16.dp)
-                        ) {
-                            items(filteredContacts, key = { it.id }) { contact ->
-                                if (isAdmin && contact.employee != null) {
-                                    // 🧑‍💼 Show admin version for employees only
-                                    EmployeeCardAdmin(
-                                        employee = contact.employee,
-                                        isAdmin = true,
-                                        fontScale = fontScale,
-                                        navController = navController,
-                                        onDelete = { employeeToDelete = contact.employee },
-                                        context = context,
-                                        cardStyle = cardStyle
-                                    )
-                                } else {
-                                    // 👮‍♂️ Show unified contact card (works for both Employee and Officer)
-                                    ContactCard(
-                                        employee = contact.employee,
-                                        officer = contact.officer,
-                                        fontScale = fontScale,
-                                        isAdmin = isAdmin,
-                                        onEdit = if (isAdmin && contact.officer != null) {
-                                            { navController.navigate("${Routes.EDIT_OFFICER}/${contact.officer.agid}") }
-                                        } else null,
-                                        onClick = {
-                                            Toast.makeText(context, "${contact.name} selected", Toast.LENGTH_SHORT).show()
-                                        },
-                                        cardStyle = cardStyle
-                                    )
-                                }
+                    LazyColumn(
+                        state = listState,
+                        contentPadding = PaddingValues(bottom = 80.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(filteredContacts, key = { it.id }) { contact ->
+                            if (isAdmin && contact.employee != null) {
+                                // 🧑‍💼 Show admin version for employees only
+                                EmployeeCardAdmin(
+                                    employee = contact.employee,
+                                    isAdmin = true,
+                                    fontScale = fontScale,
+                                    navController = navController,
+                                    onDelete = { employeeToDelete = contact.employee },
+                                    context = context,
+                                    cardStyle = cardStyle
+                                )
+                            } else {
+                                // 👮‍♂️ Show unified contact card (works for both Employee and Officer)
+                                ContactCard(
+                                    officer = contact.officer,
+                                    fontScale = fontScale,
+                                    isAdmin = isAdmin,
+                                    onEdit = { 
+                                        navController.navigate("${Routes.ADD_OFFICER}?officerId=${contact.officer?.agid ?: ""}")
+                                    },
+                                    onClick = {},
+                                    cardStyle = cardStyle
+                                )
                             }
                         }
                     }
                 }
             }
         }
-
-        // 🔹 DELETE CONFIRMATION + SNACKBAR (Improved with Auto Refresh)
-        if (employeeToDelete != null) {
-            AlertDialog(
-                onDismissRequest = { employeeToDelete = null },
-                title = { Text("Confirm Delete") },
-                text = { Text("Delete ${employeeToDelete?.name}? This action cannot be undone.") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        val emp = employeeToDelete
-                        employeeToDelete = null
-                        if (emp != null) {
-                            coroutineScope.launch {
-                                try {
-                                    // ✅ Delete and refresh the employee list
-                                    viewModel.deleteEmployee(emp.kgid, emp.photoUrl)
-                                    viewModel.refreshEmployees()
-
-                                    // ✅ Show success message
-                                    snackbarHostState.showSnackbar(
-                                        message = "${emp.name} deleted successfully",
-                                        withDismissAction = true
-                                    )
-                                } catch (e: Exception) {
-                                    // 🚨 Handle failure gracefully
-                                    snackbarHostState.showSnackbar(
-                                        message = "Failed to delete ${emp.name}: ${e.message}",
-                                        withDismissAction = true
-                                    )
-                                }
-                            }
-                        }
-                    }) {
-                        Text("Delete")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { employeeToDelete = null }) {
-                        Text("Cancel")
-                    }
-                }
-            )
-        }
-
     }
 }
 
@@ -1037,3 +742,5 @@ private fun FontSizeSelectorButton(
         }
     }
 }
+
+

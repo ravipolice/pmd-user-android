@@ -114,6 +114,7 @@ open class EmployeeViewModel @Inject constructor(
     }
     
     private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
     private val _debouncedSearchQuery = MutableStateFlow("")
     private val _searchFilter = MutableStateFlow(SearchFilter.NAME)
     val searchFilter: StateFlow<SearchFilter> = _searchFilter.asStateFlow()
@@ -173,6 +174,32 @@ open class EmployeeViewModel @Inject constructor(
         allContactsList
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
+    // Rank Priority Map (Highest Rank = Lowest Index)
+    private val rankPriorityMap = mapOf(
+        // Senior Officers
+        "DYSP" to 1,
+        // Inspectors
+        "PI" to 2, "CPI" to 2, "RPI" to 2, "WPI" to 2, "PIW" to 2,
+        // Sub-Inspectors
+        "PSI" to 3, "WPSI" to 3, "RSI" to 3, "PSIW" to 3,
+        // Asst Sub-Inspectors
+        "ASI" to 4, "WASI" to 4, "ARSI" to 4, "ASIW" to 4,
+        // Head Constables
+        "HC" to 5, "AHC" to 5, "CHC" to 5, "WHC" to 5, "HCW" to 5,
+        // Constables
+        "PC" to 6, "APC" to 6, "CPC" to 6, "WPC" to 6, "PCW" to 6,
+        // Ministerial / Staff
+        "SS" to 7, "FDA" to 8, "SDA" to 9, "GHA" to 10, "AO" to 11,
+        "Typist" to 12, "Steno" to 13, "PA" to 14
+    )
+
+    private fun getRankPriority(rank: String?): Int {
+        if (rank.isNullOrBlank()) return 999
+        // Normalize rank string (remove extra spaces, ignore case)
+        val normalized = rank.trim().uppercase()
+        return rankPriorityMap[normalized] ?: 998 // Unknown ranks below known ones
+    }
+
     // Optimized search with pre-filtering and efficient matching
     val filteredContacts: StateFlow<List<Contact>> = combine(
         allContacts,
@@ -184,10 +211,7 @@ open class EmployeeViewModel @Inject constructor(
             return@combine emptyList<Contact>()
         }
         
-        // Step 1: Fast pre-filtering by district/station/rank (cheap operations)
-        // Simplified logic: When filter is "All", show everything. Otherwise, match specific values only.
         // Step 1: Fast pre-filtering by district/station/rank/unit
-        // Simplified logic: When filter is "All", show everything. Otherwise, match specific values only.
         val preFiltered = contacts.filter { contact ->
             val districtMatch = filters.district == "All" || 
                 (contact.district?.equals(filters.district, ignoreCase = true) == true)
@@ -214,67 +238,50 @@ open class EmployeeViewModel @Inject constructor(
             districtMatch && stationMatch && rankMatch && unitMatch
         }
         
-        // Log when filters result in empty list
-        if (preFiltered.isEmpty() && contacts.isNotEmpty()) {
-            Log.w("FilteredContacts", "⚠️ No contacts match filters: district='${filters.district}', station='${filters.station}', rank='${filters.rank}', query='${filters.query}'")
-            Log.d("FilteredContacts", "Available districts: ${contacts.mapNotNull { it.district }.distinct().take(5)}")
-            Log.d("FilteredContacts", "Available stations: ${contacts.mapNotNull { it.station }.distinct().take(5)}")
-            Log.d("FilteredContacts", "Available ranks: ${contacts.mapNotNull { it.rank }.distinct().take(5)}")
-        }
-        
         // Early exit if no matches after pre-filtering
         if (preFiltered.isEmpty()) return@combine emptyList<Contact>()
         
-        // Step 2: Text search only on pre-filtered results (more expensive operation)
-        if (filters.query.isBlank()) {
-            return@combine preFiltered
-        }
-        
-        val queryLower = filters.query.lowercase().trim()
-        if (queryLower.isEmpty()) return@combine preFiltered
-        
-        // Optimized text matching
-        val textFiltered = preFiltered.filter { contact ->
-            when {
-                contact.employee != null -> {
-                    val matches = contact.employee.matchesOptimized(queryLower, filters.filter)
-                    if (filters.filter == SearchFilter.METAL_NUMBER) {
-                        Log.d("MetalSearch", "Employee ${contact.employee.name}: metalNumber='${contact.employee.metalNumber}', query='$queryLower', matches=$matches")
-                    }
-                    matches
-                }
-                contact.officer != null -> {
-                    // Officers don't have metal numbers, so exclude them from metal number searches
-                    if (filters.filter == SearchFilter.METAL_NUMBER) {
-                        false
-                    } else {
-                        val filterString = when (filters.filter) {
-                            SearchFilter.NAME -> "name"
-                            SearchFilter.KGID -> "agid"
-                            SearchFilter.MOBILE -> "mobile"
-                            SearchFilter.STATION -> "station"
-                            SearchFilter.RANK -> "rank"
-                            SearchFilter.METAL_NUMBER -> "" // This case is handled above
+        // Step 2: Text search
+        val resultList = if (filters.query.isBlank()) {
+            preFiltered
+        } else {
+            val queryLower = filters.query.lowercase().trim()
+            if (queryLower.isEmpty()) {
+                preFiltered
+            } else {
+                preFiltered.filter { contact ->
+                    when {
+                        contact.employee != null -> {
+                            contact.employee.matchesOptimized(queryLower, filters.filter.name.lowercase())
                         }
-                        contact.officer.matchesOptimized(queryLower, filterString)
+                        contact.officer != null -> {
+                            if (filters.filter == SearchFilter.METAL_NUMBER) {
+                                false
+                            } else {
+                                val filterString = when (filters.filter) {
+                                    SearchFilter.NAME -> "name"
+                                    SearchFilter.KGID -> "agid"
+                                    SearchFilter.MOBILE -> "mobile"
+                                    SearchFilter.STATION -> "station"
+                                    SearchFilter.RANK -> "rank"
+                                    SearchFilter.BLOOD_GROUP -> "blood"
+                                    else -> ""
+                                }
+                                contact.officer.matchesOptimized(queryLower, filterString)
+                            }
+                        }
+                        else -> false
                     }
                 }
-                else -> false
             }
         }
         
-        if (textFiltered.isEmpty() && preFiltered.isNotEmpty()) {
-            Log.d("FilteredContacts", "⚠️ Text search filtered out all ${preFiltered.size} contacts (filter: ${filters.filter}, query: '$queryLower')")
-            if (filters.filter == SearchFilter.METAL_NUMBER) {
-                val employeesWithMetal = preFiltered.filter { it.employee != null && !it.employee?.metalNumber.isNullOrBlank() }
-                Log.d("MetalSearch", "⚠️ Metal search: ${preFiltered.size} pre-filtered contacts, ${employeesWithMetal.size} have metal numbers")
-                employeesWithMetal.take(5).forEach { contact ->
-                    Log.d("MetalSearch", "  - ${contact.employee?.name}: metalNumber='${contact.employee?.metalNumber}'")
-                }
-            }
-        }
+        // ✅ SORTING: Rank Priority (High to Low) -> Name (A-Z)
+        resultList.sortedWith(
+            compareBy<Contact> { getRankPriority(it.rank) }
+                .thenBy { it.name }
+        )
         
-        textFiltered
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
     // Simplified Notifications for User App
@@ -312,16 +319,24 @@ open class EmployeeViewModel @Inject constructor(
         if (preFiltered.isEmpty()) return@combine emptyList<Employee>()
         
         // Step 2: Text search only on pre-filtered results
-        if (filters.query.isBlank()) {
-            return@combine preFiltered
+        val resultList = if (filters.query.isBlank()) {
+            preFiltered
+        } else {
+            val queryLower = filters.query.lowercase().trim()
+            if (queryLower.isEmpty()) {
+                preFiltered
+            } else {
+                preFiltered.filter { emp ->
+                    emp.matchesOptimized(queryLower, filters.filter.name.lowercase())
+                }
+            }
         }
-        
-        val queryLower = filters.query.lowercase().trim()
-        if (queryLower.isEmpty()) return@combine preFiltered
-        
-        preFiltered.filter { emp ->
-            emp.matchesOptimized(queryLower, filters.filter)
-        }
+
+        // ✅ SORTING: Rank Priority (High to Low) -> Name (A-Z)
+        resultList.sortedWith(
+            compareBy<Employee> { getRankPriority(it.rank) }
+                .thenBy { it.name }
+        )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _uploadStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
@@ -861,16 +876,10 @@ open class EmployeeViewModel @Inject constructor(
                 rank?.lowercase()?.contains(queryLower) == true
             }
             SearchFilter.METAL_NUMBER -> {
-                // Handle null/empty metal numbers - store in local variable for smart cast
-                val metalNum = metalNumber
-                if (metalNum.isNullOrBlank()) {
-                    false
-                } else {
-                    // Normalize both values: trim whitespace and compare
-                    val normalizedMetal = metalNum.trim().lowercase()
-                    val normalizedQuery = queryLower.trim()
-                    normalizedMetal.contains(normalizedQuery)
-                }
+                metalNumber?.lowercase()?.contains(queryLower) == true
+            }
+            SearchFilter.BLOOD_GROUP -> {
+                bloodGroup?.lowercase()?.contains(queryLower) == true
             }
         }
     }

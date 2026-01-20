@@ -85,8 +85,10 @@ fun PendingApprovalsScreen(
     val isProcessing = operationStatus is OperationStatus.Loading
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("Pending Approvals") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -301,10 +303,9 @@ private fun PendingRegistrationEditDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
-            shape = MaterialTheme.shapes.large,
+            modifier = Modifier.fillMaxSize(),
+            shape = MaterialTheme.shapes.extraSmall, // Use clearer shape or Rectangle
+            color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
         ) {
             Column(

@@ -82,8 +82,10 @@ fun UploadDocumentScreen(
     if (!isAdmin) {
         // Non-admin users should not access upload UI
         Scaffold(
+            contentWindowInsets = WindowInsets(0.dp),
             topBar = {
                 TopAppBar(
+                    windowInsets = WindowInsets(0.dp),
                     title = { Text("Upload Document") },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -115,8 +117,10 @@ fun UploadDocumentScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("Upload Document") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,

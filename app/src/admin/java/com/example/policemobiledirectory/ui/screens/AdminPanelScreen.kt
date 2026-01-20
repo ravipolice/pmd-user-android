@@ -1,29 +1,31 @@
 package com.example.policemobiledirectory.ui.screens
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -42,310 +44,342 @@ fun AdminPanelScreen(
     constantsViewModel: ConstantsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Dashboard", "Officers")
+    var showDashboard by remember { mutableStateOf(true) }
     
     // Collect specific lists to get counts
-    // Use the correct StateFlows from EmployeeViewModel
     val employees by viewModel.employees.collectAsState()
+    val officers by viewModel.officers.collectAsState()
     val pendingRegistrations by viewModel.pendingRegistrations.collectAsState()
     val isAdmin by viewModel.isAdmin.collectAsState()
     
     val totalEmployeesCount = employees.size
+    val totalOfficersCount = officers.size
+    val approvedCount = employees.count { it.isApproved }
     val pendingCount = pendingRegistrations.size
     
+    // Breakdown Stats
+    val empDistricts by viewModel.employeesByDistrict.collectAsState()
+    val empRanks by viewModel.employeesByRank.collectAsState()
+    val offDistricts by viewModel.officersByDistrict.collectAsState()
+    val offRanks by viewModel.officersByRank.collectAsState()
+    
+    // Constants status for District and Station counts
+    val districts by constantsViewModel.districts.collectAsState()
+    val stationsMap by constantsViewModel.stationsByDistrict.collectAsState()
+    val totalStationsCount = remember(stationsMap) { 
+        stationsMap.values.sumOf { it.size }
+    }
+    
     // Status collection
-    // Renamed refreshStatus to employeeStatus to match ViewModel
     val employeeStatus by viewModel.employeeStatus.collectAsState()
     val firestoreToSheetStatus by viewModel.firestoreToSheetStatus.collectAsState()
     val sheetToFirestoreStatus by viewModel.sheetToFirestoreStatus.collectAsState()
     val officersSyncStatus by viewModel.officersSyncStatus.collectAsState()
-    
-    // Constants status
     val constantsRefreshStatus by constantsViewModel.refreshStatus.collectAsState()
 
     // 🔹 Load admin data
     LaunchedEffect(isAdmin) {
         if (isAdmin) {
             viewModel.refreshEmployees()
+            viewModel.refreshOfficers()
             viewModel.refreshPendingRegistrations()
         }
     }
 
     // Handle toast messages for operations
-    LaunchedEffect(employeeStatus) {
-        if (employeeStatus is OperationStatus.Error) {
-             Toast.makeText(context, (employeeStatus as OperationStatus.Error).message, Toast.LENGTH_SHORT).show()
-        }
-        // No reset for employeeStatus available/needed for now
-    }
-    
-    LaunchedEffect(firestoreToSheetStatus) {
-        if (firestoreToSheetStatus is OperationStatus.Success) {
-            Toast.makeText(context, (firestoreToSheetStatus as OperationStatus.Success<String>).data, Toast.LENGTH_SHORT).show()
-            viewModel.resetFirestoreToSheetStatus()
-        }
-    }
-    
-    LaunchedEffect(sheetToFirestoreStatus) {
-        if (sheetToFirestoreStatus is OperationStatus.Success) {
-            Toast.makeText(context, (sheetToFirestoreStatus as OperationStatus.Success<String>).data, Toast.LENGTH_SHORT).show()
-            viewModel.resetSheetToFirestoreStatus()
-        }
-    }
-    
-    LaunchedEffect(officersSyncStatus) {
-        if (officersSyncStatus is OperationStatus.Success) {
-            Toast.makeText(context, (officersSyncStatus as OperationStatus.Success<String>).data, Toast.LENGTH_SHORT).show()
-            viewModel.resetOfficersSyncStatus()
+    LaunchedEffect(employeeStatus, firestoreToSheetStatus, sheetToFirestoreStatus, officersSyncStatus, constantsRefreshStatus) {
+        val statuses = listOf(
+            employeeStatus to null,
+            firestoreToSheetStatus to { viewModel.resetFirestoreToSheetStatus() },
+            sheetToFirestoreStatus to { viewModel.resetSheetToFirestoreStatus() },
+            officersSyncStatus to { viewModel.resetOfficersSyncStatus() },
+            constantsRefreshStatus to { constantsViewModel.resetRefreshStatus() }
+        )
+        
+        statuses.forEach { (status, reset) ->
+            if (status is OperationStatus.Success<*>) {
+                val message = (status as? OperationStatus.Success<*>)?.data as? String
+                if (message != null) {
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    reset?.invoke()
+                }
+            } else if (status is OperationStatus.Error) {
+                Toast.makeText(context, status.message, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
-    LaunchedEffect(constantsRefreshStatus) {
-        if (constantsRefreshStatus is OperationStatus.Success) {
-            Toast.makeText(context, (constantsRefreshStatus as OperationStatus.Success<String>).data, Toast.LENGTH_SHORT).show()
-            constantsViewModel.resetRefreshStatus()
-        }
+    BackHandler(enabled = !showDashboard) {
+        showDashboard = true
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
-            Column {
-                TopAppBar(
-                    windowInsets = WindowInsets(0.dp),
-                    title = { 
-                        Column {
+            TopAppBar(
+
+                title = { 
+                    Column {
+                        Text(
+                            text = if (showDashboard) "Dashboard" else "Staff List",
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (showDashboard) {
                             Text(
-                                text = "Admin Dashboard",
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Police Mobile Directory",
+                                text = "Welcome back! Here's your overview.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.navigateUp() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface
-                    )
-                )
-                
-                // Tabs
-                TabRow(selectedTabIndex = selectedTab) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            text = { Text(title) }
-                        )
                     }
-                }
-            }
+                },
+                navigationIcon = {
+                    IconButton(onClick = { 
+                        if (!showDashboard) showDashboard = true 
+                        else navController.navigateUp() 
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (showDashboard) {
+                        IconButton(onClick = { 
+                            viewModel.refreshEmployees()
+                            viewModel.refreshOfficers()
+                            viewModel.refreshPendingRegistrations()
+                            constantsViewModel.forceRefresh()
+                        }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            when (selectedTab) {
-                0 -> AdminDashboardGrid(
+            if (showDashboard) {
+                AdminUnifiedDashboard(
                     navController = navController,
                     viewModel = viewModel,
                     constantsViewModel = constantsViewModel,
-                    totalEmployeesCount = totalEmployeesCount,
-                    pendingCount = pendingCount
+                    stats = DashboardSummaries(
+                        totalEmployees = totalEmployeesCount,
+                        totalOfficers = totalOfficersCount,
+                        approved = approvedCount,
+                        pending = pendingCount,
+                        districts = districts.size,
+                        stations = totalStationsCount
+                    ),
+                    breakdowns = DashboardBreakdowns(
+                        empDistricts = empDistricts,
+                        empRanks = empRanks,
+                        offDistricts = offDistricts,
+                        offRanks = offRanks
+                    ),
+                    onViewAll = { showDashboard = false }
                 )
-                1 -> OfficerListContent(
+            } else {
+                StaffListContent(
                     viewModel = viewModel,
                     constantsViewModel = constantsViewModel,
                     onAddOfficer = { navController.navigate(Routes.ADD_OFFICER) },
-                    onEditOfficer = { id -> navController.navigate("${Routes.EDIT_OFFICER}/$id") }
+                    onEditOfficer = { id -> navController.navigate("${Routes.ADD_OFFICER}?officerId=$id") },
+                    onBack = { showDashboard = true }
                 )
+            }
+        }
+    }
+}
+
+data class DashboardSummaries(
+    val totalEmployees: Int,
+    val totalOfficers: Int,
+    val approved: Int,
+    val pending: Int,
+    val districts: Int,
+    val stations: Int
+)
+
+data class DashboardBreakdowns(
+    val empDistricts: Map<String, Int>,
+    val empRanks: Map<String, Int>,
+    val offDistricts: Map<String, Int>,
+    val offRanks: Map<String, Int>
+)
+
+@Composable
+fun AdminUnifiedDashboard(
+    navController: NavController,
+    viewModel: EmployeeViewModel,
+    constantsViewModel: ConstantsViewModel,
+    stats: DashboardSummaries,
+    breakdowns: DashboardBreakdowns,
+    onViewAll: () -> Unit
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // --- 1. TOP STATS ROW ---
+        item(span = { GridItemSpan(2) }) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DashboardStatCard(
+                    title = "Total Employees",
+                    count = stats.totalEmployees.toString(),
+                    icon = Icons.Outlined.People,
+                    colorStart = Color(0xFF2196F3),
+                    colorEnd = Color(0xFF42A5F5),
+                    modifier = Modifier.weight(1f).clickable {
+                        viewModel.clearFilters()
+                        onViewAll()
+                    }
+                )
+                DashboardStatCard(
+                    title = "Total Officers",
+                    count = stats.totalOfficers.toString(),
+                    icon = Icons.Outlined.Badge,
+                    colorStart = Color(0xFF673AB7),
+                    colorEnd = Color(0xFF7E57C2),
+                    modifier = Modifier.weight(1f).clickable {
+                        viewModel.clearFilters()
+                        onViewAll()
+                    }
+                )
+            }
+        }
+
+        item(span = { GridItemSpan(2) }) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                MiniStatCard("Approved", stats.approved.toString(), Icons.Default.CheckCircle, Color(0xFF4CAF50), Modifier.weight(1f))
+                MiniStatCard("Pending", stats.pending.toString(), Icons.Default.Pending, Color(0xFFFF9800), Modifier.weight(1f)) {
+                    navController.navigate(Routes.PENDING_APPROVALS)
+                }
+            }
+        }
+
+        item(span = { GridItemSpan(2) }) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                MiniStatCard("Districts", stats.districts.toString(), Icons.Default.LocationOn, Color(0xFF9C27B0), Modifier.weight(1f))
+                MiniStatCard("Stations", stats.stations.toString(), Icons.Default.Business, Color(0xFF03A9F4), Modifier.weight(1f))
+            }
+        }
+
+        // --- 2. EMPLOYEE STATISTICS ---
+        item(span = { GridItemSpan(2) }) {
+            SectionHeader("Employees Overview")
+        }
+        item { BreakdownCard("By District", breakdowns.empDistricts) }
+        item { BreakdownCard("By Rank", breakdowns.empRanks) }
+
+        // --- 3. OFFICER STATISTICS ---
+        item(span = { GridItemSpan(2) }) {
+            SectionHeader("Officers Overview")
+        }
+        item { BreakdownCard("By District", breakdowns.offDistricts) }
+        item { BreakdownCard("By Rank", breakdowns.offRanks) }
+
+        // --- 4. QUICK ACTIONS ---
+        item(span = { GridItemSpan(2) }) {
+            SectionHeader("Management Actions")
+        }
+        
+        item { DashboardActionCard("Add Officer", Icons.Default.PersonAdd, Color(0xFF4CAF50), { navController.navigate(Routes.ADD_OFFICER) }) }
+        item { DashboardActionCard("Sync Data", Icons.Default.Sync, Color(0xFF2196F3), { viewModel.syncOfficersSheetToFirebase() }) }
+        item { DashboardActionCard("Manage Resources", Icons.Default.Category, Color(0xFFFF9800), { navController.navigate(Routes.MANAGE_CONSTANTS) }) }
+        item { DashboardActionCard("Push Notification", Icons.Default.Notifications, Color(0xFFE91E63), { navController.navigate(Routes.SEND_NOTIFICATION) }) }
+
+        // Footer version info
+        item(span = { GridItemSpan(2) }) {
+            Text(
+                text = "Admin Panel v2.2 • Unified Dashboard",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 32.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun MiniStatCard(title: String, count: String, icon: ImageVector, color: Color, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+    Card(
+        modifier = modifier
+            .height(70.dp)
+            .let { if (onClick != null) it.clickable { onClick() } else it },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.size(36.dp).background(color.copy(alpha = 0.2f), RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(count, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
             }
         }
     }
 }
 
 @Composable
-fun AdminDashboardGrid(
-    navController: NavController,
-    viewModel: EmployeeViewModel,
-    constantsViewModel: ConstantsViewModel,
-    totalEmployeesCount: Int,
-    pendingCount: Int
-) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxSize()
+fun BreakdownCard(title: String, data: Map<String, Int>) {
+    Card(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp, max = 300.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        
-        // --- SECTION 1: STATISTICS ---
-        item(span = { GridItemSpan(2) }) {
-            Text(
-                text = "Overview",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-
-        item(span = { GridItemSpan(2) }) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                DashboardStatCard(
-                    title = "Total Employees",
-                    count = totalEmployeesCount.toString(),
-                    icon = Icons.Outlined.People,
-                    colorStart = Color(0xFF2196F3), // Blue
-                    colorEnd = Color(0xFF64B5F6),
-                    modifier = Modifier.weight(1f).clickable { 
-                        navController.navigate(Routes.EMPLOYEE_STATS) 
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(8.dp))
+            if (data.isEmpty()) {
+                Box(Modifier.fillMaxSize(), Alignment.Center) { Text("No data", style = MaterialTheme.typography.labelSmall) }
+            } else {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    data.forEach { (label, count) ->
+                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                            Text(count.toString(), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
+                        }
                     }
-                )
-                
-                DashboardStatCard(
-                    title = "Pending Approvals",
-                    count = pendingCount.toString(),
-                    icon = Icons.Outlined.PendingActions,
-                    colorStart = Color(0xFF009688), // Teal
-                    colorEnd = Color(0xFF4DB6AC),
-                    modifier = Modifier.weight(1f).clickable {
-                        navController.navigate(Routes.PENDING_APPROVALS)
-                    }
-                )
-            }
-        }
-        
-        // --- SECTION 2: MANAGEMENT ---
-        item(span = { GridItemSpan(2) }) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Quick Actions",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-
-        // Row 1
-        item {
-            DashboardActionCard(
-                title = "Send Notification",
-                icon = Icons.Outlined.NotificationsActive,
-                color = Color(0xFFE91E63), // Pink
-                onClick = { navController.navigate(Routes.SEND_NOTIFICATION) }
-            )
-        }
-        item {
-            DashboardActionCard(
-                title = "Upload Database",
-                icon = Icons.Outlined.CloudUpload,
-                color = Color(0xFF3F51B5), // Indigo
-                onClick = { navController.navigate(Routes.UPLOAD_CSV) }
-            )
-        }
-
-        // Row 2
-        item {
-            DashboardActionCard(
-                title = "Manage Resources",
-                icon = Icons.Outlined.Category, // Category/Folder
-                color = Color(0xFFFF9800), // Orange
-                onClick = { navController.navigate(Routes.MANAGE_CONSTANTS) }
-            )
-        }
-        item {
-            DashboardActionCard(
-                title = "Add Useful Link",
-                icon = Icons.Outlined.Link,
-                color = Color(0xFF673AB7), // Deep Purple
-                onClick = { navController.navigate(Routes.ADD_USEFUL_LINK) }
-            )
-        }
-
-        // Row 3
-        item {
-            DashboardActionCard(
-                title = "Upload Document",
-                icon = Icons.Outlined.Description,
-                color = Color(0xFF00BCD4), // Cyan
-                onClick = { navController.navigate(Routes.UPLOAD_DOCUMENT) }
-            )
-        }
-        item {
-            DashboardActionCard(
-                title = "Sync Firestore \u2192 Sheet",
-                icon = Icons.Default.CloudDownload,
-                color = Color(0xFF4CAF50), // Green
-                onClick = { viewModel.syncFirebaseToSheet() }
-            )
-        }
-
-        // Row 4
-        item {
-            DashboardActionCard(
-                title = "Sync Sheet \u2192 Firestore",
-                icon = Icons.Default.CloudUpload,
-                color = Color(0xFF2196F3), // Blue
-                onClick = { viewModel.syncSheetToFirebase() }
-            )
-        }
-        item {
-            DashboardActionCard(
-                title = "Sync Officers (Sheet)",
-                icon = Icons.Default.Badge,
-                color = Color(0xFF9C27B0), // Purple
-                onClick = { viewModel.syncOfficersSheetToFirebase() }
-            )
-        }
-        
-        // Footer Action
-        item(span = { GridItemSpan(2) }) {
-            Button(
-                onClick = { constantsViewModel.clearCacheAndRefresh() },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(
-                    Icons.Default.Refresh,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Refresh System Constants (Clear Cache)")
-            }
-        }
-        
-        // Version Info
-        item(span = { GridItemSpan(2) }) {
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Admin Panel v2.0 • Modern Grid",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                )
+                }
             }
         }
     }
 }
+
+@Composable
+fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
+    )
+}
+
+

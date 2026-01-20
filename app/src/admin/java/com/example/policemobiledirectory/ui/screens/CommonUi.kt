@@ -28,6 +28,7 @@ import kotlin.math.roundToInt
 @Composable
 fun CommonTopAppBar(title: String, navController: NavController) {
     TopAppBar(
+        windowInsets = WindowInsets(0.dp),
         title = { Text(text = title) },
         navigationIcon = {
             if (navController.previousBackStackEntry != null) {

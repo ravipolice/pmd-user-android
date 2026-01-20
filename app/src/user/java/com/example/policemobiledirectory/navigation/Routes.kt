@@ -8,6 +8,7 @@ object Routes {
     const val REGISTER = "register"
     const val EMPLOYEE_LIST = "employee_list"
     const val ABOUT = "about"
+    const val NOTIFICATIONS = "notifications" // ✅ Moved here
 
     // --- Admin Screens (REMOVED) ---
     const val MY_PROFILE = "my_profile"
@@ -18,7 +19,7 @@ object Routes {
     const val GOOGLE_SIGN_IN = "google_sign_in"
     const val GOOGLE_SIGN_OUT = "google_sign_out"
     const val LOGOUT = "logout"
-    const val NOTIFICATIONS = "notifications"
+    // const val NOTIFICATIONS = "notifications" // Removed from here
 
     const val GALLERY_SCREEN = "gallery_screen"
     const val TERMS_AND_CONDITIONS = "terms_and_conditions"

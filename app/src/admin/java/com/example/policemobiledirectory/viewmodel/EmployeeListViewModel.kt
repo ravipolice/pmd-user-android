@@ -164,6 +164,7 @@ class EmployeeListViewModel @Inject constructor(
                 SearchFilter.STATION -> "station"
                 SearchFilter.RANK -> "rank"
                 SearchFilter.METAL_NUMBER -> "" // Officers don't have metal numbers
+                SearchFilter.BLOOD_GROUP -> "blood"
             }
             if (filterString.isNotBlank()) {
                 SearchEngine.searchOfficers(officers, queryLower, filterString)
@@ -346,6 +347,9 @@ class EmployeeListViewModel @Inject constructor(
             }
             SearchFilter.METAL_NUMBER -> {
                 metalNumber?.lowercase()?.contains(queryLower) == true
+            }
+            SearchFilter.BLOOD_GROUP -> {
+                bloodGroup?.lowercase()?.contains(queryLower) == true
             }
         }
     }

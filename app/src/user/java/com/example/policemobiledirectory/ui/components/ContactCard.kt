@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Edit // ✅ Added Edit icon
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +32,8 @@ import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.model.Officer
 import com.example.policemobiledirectory.ui.theme.*
 import com.example.policemobiledirectory.utils.IntentUtils
+import com.example.policemobiledirectory.utils.getBloodGroupColor
+import com.example.policemobiledirectory.utils.getFormattedBloodGroup
 
 /**
  * Unified contact card that works for both Employee and Officer
@@ -57,6 +60,55 @@ fun ContactCard(
     val photoUrl = employee?.photoUrl ?: employee?.photoUrlFromGoogle ?: officer?.photoUrl
     val placeholderRes = if (employee != null) R.drawable.officer else R.drawable.ic_officer_building
 
+    // Determine background color based on unit or station
+    val backgroundColor = remember(station, employee?.unit, officer?.unit) {
+        val unit = employee?.unit ?: officer?.unit ?: ""
+        val effectiveStation = station ?: ""
+        
+        when {
+            // Traffic - Light Green
+            unit.contains("Traffic", ignoreCase = true) || 
+            effectiveStation.contains("Traffic", ignoreCase = true) || 
+            effectiveStation.contains("TR.", ignoreCase = true) -> Color(0xFFDCEDC8)
+            
+            // Control Room - Light Red/Orange
+            unit.contains("Control", ignoreCase = true) || 
+            effectiveStation.contains("Control", ignoreCase = true) -> Color(0xFFFFCCBC)
+            
+            // CEN / Cyber - Light Blue
+            unit.contains("CEN", ignoreCase = true) || 
+            unit.contains("Cyber", ignoreCase = true) ||
+            effectiveStation.contains("CEN", ignoreCase = true) ||
+            effectiveStation.contains("Cyber", ignoreCase = true) -> Color(0xFFB3E5FC)
+
+            // Women Police - Light Pink
+            unit.contains("Women", ignoreCase = true) || 
+            effectiveStation.contains("Women", ignoreCase = true) -> Color(0xFFF8BBD0)
+
+            // DPO / Admin / Office - Light Purple/Lavender
+            unit.contains("DPO", ignoreCase = true) || 
+            unit.contains("Admin", ignoreCase = true) ||
+            unit.contains("Office", ignoreCase = true) ||
+            effectiveStation.contains("DPO", ignoreCase = true) ||
+            effectiveStation.contains("Admin", ignoreCase = true) ||
+            effectiveStation.contains("Office", ignoreCase = true) -> Color(0xFFE1BEE7) // Lavender
+            
+            // DAR - Light Teal/Cyan
+            unit.contains("DAR", ignoreCase = true) || 
+            effectiveStation.contains("DAR", ignoreCase = true) -> Color(0xFFB2DFDB)
+
+            // Special Units (DSB, FPB, etc.) - Light Yellow/Amber
+            listOf("DSB", "Intelligence", "INT", "FPB", "MCU").any { 
+                unit.contains(it, ignoreCase = true) || effectiveStation.contains(it, ignoreCase = true) 
+            } -> Color(0xFFFFF9C4)
+
+            // Default - Glass effect
+            else -> com.example.policemobiledirectory.ui.theme.EmployeeCardBackground.copy(
+                alpha = com.example.policemobiledirectory.ui.theme.GlassOpacity
+            )
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -73,40 +125,15 @@ fun ContactCard(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Box(
-            modifier = Modifier.background(
-                color = com.example.policemobiledirectory.ui.theme.EmployeeCardBackground.copy(
-                    alpha = com.example.policemobiledirectory.ui.theme.GlassOpacity
-                )
-            )
+            modifier = Modifier.background(color = backgroundColor)
         ) {
-            // 🔹 Blood Group badge in red circle at top right corner of card (for employees only)
-            employee?.bloodGroup?.takeIf { it.isNotBlank() }?.let { bg ->
-                val formattedBg = if (bg.trim() == "??") {
-                    "??"
-                } else {
-                    bg.uppercase()
-                        .replace("POSITIVE", "+")
-                        .replace("NEGATIVE", "–")
-                        .replace("VE", "")
-                        .replace("(", "")
-                        .replace(")", "")
-                        .trim()
-                        .let { clean ->
-                            when (clean) {
-                                "A" -> "A+"
-                                "B" -> "B+"
-                                "O" -> "O+"
-                                "AB" -> "AB+"
-                                "A-" -> "A–"
-                                "B-" -> "B–"
-                                "O-" -> "O–"
-                                "AB-" -> "AB–"
-                                else -> clean
-                            }
-                        }
-                }
+            // 🔹 Blood Group badge in red circle at top right corner of card
+            val bloodGroup = employee?.bloodGroup ?: officer?.bloodGroup
+            bloodGroup?.takeIf { it.isNotBlank() }?.let { bg ->
+                val formattedBg = getFormattedBloodGroup(bg)
+                val badgeColor = getBloodGroupColor(bg)
                 Surface(
-                    color = MaterialTheme.colorScheme.error,
+                    color = badgeColor,
                     shape = CircleShape,
                     modifier = Modifier
                         .size(24.dp)

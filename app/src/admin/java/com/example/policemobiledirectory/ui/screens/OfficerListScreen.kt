@@ -1,25 +1,34 @@
 package com.example.policemobiledirectory.ui.screens
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MilitaryTech
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.example.policemobiledirectory.ui.components.DashboardActionCard
+import com.example.policemobiledirectory.ui.components.DashboardStatCard
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.shadow
+import com.example.policemobiledirectory.data.local.SearchFilter
+import com.example.policemobiledirectory.ui.theme.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,42 +43,40 @@ import com.example.policemobiledirectory.viewmodel.ConstantsViewModel
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 
 @Composable
-fun OfficerListScreen(
+fun StaffListScreen(
     navController: NavController,
     viewModel: EmployeeViewModel = hiltViewModel(),
     constantsViewModel: ConstantsViewModel = hiltViewModel()
 ) {
     // Refresh data on entry
     LaunchedEffect(Unit) {
+        viewModel.refreshEmployees()
         viewModel.refreshOfficers()
     }
 
-    OfficerListContent(
+    StaffListContent(
         viewModel = viewModel,
         constantsViewModel = constantsViewModel,
         onAddOfficer = { navController.navigate(Routes.ADD_OFFICER) },
-        onEditOfficer = { officerId -> navController.navigate(Routes.EDIT_OFFICER + "/$officerId") }
+        onEditOfficer = { officerId -> navController.navigate("${Routes.ADD_OFFICER}?officerId=$officerId") },
+        onBack = { navController.navigateUp() }
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun OfficerListContent(
+fun StaffListContent(
     viewModel: EmployeeViewModel,
     constantsViewModel: ConstantsViewModel,
     onAddOfficer: () -> Unit,
-    onEditOfficer: (String) -> Unit
+    onEditOfficer: (String) -> Unit,
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
     
-    // Collect specific officer data for operations
-    val officerStatus by viewModel.officerStatus.collectAsStateWithLifecycle()
-    val pendingStatus by viewModel.officerPendingStatus.collectAsStateWithLifecycle()
-
     // Collect Filter Data from ConstantsViewModel
-    val unitsList by constantsViewModel.units.collectAsStateWithLifecycle()
-    val districtsList by constantsViewModel.districts.collectAsStateWithLifecycle()
-    val ranksList by constantsViewModel.ranks.collectAsStateWithLifecycle()
+    val unitsList by constantsViewModel.units.collectAsStateWithLifecycle(initialValue = emptyList())
+    val districtsList by constantsViewModel.districts.collectAsStateWithLifecycle(initialValue = emptyList())
     
     // Collect Search/Filter State from EmployeeViewModel
     val selectedUnitState by viewModel.selectedUnit.collectAsStateWithLifecycle(initialValue = "All")
@@ -77,13 +84,15 @@ fun OfficerListContent(
     val selectedStationState by viewModel.selectedStation.collectAsStateWithLifecycle(initialValue = "All")
     val selectedRankState by viewModel.selectedRank.collectAsStateWithLifecycle(initialValue = "All")
     val searchQueryState by viewModel.searchQuery.collectAsStateWithLifecycle(initialValue = "")
+    val searchFilter by viewModel.searchFilter.collectAsStateWithLifecycle(initialValue = SearchFilter.NAME)
+    val searchFields = SearchFilter.values().toList()
     
     // Collect Filtered Results (Unified Contacts)
-    // We should filter explicitly for officers OR rely on VM
-    val filteredContacts by viewModel.filteredContacts.collectAsStateWithLifecycle()
-
-    // Collect Stations reactive to selected District (and Unit) from VM
-    val stationsForDistrict by viewModel.stationsForSelectedDistrict.collectAsStateWithLifecycle()
+    val filteredContacts by viewModel.filteredContacts.collectAsStateWithLifecycle(initialValue = emptyList())
+    val stationsForDistrict by viewModel.stationsForSelectedDistrict.collectAsStateWithLifecycle(initialValue = emptyList())
+    val isAdmin by viewModel.isAdmin.collectAsStateWithLifecycle(initialValue = false)
+    val fontScale by viewModel.fontScale.collectAsStateWithLifecycle(initialValue = 1.0f)
+    val cardStyle by viewModel.currentCardStyle.collectAsStateWithLifecycle(initialValue = CardStyle.Vibrant)
 
     // Local state for dropdown expansion
     var unitExpanded by remember { mutableStateOf(false) }
@@ -91,55 +100,55 @@ fun OfficerListContent(
     var stationExpanded by remember { mutableStateOf(false) }
     var rankExpanded by remember { mutableStateOf(false) }
 
-    var officerToDelete by remember { mutableStateOf<String?>(null) }
     var localSearchQuery by remember { mutableStateOf(searchQueryState) }
 
-    // Sync local search query with ViewModel (debounce handled in VM)
+    // Sync local search query with ViewModel
     LaunchedEffect(localSearchQuery) {
         viewModel.updateSearchQuery(localSearchQuery)
     }
     
-    // Sync external changes to search query
     LaunchedEffect(searchQueryState) {
         if (localSearchQuery != searchQueryState) {
             localSearchQuery = searchQueryState
         }
     }
 
-    // Handle delete status
-    LaunchedEffect(pendingStatus) {
-        when (val status = pendingStatus) {
-            is OperationStatus.Success -> {
-                Toast.makeText(context, status.data ?: "Operation successful", Toast.LENGTH_SHORT).show()
-                viewModel.resetOfficerPendingStatus()
-            }
-            is OperationStatus.Error -> {
-                Toast.makeText(context, status.message, Toast.LENGTH_LONG).show()
-                viewModel.resetOfficerPendingStatus()
-            }
-            else -> {}
-        }
-    }
-
-    // Filter to show ONLY Officers from the unified list
-    // This allows using the same sophisticated filtering logic (Unit, District, Station, Rank, Search) from EmployeeViewModel
-    val finalOfficersList = remember(filteredContacts) {
-        filteredContacts.mapNotNull { it.officer }
-    }
-
+    // --- 📋 UNIFIED LIST VIEW ---
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 12.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
+            // Header with Back Button
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+                Text(
+                    text = "Staff Directory",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = "${filteredContacts.size} found",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
             // 🔹 ROW 1: UNIT & DISTRICT
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // UNIT
+                // UNIT Dropdown
                 ExposedDropdownMenuBox(
                     expanded = unitExpanded,
                     onExpandedChange = { unitExpanded = !unitExpanded },
@@ -149,17 +158,15 @@ fun OfficerListContent(
                         value = selectedUnitState,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Groups, null, Modifier.size(16.dp), PrimaryTeal); Spacer(Modifier.width(4.dp)); Text("Unit") } },
-                        leadingIcon = { Icon(Icons.Default.Groups, null, tint = PrimaryTeal) },
+                        label = { Text("Unit") },
+                        leadingIcon = { Icon(Icons.Default.Groups, null, tint = PrimaryTeal, modifier = Modifier.size(18.dp)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         singleLine = true,
-                        shape = RoundedCornerShape(15.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color.Red,
-                            unfocusedBorderColor = Color.Red,
-                            focusedLabelColor = PrimaryTeal,
-                            unfocusedLabelColor = PrimaryTeal
+                            focusedBorderColor = PrimaryTeal,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
                         )
                     )
                     ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
@@ -172,7 +179,7 @@ fun OfficerListContent(
                     }
                 }
 
-                // DISTRICT
+                // DISTRICT Dropdown
                 ExposedDropdownMenuBox(
                     expanded = districtExpanded,
                     onExpandedChange = { districtExpanded = !districtExpanded },
@@ -182,24 +189,21 @@ fun OfficerListContent(
                         value = selectedDistrictState,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp), PrimaryTeal); Spacer(Modifier.width(4.dp)); Text("District") } },
-                        leadingIcon = { Icon(Icons.Default.LocationOn, null, tint = PrimaryTeal) },
+                        label = { Text("District") },
+                        leadingIcon = { Icon(Icons.Default.LocationOn, null, tint = PrimaryTeal, modifier = Modifier.size(18.dp)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         singleLine = true,
-                        shape = RoundedCornerShape(15.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color.Red,
-                            unfocusedBorderColor = Color.Red,
-                            focusedLabelColor = PrimaryTeal,
-                            unfocusedLabelColor = PrimaryTeal
+                            focusedBorderColor = PrimaryTeal,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
                         )
                     )
                     ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
                         (listOf("All") + districtsList).forEach { district ->
                             DropdownMenuItem(text = { Text(district) }, onClick = {
                                 viewModel.updateSelectedDistrict(district)
-                                viewModel.updateSelectedStation("All")
                                 districtExpanded = false
                             })
                         }
@@ -207,164 +211,83 @@ fun OfficerListContent(
                 }
             }
 
-            // 🔹 ROW 2: STATION & RANK
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                // STATION
-                ExposedDropdownMenuBox(
-                    expanded = stationExpanded,
-                    onExpandedChange = { if (selectedDistrictState != "All") stationExpanded = !stationExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    OutlinedTextField(
-                        value = selectedStationState,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Business, null, Modifier.size(16.dp), PrimaryTeal); Spacer(Modifier.width(4.dp)); Text("Station") } },
-                        leadingIcon = { Icon(Icons.Default.Business, null, tint = PrimaryTeal) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        enabled = selectedDistrictState != "All",
-                        singleLine = true,
-                        shape = RoundedCornerShape(15.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color.Red,
-                            unfocusedBorderColor = Color.Red,
-                            focusedLabelColor = PrimaryTeal,
-                            unfocusedLabelColor = PrimaryTeal
-                        )
-                    )
-                    ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
-                        // stationsForDistrict from VM already includes "All" logic and Unit filter
-                        stationsForDistrict.forEach { station ->
-                            DropdownMenuItem(text = { Text(station) }, onClick = {
-                                viewModel.updateSelectedStation(station)
-                                stationExpanded = false
-                            })
-                        }
-                    }
-                }
-
-                // RANK
-                ExposedDropdownMenuBox(
-                    expanded = rankExpanded,
-                    onExpandedChange = { rankExpanded = !rankExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    OutlinedTextField(
-                        value = selectedRankState,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.MilitaryTech, null, Modifier.size(16.dp), PrimaryTeal); Spacer(Modifier.width(4.dp)); Text("Rank") } },
-                        leadingIcon = { Icon(Icons.Default.MilitaryTech, null, tint = PrimaryTeal) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(15.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color.Red,
-                            unfocusedBorderColor = Color.Red,
-                            focusedLabelColor = PrimaryTeal,
-                            unfocusedLabelColor = PrimaryTeal
-                        )
-                    )
-                    ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
-                        (listOf("All") + ranksList).forEach { rank ->
-                            DropdownMenuItem(text = { Text(rank) }, onClick = {
-                                viewModel.updateSelectedRank(rank)
-                                rankExpanded = false
-                            })
-                        }
-                    }
-                }
-            }
-
-            // 🔹 ROW 3: SEARCH BAR
+            // 🔹 SEARCH BAR
             OutlinedTextField(
                 value = localSearchQuery,
                 onValueChange = { localSearchQuery = it },
-                label = { Text("Search by Name, Rank, Station...") },
-                placeholder = { Text("Type to search...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = PrimaryTeal) },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Search by ${searchFilter.name.lowercase()}...") },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = PrimaryTeal) },
                 trailingIcon = {
                     if (localSearchQuery.isNotEmpty()) {
                         IconButton(onClick = { localSearchQuery = "" }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.Gray)
+                            Icon(Icons.Default.Clear, null)
                         }
                     }
                 },
-                modifier = Modifier
-                    .fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(15.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Red, // Red Border like EmployeeList
-                    unfocusedBorderColor = Color.Red,
-                    focusedLabelColor = PrimaryTeal,
-                    unfocusedLabelColor = PrimaryTeal
-                )
+                shape = RoundedCornerShape(12.dp)
             )
 
-            // 🔹 LIST Content
-            if (officerStatus is OperationStatus.Loading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+            // 🔹 FILTER CHIPS
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+            ) {
+                searchFields.forEach { filter ->
+                    FilterChip(
+                        selected = searchFilter == filter,
+                        onClick = { viewModel.updateSearchFilter(filter) },
+                        label = { Text(filter.name.lowercase().capitalize(), fontSize = 11.sp) }
+                    )
                 }
-            } else if (finalOfficersList.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No officers found.", color = Color.Gray)
+            }
+
+            // 🔹 CONTACTS LIST
+            if (filteredContacts.isEmpty()) {
+                Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("No staff found")
+                        TextButton(onClick = { viewModel.clearFilters() }) { Text("Clear All Filters") }
+                    }
                 }
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(bottom = 80.dp), // Space for FAB
+                    modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
+                    contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
-                    items(finalOfficersList) { officer ->
-                        ContactCard(
-                            officer = officer,
-                            isAdmin = true,
-                            onEdit = { onEditOfficer(officer.agid) },
-                            onDelete = { officerToDelete = officer.agid }
-                        )
+                    items(filteredContacts, key = { it.id }) { contact ->
+                        if (contact.employee != null) {
+                            com.example.policemobiledirectory.ui.theme.components.EmployeeCardAdmin(
+                                employee = contact.employee,
+                                isAdmin = isAdmin,
+                                fontScale = fontScale,
+                                navController = NavController(context), // Dummy for now or pass actual
+                                onDelete = { /* Handle delete */ },
+                                context = context,
+                                cardStyle = cardStyle
+                            )
+                        } else if (contact.officer != null) {
+                            ContactCard(
+                                officer = contact.officer,
+                                fontScale = fontScale,
+                                isAdmin = isAdmin,
+                                onEdit = { onEditOfficer(contact.id) }
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // FAB
+        // FAB for adding
         FloatingActionButton(
             onClick = onAddOfficer,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(24.dp),
-            containerColor = PrimaryTeal
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+            containerColor = MaterialTheme.colorScheme.primaryContainer
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Officer", tint = Color.White)
+            Icon(Icons.Default.Add, "Add Staff")
         }
-    }
-    
-    // Delete Confirmation Dialog
-    if (officerToDelete != null) {
-        AlertDialog(
-            onDismissRequest = { officerToDelete = null },
-            title = { Text("Delete Officer") },
-            text = { Text("Are you sure you want to delete this officer? This action cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    officerToDelete?.let { viewModel.deleteOfficer(it) }
-                    officerToDelete = null
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { officerToDelete = null }) {
-                    Text("Cancel")
-                }
-            }
-        )
     }
 }

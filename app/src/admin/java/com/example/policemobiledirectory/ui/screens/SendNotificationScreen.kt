@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -61,6 +62,11 @@ fun SendNotificationScreen(
     val pendingStatus by viewModel.pendingStatus.collectAsState()
     val employees by viewModel.employees.collectAsState()
     
+    // Reset status on entry
+    LaunchedEffect(Unit) {
+        viewModel.resetPendingStatus()
+    }
+    
     // Get dynamic constants from ConstantsViewModel
     val stationsByDistrict by constantsViewModel.stationsByDistrict.collectAsStateWithLifecycle()
     val districts by constantsViewModel.districts.collectAsStateWithLifecycle()
@@ -98,21 +104,29 @@ fun SendNotificationScreen(
         }
     }
 
+    // Track if we actually initiated a send operation to avoid reacting to stale Success states
+    var isSending by remember { mutableStateOf(false) }
+
     LaunchedEffect(pendingStatus) {
-        if (pendingStatus is OperationStatus.Success) {
-            snackbarHostState.showSnackbar("Notification sent successfully!")
-            viewModel.resetPendingStatus()
-            navController.popBackStack()
-        } else if (pendingStatus is OperationStatus.Error) {
-            snackbarHostState.showSnackbar((pendingStatus as OperationStatus.Error).message)
-            viewModel.resetPendingStatus()
+        if (isSending) {
+            if (pendingStatus is OperationStatus.Success) {
+                snackbarHostState.showSnackbar("Notification sent successfully!")
+                viewModel.resetPendingStatus()
+                navController.popBackStack()
+            } else if (pendingStatus is OperationStatus.Error) {
+                snackbarHostState.showSnackbar((pendingStatus as OperationStatus.Error).message)
+                viewModel.resetPendingStatus()
+                isSending = false // Allow retrying
+            }
         }
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("Send Notification") },
                 navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.Default.ArrowBack, "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -159,7 +173,7 @@ fun SendNotificationScreen(
                                     when (notificationTarget) {
                                         NotificationTarget.ALL -> "All Users"
                                         NotificationTarget.SINGLE -> "Single User (by KGID)"
-                                        NotificationTarget.DISTRICT -> "District/Unit"
+                                        NotificationTarget.DISTRICT -> "District / Commissionerate / Unit"
                                         NotificationTarget.STATION -> "Police Station"
                                         NotificationTarget.ADMIN -> "Admin Users"
                                     }
@@ -199,7 +213,7 @@ fun SendNotificationScreen(
                         value = selectedDistrict,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("District/Unit") },
+                        label = { Text("District / Commissionerate / Unit") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor()
                     )
@@ -249,6 +263,7 @@ fun SendNotificationScreen(
                     }
                     
                     if (isValid) {
+                        isSending = true // Mark that we started sending
                         viewModel.sendNotification(
                             title, body, target,
                             k = if (target == NotificationTarget.SINGLE) searchKgid else null,

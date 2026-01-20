@@ -85,6 +85,7 @@ fun AddEmployeeScreen(
     )
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             CommonTopAppBar(title = if (isEditMode) "Edit Employee" else "Add Employee", navController = navController)
         }

@@ -6,5 +6,6 @@ enum class SearchFilter {
     KGID,
     STATION,
     RANK,
-    MOBILE
+    MOBILE,
+    BLOOD_GROUP
 }

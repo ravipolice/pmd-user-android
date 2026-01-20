@@ -92,8 +92,9 @@ data class Employee(
             "district" -> (district ?: "").lowercase().contains(q)
             "station" -> (station ?: "").lowercase().contains(q)
             "email" -> email.lowercase().contains(q)
+            "blood" -> (bloodGroup ?: "").lowercase().contains(q)
             else -> listOfNotNull(
-                name, kgid, rank, mobile1, mobile2, district, station, email
+                name, kgid, rank, mobile1, mobile2, district, station, email, bloodGroup
             ).any { it.lowercase().contains(q) }
         }
     }

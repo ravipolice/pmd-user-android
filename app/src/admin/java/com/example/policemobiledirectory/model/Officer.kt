@@ -11,6 +11,7 @@ data class Officer(
     val agid: String = "",           // Auto-generated ID (from Apps Script)
     val name: String = "",
     val email: String? = null,
+    val bloodGroup: String? = null,
     val mobile: String? = null,
     val landline: String? = null,
     val rank: String? = null,
@@ -68,8 +69,9 @@ data class Officer(
             "district" -> (district ?: "").lowercase().contains(queryLower)
             "station" -> (station ?: "").lowercase().contains(queryLower)
             "email" -> (email ?: "").lowercase().contains(queryLower)
+            "blood" -> (bloodGroup ?: "").lowercase().contains(queryLower)
             else -> listOfNotNull(
-                name, agid, rank, mobile, landline, district, station, email
+                name, agid, rank, mobile, landline, district, station, email, bloodGroup
             ).any { it.lowercase().contains(queryLower) }
         }
     }

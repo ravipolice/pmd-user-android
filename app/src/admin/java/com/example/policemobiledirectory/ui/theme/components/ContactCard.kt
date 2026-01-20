@@ -1,4 +1,4 @@
-package com.example.policemobiledirectory.ui.components
+package com.example.policemobiledirectory.ui.theme.components
 
 import android.content.Context
 import android.widget.Toast
@@ -67,9 +67,55 @@ fun ContactCard(
     val contentBackground = when (cardStyle) {
         CardStyle.Classic -> Color.White
         CardStyle.Modern -> Color.White
-        CardStyle.Vibrant -> com.example.policemobiledirectory.ui.theme.EmployeeCardBackground.copy(
-            alpha = com.example.policemobiledirectory.ui.theme.GlassOpacity
-        )
+        CardStyle.Vibrant -> {
+            // Determine background color based on unit or station
+            val unit = employee?.unit ?: officer?.unit ?: ""
+            val station = employee?.station ?: officer?.station ?: ""
+            val effectiveStation = station ?: ""
+            
+            when {
+                // Traffic - Light Green
+                unit.contains("Traffic", ignoreCase = true) || 
+                effectiveStation.contains("Traffic", ignoreCase = true) || 
+                effectiveStation.contains("TR.", ignoreCase = true) -> Color(0xFFDCEDC8)
+                
+                // Control Room - Light Red/Orange
+                unit.contains("Control", ignoreCase = true) || 
+                effectiveStation.contains("Control", ignoreCase = true) -> Color(0xFFFFCCBC)
+                
+                // CEN / Cyber - Light Blue
+                unit.contains("CEN", ignoreCase = true) || 
+                unit.contains("Cyber", ignoreCase = true) ||
+                effectiveStation.contains("CEN", ignoreCase = true) ||
+                effectiveStation.contains("Cyber", ignoreCase = true) -> Color(0xFFB3E5FC)
+
+                // Women Police - Light Pink
+                unit.contains("Women", ignoreCase = true) || 
+                effectiveStation.contains("Women", ignoreCase = true) -> Color(0xFFF8BBD0)
+
+                // DPO / Admin / Office - Light Purple/Lavender
+                unit.contains("DPO", ignoreCase = true) || 
+                unit.contains("Admin", ignoreCase = true) ||
+                unit.contains("Office", ignoreCase = true) ||
+                effectiveStation.contains("DPO", ignoreCase = true) ||
+                effectiveStation.contains("Admin", ignoreCase = true) ||
+                effectiveStation.contains("Office", ignoreCase = true) -> Color(0xFFE1BEE7) // Lavender
+                
+                // DAR - Light Teal/Cyan
+                unit.contains("DAR", ignoreCase = true) || 
+                effectiveStation.contains("DAR", ignoreCase = true) -> Color(0xFFB2DFDB)
+
+                // Special Units (DSB, FPB, etc.) - Light Yellow/Amber
+                listOf("DSB", "Intelligence", "INT", "FPB", "MCU").any { 
+                    unit.contains(it, ignoreCase = true) || effectiveStation.contains(it, ignoreCase = true) 
+                } -> Color(0xFFFFF9C4)
+                
+                // Default - Glass effect
+                else -> com.example.policemobiledirectory.ui.theme.EmployeeCardBackground.copy(
+                    alpha = com.example.policemobiledirectory.ui.theme.GlassOpacity
+                )
+            }
+        }
     }
 
     val headerColor = if (cardStyle is CardStyle.Classic) Color(0xFF1F2A6B) else Color.Transparent
@@ -118,12 +164,12 @@ fun ContactCard(
                         modifier = Modifier
                             .width(4.dp)
                             .fillMaxHeight() // This might need constraint or fixed height, but let's try fillMaxHeight inside the Box
-                            .align(Alignment.CenterStart) // This might not work if parent Box height is intrinsic. 
-                             // Alternative: put it in the Row or drawBehind. 
+                            .align(Alignment.CenterStart) // This might not work if parent Box height is intrinsic.
+                             // Alternative: put it in the Row or drawBehind.
                              // Let's use a spacer in the Row if possible, OR just stick absolute left.
                              // Actually, simple way:
                             .background(com.example.policemobiledirectory.ui.theme.PrimaryTeal)
-                    )
+                    ) {}
                 }
             // 🔹 Blood Group badge in red circle at top right corner of card (for employees only)
             employee?.bloodGroup?.takeIf { it.isNotBlank() }?.let { bg ->
@@ -151,27 +197,29 @@ fun ContactCard(
                             }
                         }
                 }
-                Surface(
-                    color = MaterialTheme.colorScheme.error,
-                    shape = CircleShape,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .align(Alignment.TopEnd)
-                        .offset(x = (-8).dp, y = 8.dp)
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Text(
-                            text = formattedBg,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            fontSize = 9.sp
-                        )
-                    }
+                if (formattedBg.isNotBlank()) {
+	                Surface(
+	                    color = MaterialTheme.colorScheme.error,
+	                    shape = CircleShape,
+	                    modifier = Modifier
+	                        .size(24.dp)
+	                        .align(Alignment.TopEnd)
+	                        .offset(x = (-8).dp, y = 8.dp)
+	                ) {
+	                    Box(
+	                        contentAlignment = Alignment.Center,
+	                        modifier = Modifier.fillMaxSize()
+	                    ) {
+	                        Text(
+	                            text = formattedBg,
+	                            style = MaterialTheme.typography.labelSmall.copy(
+	                                color = Color.White,
+	                                fontWeight = FontWeight.Bold
+	                            ),
+	                            fontSize = 9.sp
+	                        )
+	                    }
+	                }
                 }
             }
             
@@ -255,7 +303,7 @@ fun ContactCard(
                                 Icon(
                                     imageVector = Icons.Default.Edit,
                                     contentDescription = "Edit Officer",
-                                    tint = PrimaryTeal,
+                                    tint = com.example.policemobiledirectory.ui.theme.PrimaryTeal,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }

@@ -21,6 +21,7 @@ import com.example.policemobiledirectory.model.NotificationTarget
 import com.example.policemobiledirectory.model.AppNotification
 import com.example.policemobiledirectory.utils.OperationStatus
 import com.example.policemobiledirectory.utils.Constants
+import com.example.policemobiledirectory.ui.theme.CardStyle
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
@@ -98,6 +99,30 @@ open class EmployeeViewModel @Inject constructor(
     private val _officerStatus = MutableStateFlow<OperationStatus<List<Officer>>>(OperationStatus.Loading)
     val officerStatus: StateFlow<OperationStatus<List<Officer>>> = _officerStatus.asStateFlow()
     
+    private val _officerPendingStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
+    val officerPendingStatus: StateFlow<OperationStatus<String>> = _officerPendingStatus.asStateFlow()
+    
+    // --- Summary Statistics for Dashboard ---
+    val employeesByDistrict: StateFlow<Map<String, Int>> = _employees.map { list ->
+        list.groupingBy { it.district?.trim()?.ifEmpty { "N/A" } ?: "N/A" }.eachCount().toList()
+            .sortedByDescending { it.second }.toMap()
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+
+    val employeesByRank: StateFlow<Map<String, Int>> = _employees.map { list ->
+        list.groupingBy { it.displayRank.trim().ifEmpty { "N/A" } }.eachCount().toList()
+            .sortedByDescending { it.second }.toMap()
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+
+    val officersByDistrict: StateFlow<Map<String, Int>> = _officers.map { list ->
+        list.groupingBy { it.district?.trim()?.ifEmpty { "N/A" } ?: "N/A" }.eachCount().toList()
+            .sortedByDescending { it.second }.toMap()
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+
+    val officersByRank: StateFlow<Map<String, Int>> = _officers.map { list ->
+        list.groupingBy { it.rank?.trim()?.ifEmpty { "N/A" } ?: "N/A" }.eachCount().toList()
+            .sortedByDescending { it.second }.toMap()
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+    
     // Combined contacts (employees + officers) for unified search
     data class Contact(
         val employee: Employee? = null,
@@ -112,176 +137,194 @@ open class EmployeeViewModel @Inject constructor(
         val photoUrl: String? get() = employee?.photoUrl ?: employee?.photoUrlFromGoogle ?: officer?.photoUrl
     }
     
-    private val _searchQuery = MutableStateFlow("")
-    private val _debouncedSearchQuery = MutableStateFlow("")
-    private val _searchFilter = MutableStateFlow(SearchFilter.NAME)
-    val searchFilter: StateFlow<SearchFilter> = _searchFilter.asStateFlow()
-    
-    private val _selectedUnit = MutableStateFlow("All") // New Unit Filter
-    val selectedUnit: StateFlow<String> = _selectedUnit.asStateFlow()
-    
-    private val _selectedDistrict = MutableStateFlow("All")
-    private val _selectedStation = MutableStateFlow("All")
-    private val _selectedRank = MutableStateFlow("All")
-    val selectedRank: StateFlow<String> = _selectedRank.asStateFlow()
-
-    // Card Style State
-    private val _currentCardStyle = MutableStateFlow<com.example.policemobiledirectory.ui.theme.CardStyle>(com.example.policemobiledirectory.ui.theme.CardStyle.Vibrant)
-    val currentCardStyle: StateFlow<com.example.policemobiledirectory.ui.theme.CardStyle> = _currentCardStyle.asStateFlow()
-
-    fun updateCardStyle(style: com.example.policemobiledirectory.ui.theme.CardStyle) {
-        _currentCardStyle.value = style
-    }
-
-    private data class SearchFilters(
-        val query: String,
-        val filter: SearchFilter,
-        val unit: String, // Added Unit
-        val district: String,
-        val station: String,
-        val rank: String
+    // --- Centralized Search Logic ---
+    data class SearchParameters(
+        val query: String = "",
+        val filter: SearchFilter = SearchFilter.NAME,
+        val district: String = "All",
+        val station: String = "All",
+        val rank: String = "All",
+        val unit: String = "All" // New Unit filter
     )
+    
+    // Unified Search Source of Truth
+    private val _searchParams = MutableStateFlow(SearchParameters())
+    val searchParams: StateFlow<SearchParameters> = _searchParams.asStateFlow()
+    
+    // Expose individual properties for UI convenience (backwards compatibility)
+    val searchQuery: Flow<String> = _searchParams.map { it.query }
+    val searchFilter: Flow<SearchFilter> = _searchParams.map { it.filter }
+    val selectedDistrict: Flow<String> = _searchParams.map { it.district }
+    val selectedStation: Flow<String> = _searchParams.map { it.station }
+    val selectedRank: Flow<String> = _searchParams.map { it.rank }
+    val selectedUnit: Flow<String> = _searchParams.map { it.unit }
 
-
-    private val searchFiltersFlow = combine(
-        _debouncedSearchQuery, // Use debounced query
-        _searchFilter,
-        _selectedUnit, // Added Unit
-        _selectedDistrict,
-        _selectedStation,
-        _selectedRank
-    ) { args: Array<Any?> ->
-        val query = args[0] as String
-        val filter = args[1] as SearchFilter
-        val unit = args[2] as String
-        val district = args[3] as String
-        val station = args[4] as String
-        val rank = args[5] as String
-        SearchFilters(query, filter, unit, district, station, rank)
+    // Update helpers
+    fun updateSearchQuery(query: String) { _searchParams.value = _searchParams.value.copy(query = query) }
+    fun updateSearchFilter(filter: SearchFilter) { _searchParams.value = _searchParams.value.copy(filter = filter) }
+    fun updateSelectedDistrict(district: String) { 
+        _searchParams.value = _searchParams.value.copy(
+            district = district, 
+            station = "All" // Reset station when district changes
+        ) 
+    }
+    fun updateSelectedStation(station: String) { _searchParams.value = _searchParams.value.copy(station = station) }
+    fun updateSelectedRank(rank: String) { _searchParams.value = _searchParams.value.copy(rank = rank) }
+    fun updateSelectedUnit(unit: String) { 
+        _searchParams.value = _searchParams.value.copy(
+            unit = unit,
+            station = if (unit != "All") "All" else _searchParams.value.station
+        ) 
     }
     
-    val allContacts: StateFlow<List<Contact>> = combine(_employees, _officers, _isAdmin) { employees, officers, isAdmin ->
-        // Filter employees: show only approved ones for regular users, all for admins
-        val filteredEmployees = if (isAdmin) {
-            employees // Admins see all employees
+    fun clearFilters() {
+        _searchParams.value = SearchParameters()
+    }
+
+    // State for stations map loaded from repository
+    private val _stationsMap = MutableStateFlow<Map<String, List<String>>>(emptyMap())
+
+    init {
+        // Load stations map locally
+        viewModelScope.launch {
+            _stationsMap.value = constantsRepository.getStationsByDistrict()
+        }
+    }
+
+    // Derived State: Stations for the selected district
+    val stationsForSelectedDistrict: StateFlow<List<String>> = combine(_searchParams, _stationsMap) { params, stationsMap ->
+        val district = params.district
+        val selectedUnit = params.unit
+        
+        val districtStations = if (district == "All") {
+             listOf("All") 
         } else {
-            employees.filter { it.isApproved } // Regular users see only approved employees
+            val stations = stationsMap[district] ?: run {
+                val matchedKey = stationsMap.keys.firstOrNull { it.equals(district, ignoreCase = true) }
+                if (matchedKey != null) stationsMap[matchedKey] else null
+            } ?: emptyList()
+            listOf("All") + stations
         }
         
+        // Apply Unit filtering on the stations dropdown if needed
+        if (selectedUnit == "All" || selectedUnit == "Law & Order") {
+            districtStations
+        } else {
+             val expectedKeywords = when(selectedUnit) {
+                 "Traffic" -> listOf("Traffic")
+                 "Control Room" -> listOf("Control Room") 
+                 "CEN Crime / Cyber" -> listOf("CEN", "Cyber")
+                 "Women Police" -> listOf("Women")
+                 "DPO / Admin" -> listOf("DPO", "Computer", "Admin", "Office")
+                 "DAR" -> listOf("DAR")
+                 "DCRB" -> listOf("DCRB")
+                 "DSB / Intelligence" -> listOf("DSB", "Intelligence", "INT")
+                 "Special Units" -> listOf("FPB", "MCU", "SMMC", "DCRE", "Lokayukta", "ESCOM")
+                 else -> listOf(selectedUnit)
+             }
+             
+             districtStations.filter { station -> 
+                 station == "All" || expectedKeywords.any { station.contains(it, ignoreCase = true) }
+             }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val allContacts: StateFlow<List<Contact>> = combine(_employees, _officers, _isAdmin) { employees, officers, isAdmin ->
+        val filteredEmployees = if (isAdmin) employees else employees.filter { it.isApproved }
         val employeeContacts = filteredEmployees.map { Contact(employee = it) }
         val officerContacts = officers.map { Contact(officer = it) }
-        val allContactsList = employeeContacts + officerContacts
-        
-        // Debug logging
-        android.util.Log.d("ContactsFilter", "isAdmin: $isAdmin, Total employees: ${employees.size}, Approved: ${filteredEmployees.size}, Officers: ${officers.size}, Total contacts: ${allContactsList.size}")
-        
-        allContactsList
+        employeeContacts + officerContacts
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
-    // Optimized search with pre-filtering and efficient matching
+    private val _debouncedSearchQuery = _searchParams.map { it.query }
+        .debounce(300)
+        .stateIn(viewModelScope, SharingStarted.Lazily, "")
+
+    // Optimized filteredContacts with simpler chaining
     val filteredContacts: StateFlow<List<Contact>> = combine(
         allContacts,
-        searchFiltersFlow
-    ) { contacts, filters ->
-        // Early exit if no contacts
-        if (contacts.isEmpty()) {
-            Log.w("FilteredContacts", "⚠️ No contacts available (allContacts is empty)")
-            return@combine emptyList<Contact>()
-        }
+        _searchParams,
+        _debouncedSearchQuery // Triggers when debounced query changes
+    ) { contacts, params, debouncedQuery ->
+        // Use debounced query for the actual filtering
+        val effectiveParams = params.copy(query = debouncedQuery)
         
-        // Step 1: Fast pre-filtering by district/station/rank (cheap operations)
-        // Simplified logic: When filter is "All", show everything. Otherwise, match specific values only.
-        // Step 1: Fast pre-filtering by district/station/rank/unit
-        // Simplified logic: When filter is "All", show everything. Otherwise, match specific values only.
-        val preFiltered = contacts.filter { contact ->
-            val districtMatch = filters.district == "All" || 
-                (contact.district?.equals(filters.district, ignoreCase = true) == true)
-            val stationMatch = filters.station == "All" || 
-                (contact.station?.equals(filters.station, ignoreCase = true) == true)
-            val rankMatch = filters.rank == "All" || 
-                (contact.rank?.equals(filters.rank, ignoreCase = true) == true)
-                
-            // Unit Matching Logic (Modified to use effectiveUnit)
-            val unitMatch = if (filters.unit == "All") {
-                true 
-            } else {
-                when {
-                    contact.employee != null -> {
-                       filters.unit.equals(contact.employee.effectiveUnit, ignoreCase = true)
-                    }
-                    contact.officer != null -> {
-                       filters.unit.equals(contact.officer.effectiveUnit, ignoreCase = true)
-                    }
-                    else -> false
-                }
-            }
+        if (contacts.isEmpty()) return@combine emptyList<Contact>()
+
+        contacts
+            .filterByDistrict(effectiveParams.district)
+            .filterByStation(effectiveParams.station)
+            .filterByRank(effectiveParams.rank)
+            .filterByUnit(effectiveParams.unit)
+            .filterByQuery(effectiveParams.query, effectiveParams.filter)
             
-            districtMatch && stationMatch && rankMatch && unitMatch
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    
+    // --- Helper Extension Functions for Filtering ---
+    private fun List<Contact>.filterByDistrict(district: String): List<Contact> {
+        if (district == "All") return this
+        return this.filter { it.district?.equals(district, ignoreCase = true) == true }
+    }
+
+    private fun List<Contact>.filterByStation(station: String): List<Contact> {
+        if (station == "All") return this
+        return this.filter { it.station?.equals(station, ignoreCase = true) == true }
+    }
+
+    private fun List<Contact>.filterByRank(rank: String): List<Contact> {
+        if (rank == "All") return this
+        return this.filter { it.rank?.equals(rank, ignoreCase = true) == true }
+    }
+    
+    private fun List<Contact>.filterByUnit(unit: String): List<Contact> {
+        if (unit == "All") return this
+        return this.filter { contact ->
+            when {
+                contact.employee != null -> unit.equals(contact.employee.effectiveUnit, ignoreCase = true)
+                contact.officer != null -> unit.equals(contact.officer.effectiveUnit, ignoreCase = true)
+                else -> false
+            }
         }
+    }
+
+    private fun List<Contact>.filterByQuery(query: String, filterType: SearchFilter): List<Contact> {
+        if (query.isBlank()) return this
+        val queryLower = query.lowercase().trim()
         
-        // Log when filters result in empty list
-        if (preFiltered.isEmpty() && contacts.isNotEmpty()) {
-            Log.w("FilteredContacts", "⚠️ No contacts match filters: district='${filters.district}', station='${filters.station}', rank='${filters.rank}', query='${filters.query}'")
-            Log.d("FilteredContacts", "Available districts: ${contacts.mapNotNull { it.district }.distinct().take(5)}")
-            Log.d("FilteredContacts", "Available stations: ${contacts.mapNotNull { it.station }.distinct().take(5)}")
-            Log.d("FilteredContacts", "Available ranks: ${contacts.mapNotNull { it.rank }.distinct().take(5)}")
-        }
-        
-        // Early exit if no matches after pre-filtering
-        if (preFiltered.isEmpty()) return@combine emptyList<Contact>()
-        
-        // Step 2: Text search only on pre-filtered results (more expensive operation)
-        if (filters.query.isBlank()) {
-            return@combine preFiltered
-        }
-        
-        val queryLower = filters.query.lowercase().trim()
-        if (queryLower.isEmpty()) return@combine preFiltered
-        
-        // Optimized text matching
-        val textFiltered = preFiltered.filter { contact ->
+        return this.filter { contact ->
             when {
                 contact.employee != null -> {
-                    val matches = contact.employee.matchesOptimized(queryLower, filters.filter)
-                    if (filters.filter == SearchFilter.METAL_NUMBER) {
-                        Log.d("MetalSearch", "Employee ${contact.employee.name}: metalNumber='${contact.employee.metalNumber}', query='$queryLower', matches=$matches")
+                    val filterString = when (filterType) {
+                        SearchFilter.NAME -> "name"
+                        SearchFilter.KGID -> "kgid"
+                        SearchFilter.MOBILE -> "mobile"
+                        SearchFilter.STATION -> "station"
+                        SearchFilter.RANK -> "rank"
+                        SearchFilter.METAL_NUMBER -> "metal"
+                        SearchFilter.BLOOD_GROUP -> "blood"
                     }
-                    matches
+                    contact.employee.matches(queryLower, filterString)
                 }
                 contact.officer != null -> {
-                    // Officers don't have metal numbers, so exclude them from metal number searches
-                    if (filters.filter == SearchFilter.METAL_NUMBER) {
-                        false
-                    } else {
-                        val filterString = when (filters.filter) {
+                     if (filterType == SearchFilter.METAL_NUMBER || filterType == SearchFilter.BLOOD_GROUP) false // Officers have no metal number or blood group field
+                     else {
+                         val filterString = when (filterType) {
                             SearchFilter.NAME -> "name"
                             SearchFilter.KGID -> "agid"
                             SearchFilter.MOBILE -> "mobile"
                             SearchFilter.STATION -> "station"
-                            SearchFilter.RANK -> "rank"
-                            SearchFilter.METAL_NUMBER -> "" // This case is handled above
-                        }
-                        contact.officer.matchesOptimized(queryLower, filterString)
-                    }
+                             SearchFilter.RANK -> "rank"
+                             SearchFilter.METAL_NUMBER -> "metal"
+                             SearchFilter.BLOOD_GROUP -> "blood"
+                         }
+                        contact.officer.matches(queryLower, filterString)
+                     }
                 }
                 else -> false
             }
         }
-        
-        if (textFiltered.isEmpty() && preFiltered.isNotEmpty()) {
-            Log.d("FilteredContacts", "⚠️ Text search filtered out all ${preFiltered.size} contacts (filter: ${filters.filter}, query: '$queryLower')")
-            if (filters.filter == SearchFilter.METAL_NUMBER) {
-                val employeesWithMetal = preFiltered.filter { it.employee != null && !it.employee?.metalNumber.isNullOrBlank() }
-                Log.d("MetalSearch", "⚠️ Metal search: ${preFiltered.size} pre-filtered contacts, ${employeesWithMetal.size} have metal numbers")
-                employeesWithMetal.take(5).forEach { contact ->
-                    Log.d("MetalSearch", "  - ${contact.employee?.name}: metalNumber='${contact.employee?.metalNumber}'")
-                }
-            }
-        }
-        
-        textFiltered
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-    
+    }
+
     private val _adminNotifications = MutableStateFlow<List<AppNotification>>(emptyList())
     val adminNotifications = _adminNotifications.asStateFlow()
     private val _userNotificationsLastSeen = MutableStateFlow(0L)
@@ -291,39 +334,35 @@ open class EmployeeViewModel @Inject constructor(
     private val _userNotifications = MutableStateFlow<List<AppNotification>>(emptyList())
     val userNotifications: StateFlow<List<AppNotification>> = _userNotifications.asStateFlow()
 
-    val filteredEmployees: StateFlow<List<Employee>> = combine(_employees, searchFiltersFlow, _isAdmin) { employees, filters, isAdmin ->
-        // Early exit if no employees
-        if (employees.isEmpty()) return@combine emptyList<Employee>()
-        
-        // ✅ CRITICAL FIX: Filter by approval status first (before other filters)
-        val approvedEmployees = if (isAdmin) {
-            employees // Admins see all employees
-        } else {
-            employees.filter { it.isApproved } // Regular users see only approved employees
-        }
-        
-        // Step 1: Fast pre-filtering by district/station/rank/unit
-        val preFiltered = approvedEmployees.filter { emp ->
-            (filters.district == "All" || emp.district == filters.district) &&
-            (filters.station == "All" || emp.station == filters.station) &&
-            (filters.rank == "All" || emp.rank == filters.rank) &&
-            (filters.unit == "All" || emp.effectiveUnit.equals(filters.unit, ignoreCase = true))
-        }
-        
-        // Early exit if no matches after pre-filtering
-        if (preFiltered.isEmpty()) return@combine emptyList<Employee>()
-        
-        // Step 2: Text search only on pre-filtered results
-        if (filters.query.isBlank()) {
-            return@combine preFiltered
-        }
-        
-        val queryLower = filters.query.lowercase().trim()
-        if (queryLower.isEmpty()) return@combine preFiltered
-        
-        preFiltered.filter { emp ->
-            emp.matchesOptimized(queryLower, filters.filter)
-        }
+    // Simplified filteredEmployees (reusing logic implicitly or explicitly if needed, but keeping separate for now as it returns Employee objects)
+    val filteredEmployees: StateFlow<List<Employee>> = combine(_employees, _searchParams, _isAdmin, _debouncedSearchQuery) { employees, params, isAdmin, debouncedQuery ->
+         if (employees.isEmpty()) return@combine emptyList<Employee>()
+         val approvedEmployees = if (isAdmin) employees else employees.filter { it.isApproved }
+         
+         // Re-implement simplified logic for pure Employee list (similar to Contact logic)
+         val effectiveParams = params.copy(query = debouncedQuery)
+         
+         approvedEmployees
+            .filter { params.district == "All" || it.district.equals(params.district, ignoreCase = true) }
+            .filter { params.station == "All" || it.station.equals(params.station, ignoreCase = true) }
+            .filter { params.rank == "All" || it.rank.equals(params.rank, ignoreCase = true) }
+            .filter { params.unit == "All" || it.effectiveUnit.equals(params.unit, ignoreCase = true) }
+            .filter { 
+                if (effectiveParams.query.isBlank()) {
+                    true 
+                } else {
+                    val filterString = when (effectiveParams.filter) {
+                        SearchFilter.NAME -> "name"
+                        SearchFilter.KGID -> "kgid"
+                        SearchFilter.MOBILE -> "mobile"
+                        SearchFilter.STATION -> "station"
+                        SearchFilter.RANK -> "rank"
+                        SearchFilter.METAL_NUMBER -> "metal"
+                        SearchFilter.BLOOD_GROUP -> "blood"
+                    }
+                    it.matches(effectiveParams.query.lowercase().trim(), filterString)
+                }
+            }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _uploadStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
@@ -350,12 +389,12 @@ open class EmployeeViewModel @Inject constructor(
     private var userNotificationsListenerKgid: String? = null
     private var adminNotificationsListener: ListenerRegistration? = null
 
-    // Constants from Constants.kt (primary source)
-    // Google Sheet is only a backup - no automatic syncing for performance
-    val districts: StateFlow<List<String>> = MutableStateFlow(Constants.districtsList).asStateFlow()
-    val ranks: StateFlow<List<String>> = MutableStateFlow(Constants.allRanksList).asStateFlow()
-    val bloodGroups: StateFlow<List<String>> = MutableStateFlow(Constants.bloodGroupsList).asStateFlow()
-    val stationsByDistrict: StateFlow<Map<String, List<String>>> = MutableStateFlow(Constants.stationsByDistrictMap).asStateFlow()
+    // --- DELETED HARDCODED CONSTANTS ---
+    // These caused stale data issues. Use ConstantsViewModel or inject ConstantsRepository instead.
+    // val districts: StateFlow<List<String>> = MutableStateFlow(Constants.districtsList).asStateFlow()
+    // val ranks: StateFlow<List<String>> = MutableStateFlow(Constants.allRanksList).asStateFlow()
+    // val bloodGroups: StateFlow<List<String>> = MutableStateFlow(Constants.bloodGroupsList).asStateFlow()
+    // val stationsByDistrict: StateFlow<Map<String, List<String>>> = MutableStateFlow(Constants.stationsByDistrictMap).asStateFlow()
 
     init {
         Log.d("EmployeeVM", "🟢 ViewModel initialized")
@@ -363,15 +402,7 @@ open class EmployeeViewModel @Inject constructor(
         loadSession()
         // Constants.kt is the primary source - no automatic syncing
 
-        // 🚀 PERFORMANCE OPTIMIZATION: Debounce search query (300ms) to avoid searching on every keystroke
-        // This significantly improves performance for 10k+ users by reducing unnecessary filtering operations
-        viewModelScope.launch {
-            _searchQuery
-                .debounce(300) // Wait 300ms after user stops typing before filtering
-                .collect { query ->
-                    _debouncedSearchQuery.value = query
-                }
-        }
+
 
         // 2️⃣ Observe login state from DataStore
         viewModelScope.launch {
@@ -772,6 +803,32 @@ open class EmployeeViewModel @Inject constructor(
         }
     }
 
+    // --- Officer Management ---
+
+
+    fun deleteOfficer(officerId: String) {
+        viewModelScope.launch {
+            _officerPendingStatus.value = OperationStatus.Loading
+            officerRepo.deleteOfficer(officerId).collect { result ->
+                when (result) {
+                    is RepoResult.Success -> {
+                        _officerPendingStatus.value = OperationStatus.Success("Officer deleted successfully")
+                        refreshOfficers() // Auto-refresh list
+                    }
+                    is RepoResult.Error -> {
+                        _officerPendingStatus.value = OperationStatus.Error(result.message ?: "Failed to delete officer")
+                    }
+                    else -> Unit
+                }
+            }
+        }
+    }
+    
+    fun resetOfficerPendingStatus() {
+        _officerPendingStatus.value = OperationStatus.Idle
+    }
+
+
     // =========================================================
 // OTP / PIN FLOW  (Secure Version)
 // =========================================================
@@ -949,16 +1006,10 @@ open class EmployeeViewModel @Inject constructor(
                 rank?.lowercase()?.contains(queryLower) == true
             }
             SearchFilter.METAL_NUMBER -> {
-                // Handle null/empty metal numbers - store in local variable for smart cast
-                val metalNum = metalNumber
-                if (metalNum.isNullOrBlank()) {
-                    false
-                } else {
-                    // Normalize both values: trim whitespace and compare
-                    val normalizedMetal = metalNum.trim().lowercase()
-                    val normalizedQuery = queryLower.trim()
-                    normalizedMetal.contains(normalizedQuery)
-                }
+                metalNumber?.lowercase()?.contains(queryLower) == true
+            }
+            SearchFilter.BLOOD_GROUP -> {
+                bloodGroup?.lowercase()?.contains(queryLower) == true
             }
         }
     }
@@ -1054,7 +1105,7 @@ open class EmployeeViewModel @Inject constructor(
             officerRepo.getOfficers().collect { result ->
                 when (result) {
                     is RepoResult.Success -> {
-                        val list = result.data ?: emptyList()
+                        val list = result.data?.sortedBy { it.name } ?: emptyList()
                         _officers.value = list
                         _officerStatus.value = OperationStatus.Success(list)
                     }
@@ -1183,7 +1234,7 @@ open class EmployeeViewModel @Inject constructor(
                     val list = result.data ?: emptyList()
                     _pendingRegistrations.value = list
                     pendingRepo.saveAllToLocal(list)   // sync to Room
-                    _pendingStatus.value = OperationStatus.Success("Loaded")
+                    _pendingStatus.value = OperationStatus.Idle // Stop loading, don't trigger Success toast
                 }
 
                 is RepoResult.Error -> {
@@ -1687,33 +1738,13 @@ open class EmployeeViewModel @Inject constructor(
     // =========================================================
     //  UI CONTROLS
     // =========================================================
-    fun updateSearchQuery(query: String) {
-        _searchQuery.value = query
-    }
+    // =========================================================
+    //  UI CONTROLS
+    // =========================================================
 
-    fun updateSearchFilter(filter: SearchFilter) {
-        _searchFilter.value = filter
-    }
+    // Note: Search/Filter update methods are now centralized at the top using _searchParams
+    // Legacy methods removed to prevent conflicts
 
-    fun updateSelectedUnit(unit: String) {
-        _selectedUnit.value = unit
-        // Reset station when unit changes
-        if (unit != "All") {
-             _selectedStation.value = "All"
-        }
-    }
-
-    fun updateSelectedDistrict(district: String) {
-        _selectedDistrict.value = district
-    }
-
-    fun updateSelectedStation(station: String) {
-        _selectedStation.value = station
-    }
-
-    fun updateSelectedRank(rank: String) {
-        _selectedRank.value = rank
-    }
 
     fun adjustFontScale(increase: Boolean) {
         val step = 0.1f
@@ -1726,6 +1757,14 @@ open class EmployeeViewModel @Inject constructor(
     
     fun setFontScale(scale: Float) {
         _fontScale.value = scale.coerceIn(0.8f, 1.8f)
+    }
+
+    // Card Style State
+    private val _currentCardStyle = MutableStateFlow<CardStyle>(CardStyle.Vibrant)
+    val currentCardStyle: StateFlow<CardStyle> = _currentCardStyle.asStateFlow()
+
+    fun updateCardStyle(style: CardStyle) {
+        _currentCardStyle.value = style
     }
 
     // =========================================================

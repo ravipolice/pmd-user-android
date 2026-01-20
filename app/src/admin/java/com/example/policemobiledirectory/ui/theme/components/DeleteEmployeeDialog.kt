@@ -1,4 +1,4 @@
-package com.example.policemobiledirectory.ui.components
+package com.example.policemobiledirectory.ui.theme.components
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable

@@ -79,6 +79,7 @@ fun AddEditOfficerScreen(
         isOfficer = true, // ✅ Officer Mode
         initialEmployee = initialEmployee,
         initialKgid = officerId,
+        isEdit = !isNewOfficer,
         onSubmit = { emp, photo ->
             // Convert back to Officer
             val officerToSave = officer?.copy(

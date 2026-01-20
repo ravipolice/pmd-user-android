@@ -226,6 +226,47 @@ class ConstantsViewModel @Inject constructor(
             }
         }
     }
+
+    // --- UPDATE (RENAME) WRAPPERS ---
+
+    fun updateDistrict(oldName: String, newName: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.updateDistrict(oldName, newName)
+            result.onSuccess {
+                refreshConstants()
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to rename district: ${it.message}")
+            }
+        }
+    }
+
+    fun updateStation(district: String, oldName: String, newName: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.updateStation(district, oldName, newName)
+            result.onSuccess {
+                refreshConstants()
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to rename station: ${it.message}")
+            }
+        }
+    }
+
+    fun updateUnit(oldName: String, newName: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.updateUnit(oldName, newName)
+            result.onSuccess {
+                refreshConstants()
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to rename unit: ${it.message}")
+            }
+        }
+    }
 }
 
 
