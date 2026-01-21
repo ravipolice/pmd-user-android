@@ -97,7 +97,26 @@
       <div id="s_success" class="success hidden"></div>
       <br />
       <button class="primary" id="s_submit" onclick="addStation()">Add Station</button>
-      
+
+      <h3 style="margin-top:24px">Add Unit</h3>
+      <div class="row-3">
+        <div><label>Name *</label><input id="u_name" required /></div>
+        <div><label>&nbsp;</label></div>
+        <div><label>&nbsp;</label><button class="primary" id="u_submit" onclick="addUnit()">Add Unit</button></div>
+      </div>
+      <div id="u_error" class="error hidden"></div>
+      <div id="u_success" class="success hidden"></div>
+
+      <h3 style="margin-top:24px">Units List</h3>
+      <table id="unitsTable">
+        <thead>
+          <tr><th>Name</th></tr>
+        </thead>
+        <tbody id="unitsTableBody">
+          <tr><td style="text-align:center; color:#9ca3af;">Loading units...</td></tr>
+        </tbody>
+      </table>
+
       <h3 style="margin-top:24px">Stations List</h3>
       <table id="stationsTable">
         <thead>
@@ -168,7 +187,16 @@
     const s_submit = document.getElementById('s_submit');
     const s_error = document.getElementById('s_error');
     const s_success = document.getElementById('s_success');
-    
+
+    // Unit fields
+    const u_name = document.getElementById('u_name');
+    const u_submit = document.getElementById('u_submit');
+    const u_error = document.getElementById('u_error');
+    const u_success = document.getElementById('u_success');
+
+    // Units table
+    const unitsTableBody = document.getElementById('unitsTableBody');
+
     // Stations table
     const stationsTableBody = document.getElementById('stationsTableBody');
 
@@ -262,10 +290,10 @@
           .map(d => d.data().name)
           .filter(name => name)
           .sort();
-        
-        const options = '<option value="">Select District</option>' + 
+
+        const options = '<option value="">Select District</option>' +
           districts.map(d => `<option value="${d}">${d}</option>`).join('');
-        
+
         ['e_district', 'o_district', 's_district'].forEach(id => {
           const el = document.getElementById(id);
           if (el) el.innerHTML = options;
@@ -277,6 +305,9 @@
           if (el) el.innerHTML = '<option value="">Error loading districts</option>';
         });
       }
+
+      // Load units for the master table
+      await loadUnitsForMaster();
     }
 
     // ✅ Load stations for employee dropdown
@@ -310,16 +341,16 @@
         stationsTableBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#9ca3af;">Select a district to view stations</td></tr>';
         return;
       }
-      
+
       try {
         const q = query(collection(db, 'stations'), where('district', '==', district));
         const snap = await getDocs(q);
-        
+
         if (snap.empty) {
           stationsTableBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#9ca3af;">No stations found for this district</td></tr>';
           return;
         }
-        
+
         stationsTableBody.innerHTML = snap.docs.map(d => {
           const data = d.data();
           return `<tr>
@@ -331,6 +362,29 @@
       } catch (err) {
         console.error('Error loading stations table:', err);
         stationsTableBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#dc2626;">Error loading stations</td></tr>';
+      }
+    }
+
+    // ✅ Load units for master table
+    async function loadUnitsForMaster() {
+      try {
+        const q = query(collection(db, 'units'), where('isActive', '==', true));
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+          unitsTableBody.innerHTML = '<tr><td style="text-align:center; color:#9ca3af;">No units found</td></tr>';
+          return;
+        }
+
+        unitsTableBody.innerHTML = snap.docs.map(d => {
+          const data = d.data();
+          return `<tr>
+            <td>${data.name || ''}</td>
+          </tr>`;
+        }).join('');
+      } catch (err) {
+        console.error('Error loading units table:', err);
+        unitsTableBody.innerHTML = '<tr><td style="text-align:center; color:#dc2626;">Error loading units</td></tr>';
       }
     }
 
@@ -464,7 +518,7 @@
       }
 
       setLoading('s', true);
-      
+
       try {
         await addDoc(collection(db, 'stations'), {
           name: s_name.value.trim(),
@@ -473,7 +527,7 @@
           isActive: true,
           createdAt: serverTimestamp()
         });
-        
+
         showSuccess('s', 'Station added successfully!');
         clearForm('s');
         await loadStationsForMaster(); // Refresh table
@@ -482,6 +536,33 @@
         showError('s', 'Failed to add station: ' + err.message);
       } finally {
         setLoading('s', false);
+      }
+    };
+
+    // ✅ Add Unit
+    window.addUnit = async () => {
+      if (!u_name.value.trim()) {
+        showError('u', 'Unit name is required');
+        return;
+      }
+
+      setLoading('u', true);
+
+      try {
+        await addDoc(collection(db, 'units'), {
+          name: u_name.value.trim(),
+          isActive: true,
+          createdAt: serverTimestamp()
+        });
+
+        showSuccess('u', 'Unit added successfully!');
+        clearForm('u');
+        await loadUnitsForMaster(); // Refresh table
+      } catch (err) {
+        console.error('Error adding unit:', err);
+        showError('u', 'Failed to add unit: ' + err.message);
+      } finally {
+        setLoading('u', false);
       }
     };
 

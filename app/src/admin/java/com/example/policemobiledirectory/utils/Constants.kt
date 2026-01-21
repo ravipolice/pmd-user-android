@@ -30,8 +30,8 @@ object Constants {
 
         "SDA", "FDA", "SS",
 
-        "GHA", "AO", "Typist", "Steno", "PA"
-
+        "GHA", "AO", "Typist", "Steno", "PA",
+        "DG & IGP", "ADGP", "IGP", "DIG", "Commandant", "DCP", "SP", "Addl SP"
     ).sorted()
 
     val ranksRequiringMetalNumber = setOf(
@@ -40,6 +40,20 @@ object Constants {
 
         "AHC", "CHC", "WHC", "HC"
 
+    )
+
+    val ministerialRanks = setOf(
+        "SDA", "FDA", "SS", "GHA", "AO", "Typist", "Steno", "PA"
+    )
+
+    // High Ranking Officers (No District/Station required, use AGID)
+    val highRankingOfficers = setOf(
+        "DG & IGP", "ADGP", "IGP", "DIG", "Commandant", "DCP", "SP", "Addl SP"
+    )
+
+    // Ranks that work in Police Stations (PS)
+    val policeStationRanks = setOf(
+        "CPC", "WPC", "CHC", "WHC", "ASI", "PSI", "WASI", "WPSI", "CPI", "PI", "WPI"
     )
 // ===============================
 
@@ -91,11 +105,17 @@ object Constants {
         "Dog Squad", "DSB", "ERSS", "ESCOM",
         "Excise", "Fire", "Forest", "FPB", "FRRO",
         "FSL", "Guest House", "Health", "Home Guard",
-        "INT", "ISD", "KLA", "L&O",
+        "INT", "ISD", "KSRP", "Lokayukta", "L&O",
         "Ministrial", "Others",
         "Prison", "PTS", "Railway", "RTO",
-        "S INT", "Social Media", "Toll",
+        "S INT", "SCRB", "Social Media", "Toll",
         "Traffic", "VVIP", "Wireless"
+    ).sorted()
+
+    val ksrpBattalions = listOf(
+        "1st Bn – Bengaluru", "2nd Bn – Belagavi", "3rd Bn – Bengaluru", "4th Bn – Bengaluru",
+        "5th Bn – Mysuru", "6th Bn – Kalaburagi", "7th Bn – Mangaluru", "8th Bn – Shivamogga",
+        "9th Bn – Bengaluru", "10th Bn – Shiggavi", "11th Bn – Hassan", "12th Bn – Tumakuru"
     ).sorted()
 
     val stationsByDistrictMap: Map<String, List<String>> = districtsList.associateWith { districtFullName ->

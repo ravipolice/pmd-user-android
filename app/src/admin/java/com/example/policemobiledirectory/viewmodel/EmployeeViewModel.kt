@@ -371,6 +371,11 @@ open class EmployeeViewModel @Inject constructor(
     val pendingRegistrations: StateFlow<List<PendingRegistrationEntity>> = _pendingRegistrations.asStateFlow()
     private val _pendingStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
     val pendingStatus: StateFlow<OperationStatus<String>> = _pendingStatus.asStateFlow()
+    
+    // Count of pending approvals for notification badge
+    val pendingApprovalsCount: StateFlow<Int> = _pendingRegistrations.map { it.size }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
     private val _usefulLinks = MutableStateFlow<List<ExternalLinkInfo>>(emptyList())
     val usefulLinks: StateFlow<List<ExternalLinkInfo>> = _usefulLinks.asStateFlow()
     private val _operationResult = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)

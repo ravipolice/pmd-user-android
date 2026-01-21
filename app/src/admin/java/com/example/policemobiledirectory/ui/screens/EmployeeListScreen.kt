@@ -74,8 +74,10 @@ fun EmployeeListScreen(
     val adminNotifications by viewModel.adminNotifications.collectAsState()
     val userNotificationsSeenAt by viewModel.userNotificationsLastSeen.collectAsState()
     val adminNotificationsSeenAt by viewModel.adminNotificationsLastSeen.collectAsState()
+    val pendingApprovalsCount by viewModel.pendingApprovalsCount.collectAsState()
+    
     val notificationCount = if (isAdmin) {
-        adminNotifications.count { (it.timestamp ?: 0L) > adminNotificationsSeenAt }
+        adminNotifications.count { (it.timestamp ?: 0L) > adminNotificationsSeenAt } + pendingApprovalsCount
     } else {
         userNotifications.count { (it.timestamp ?: 0L) > userNotificationsSeenAt }
     }
@@ -289,6 +291,7 @@ private fun EmployeeListContent(
     val districts by constantsViewModel.districts.collectAsState()
     val units by constantsViewModel.units.collectAsState()
     val ranks by constantsViewModel.ranks.collectAsState()
+    val ksrpBattalions by constantsViewModel.ksrpBattalions.collectAsState()
     
     // State for dropdown expansion
     var unitExpanded by remember { mutableStateOf(false) }
@@ -297,7 +300,11 @@ private fun EmployeeListContent(
     var rankExpanded by remember { mutableStateOf(false) }
     
     // Derived UI-specific lists
-    // val unitsList by constantsViewModel.units.collectAsState() // Removed duplicate
+    // LOGIC CHANGE: If Unit is KSRP, show KSRP Battalions instead of Districts
+    val districtsList = remember(districts, ksrpBattalions, searchParams.unit) {
+        if (searchParams.unit == "KSRP") ksrpBattalions else districts
+    }
+
     val stationsForDistrict by viewModel.stationsForSelectedDistrict.collectAsState()
     val allRanks = remember(ranks) { listOf("All") + ranks }
 
@@ -388,7 +395,7 @@ private fun EmployeeListContent(
                         )
                     )
                     ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
-                        districts.forEach { district ->
+                        districtsList.forEach { district ->
                             DropdownMenuItem(text = { Text(district) }, onClick = { districtExpanded = false; viewModel.updateSelectedDistrict(district); viewModel.updateSelectedStation("All") })
                         }
                     }

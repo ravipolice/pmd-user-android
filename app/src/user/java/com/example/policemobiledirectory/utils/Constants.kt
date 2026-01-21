@@ -10,7 +10,8 @@ object Constants {
         "APC", "CPC", "WPC", "PCW", "PC", "AHC", "CHC", "WHC", "HCW", "HC",
         "ASI", "ARSI", "WASI", "ASIW", "RSI", "PSI", "WPSI", "PSIW",
         "RPI", "CPI", "PI", "PIW", "WPI", "DYSP", "SDA", "FDA", "SS",
-        "GHA", "AO", "Typist", "Steno", "PA"
+        "GHA", "AO", "Typist", "Steno", "PA",
+        "DG & IGP", "ADGP", "IGP", "DIG", "Commandant", "DCP", "SP", "Addl SP"
     ).sorted()
 
     // Set of ranks that require a metal number
@@ -21,6 +22,22 @@ object Constants {
     val bloodGroupsList = listOf(
         "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "??"
     ).sorted()
+
+    // Ranks that do NOT need a station (Ministerial / Office Staff)
+    val ministerialRanks = setOf(
+        "SDA", "FDA", "SS", "Steno", "PA", "GHA", "AO", "AAO", "Typist"
+    ).map { it.uppercase() }.toSet()
+
+    // High Ranking Officers (No District/Station required, use AGID)
+    val highRankingOfficers = setOf(
+        "DG & IGP", "ADGP", "IGP", "DIG", "Commandant", "DCP", "SP", "Addl SP"
+    )
+
+    // Ranks that work in Police Stations (PS)
+    // If a rank is NOT in this list, they will NOT see "PS" stations in the dropdown.
+    val policeStationRanks = setOf(
+        "CPC", "WPC", "CHC", "WHC", "ASI", "PSI", "WASI", "WPSI", "CPI", "PI", "WPI"
+    )
 
     val districtsList = listOf(
         "Bagalkot -NR", "Ballari -BR", "Belagavi City -COP", "Belagavi Dist -NR", "Bengaluru City -COP", "Bengaluru Dist -CR", "Bidar -NR",
@@ -39,10 +56,16 @@ object Constants {
         "Admin", "ASC Team", "BDDS", "C Room", "CAR", "CCB", "CCRB", "CDR", "CEN", "CID", 
         "Coast Guard", "Computer", "Court", "CSB", "CSP", "DAR", "DCIB", "DCRB", "DCRE", 
         "Dog Squad", "DSB", "ERSS", "ESCOM", "Excise", "Fire", "Forest", "FPB", "FRRO", 
-        "FSL", "Guest House", "Health", "Home Guard", "INT", "ISD", "KLA", "L&O", 
+        "FSL", "Guest House", "Health", "Home Guard", "INT", "ISD", "KSRP", "Lokayukta", "L&O", 
         "Ministrial", "Minisrial", "Others", "Prison", "PTS", "Railway", "RTO", 
-        "S INT", "Social Media", "Toll", "Traffic", "VVIP", "Wireless"
+        "S INT", "SCRB", "Social Media", "Toll", "Traffic", "VVIP", "Wireless"
     )
+
+    val ksrpBattalions = listOf(
+        "1st Bn – Bengaluru", "2nd Bn – Belagavi", "3rd Bn – Bengaluru", "4th Bn – Bengaluru",
+        "5th Bn – Mysuru", "6th Bn – Kalaburagi", "7th Bn – Mangaluru", "8th Bn – Shivamogga",
+        "9th Bn – Bengaluru", "10th Bn – Shiggavi", "11th Bn – Hassan", "12th Bn – Tumakuru"
+    ).sorted()
 
     // This map contains station lists for ALL districts
     // All stations (including common units) are hardcoded in each district's list

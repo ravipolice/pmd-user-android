@@ -49,6 +49,7 @@ class ConstantsRepository @Inject constructor(
     private val UNITS_CACHE_KEY = "units_cache"
     private val DISTRICTS_CACHE_KEY = "districts_cache"
     private val RANKS_CACHE_KEY = "ranks_cache"
+    private val STATIONS_CACHE_KEY = "stations_cache"
 
     /**
      * Check if cache needs refresh (expired or doesn't exist)
@@ -56,6 +57,9 @@ class ConstantsRepository @Inject constructor(
     fun shouldRefreshCache(): Boolean {
         val timestamp = prefs.getLong(CACHE_TIMESTAMP_KEY, 0)
         if (timestamp == 0L) return true // No cache exists
+        
+        // Force refresh if Stations cache is missing (new feature)
+        if (!prefs.contains(STATIONS_CACHE_KEY)) return true
         
         val now = System.currentTimeMillis()
         val age = now - timestamp
@@ -71,6 +75,7 @@ class ConstantsRepository @Inject constructor(
             .remove(CACHE_TIMESTAMP_KEY)
             .remove(UNITS_CACHE_KEY)
             .remove(RANKS_CACHE_KEY)
+            .remove(STATIONS_CACHE_KEY)
             .apply()
         Log.d("ConstantsRepository", "✅ Cache cleared - next refresh will fetch from API")
     }
@@ -131,6 +136,9 @@ class ConstantsRepository @Inject constructor(
 
             // 4. Fetch Ranks from Firestore
             fetchRanksFromFirestore()
+            
+            // 5. Fetch Stations from Firestore
+            fetchStationsFromFirestore()
             
             // If we reached here without crashing, Firestore operations likely succeeded
             firestoreSuccess = true
@@ -239,6 +247,42 @@ class ConstantsRepository @Inject constructor(
     }
 
 
+    /**
+     * Fetch stations from Firestore "stations" collection
+     */
+    private suspend fun fetchStationsFromFirestore() {
+        try {
+            Log.d("ConstantsRepository", "🔄 Fetching stations from Firestore...")
+            val snapshot = firestore.collection("stations")
+                .get()
+                .await()
+
+            // Group by district
+            val stationMap = mutableMapOf<String, MutableList<String>>()
+            
+            snapshot.documents.forEach { doc ->
+                val name = doc.getString("name")
+                val district = doc.getString("district")
+                
+                if (!name.isNullOrBlank() && !district.isNullOrBlank()) {
+                    val list = stationMap.getOrPut(district) { mutableListOf() }
+                    list.add(name)
+                }
+            }
+
+            if (stationMap.isNotEmpty()) {
+                val json = Gson().toJson(stationMap)
+                prefs.edit().putString(STATIONS_CACHE_KEY, json).apply()
+                Log.d("ConstantsRepository", "✅ Fetched stations for ${stationMap.size} districts from Firestore")
+            } else {
+                Log.w("ConstantsRepository", "⚠️ No stations found in Firestore")
+            }
+        } catch (e: Exception) {
+            Log.e("ConstantsRepository", "❌ Failed to fetch stations from Firestore", e)
+        }
+    }
+
+
     
     /**
      * Fetch constants from API (alias for refreshConstants with explicit version checking)
@@ -262,6 +306,7 @@ class ConstantsRepository @Inject constructor(
                 // Also trigger unit & rank fetch in background when this is called
                 fetchUnitsFromFirestore()
                 fetchRanksFromFirestore()
+                fetchStationsFromFirestore()
                 
                 response.data
             } else {
@@ -412,7 +457,39 @@ class ConstantsRepository @Inject constructor(
                         baseStations.add(apiStation)
                     }
                 }
-            } else if (cached != null) {
+            }
+            
+            // --- NEW: Merge Firestore Stations ---
+            val firestoreStationsJson = prefs.getString(STATIONS_CACHE_KEY, null)
+            if (!firestoreStationsJson.isNullOrEmpty()) {
+                try {
+                    val type = object : TypeToken<Map<String, List<String>>>() {}.type
+                    val firestoreStationMap: Map<String, List<String>> = Gson().fromJson(firestoreStationsJson, type)
+                    
+                    // Find matching district in Firestore map (Sanitized Fuzzy Match)
+                    val matchingFirestoreKey = firestoreStationMap.keys.find { fKey -> 
+                        val fKeyClean = fKey.replace("[^a-zA-Z0-9]".toRegex(), "").lowercase()
+                        val districtClean = district.replace("[^a-zA-Z0-9]".toRegex(), "").lowercase()
+                        fKeyClean == districtClean || districtClean.contains(fKeyClean) || fKeyClean.contains(districtClean)
+                    }
+                    
+                    matchingFirestoreKey?.let { key ->
+                        val fStations = firestoreStationMap[key] ?: emptyList()
+                        fStations.forEach { fStation ->
+                            val exists = baseStations.any { 
+                                it.equals(fStation, ignoreCase = true) 
+                            }
+                            if (!exists) {
+                                baseStations.add(fStation)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("ConstantsRepository", "Failed to parse firestore stations", e)
+                }
+            }
+            
+             else if (cached != null) {
                 // Debug: Check if district exists in API with different spelling
                 val apiDistrictKeys = cached.stationsbydistrict.keys
                 val possibleMatches = apiDistrictKeys.filter { 
@@ -431,6 +508,9 @@ class ConstantsRepository @Inject constructor(
         }.toMutableMap()
         
         // Also handle any districts that exist in API but not in hardcoded (case-insensitive check)
+        // AND handle districts from Firestore that aren't in hardcoded
+        
+        // 1. Legacy API (Google Sheets)
         cached?.stationsbydistrict?.forEach { (apiDistrict, apiStations) ->
             val exists = resultMap.keys.any { 
                 it.lowercase().trim() == apiDistrict.lowercase().trim() 
@@ -440,6 +520,25 @@ class ConstantsRepository @Inject constructor(
                 resultMap[apiDistrict] = (apiStations + apiDistrict).distinct().sorted()
                 Log.d("ConstantsRepository", "Added new district from API: $apiDistrict")
             }
+        }
+        
+        // 2. Firestore Stations
+        val firestoreStationsJson = prefs.getString(STATIONS_CACHE_KEY, null)
+        if (!firestoreStationsJson.isNullOrEmpty()) {
+             try {
+                val type = object : TypeToken<Map<String, List<String>>>() {}.type
+                val firestoreStationMap: Map<String, List<String>> = Gson().fromJson(firestoreStationsJson, type)
+                
+                firestoreStationMap.forEach { (fDistrict, fStations) ->
+                    val exists = resultMap.keys.any { 
+                        it.equals(fDistrict, ignoreCase = true)
+                    }
+                    if (!exists) {
+                        resultMap[fDistrict] = (fStations + fDistrict).distinct().sorted()
+                        Log.d("ConstantsRepository", "Added new district from Firestore: $fDistrict")
+                    }
+                }
+             } catch (e: Exception) { /* IGNORE */ }
         }
         
         // Final verification: Ensure all hardcoded districts have stations
@@ -455,8 +554,12 @@ class ConstantsRepository @Inject constructor(
         // Use districtsList as the source of truth for exact district names
         val normalizedMap = mutableMapOf<String, List<String>>()
         Constants.districtsList.forEach { exactDistrictName ->
-            // Find matching entry in resultMap (case-insensitive)
-            val matchingKey = resultMap.keys.find { it.equals(exactDistrictName, ignoreCase = true) }
+            // Find matching entry in resultMap (Sanitized Fuzzy Match)
+            val matchingKey = resultMap.keys.find { rKey -> 
+                val rKeyClean = rKey.replace("[^a-zA-Z0-9]".toRegex(), "").lowercase()
+                val exactClean = exactDistrictName.replace("[^a-zA-Z0-9]".toRegex(), "").lowercase()
+                rKeyClean == exactClean || rKeyClean.contains(exactClean) || exactClean.contains(rKeyClean)
+            }
             val stations = matchingKey?.let { resultMap[it] } 
                 ?: (hardcodedStations[exactDistrictName]?.toList() ?: emptyList()) + exactDistrictName
             

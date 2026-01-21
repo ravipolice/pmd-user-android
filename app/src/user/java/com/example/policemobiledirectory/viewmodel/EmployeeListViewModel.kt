@@ -123,8 +123,26 @@ class EmployeeListViewModel @Inject constructor(
         val preFiltered = contacts.filter { contact ->
             val districtMatch = filters.district == "All" ||
                 (contact.district?.equals(filters.district, ignoreCase = true) == true)
-            val stationMatch = filters.station == "All" ||
-                (contact.station?.equals(filters.station, ignoreCase = true) == true)
+            // Station Filtering Logic
+            val stationFilter = filters.station
+            val stationMatch = if (stationFilter == "All") {
+                true
+            } else {
+                val isPS = stationFilter.endsWith(" PS", ignoreCase = true)
+                val stripped = if (isPS) stationFilter.dropLast(3).trim() else stationFilter
+                val circleVariant = "$stripped Circle"
+
+                // 1. Direct Match
+                (contact.station?.equals(stationFilter, ignoreCase = true) == true) ||
+                // 2. PS/Circle/Stripped Variants (only if filter is PS)
+                (isPS && (
+                    contact.station?.equals(circleVariant, ignoreCase = true) == true ||
+                    contact.station?.equals(stripped, ignoreCase = true) == true
+                )) ||
+                // 3. Fallback: If station is empty, check if Name contains the Place Name
+                (contact.station.isNullOrBlank() && contact.name.contains(stripped, ignoreCase = true))
+            }
+
             val rankMatch = filters.rank == "All" ||
                 (contact.rank?.equals(filters.rank, ignoreCase = true) == true)
 
@@ -198,8 +216,13 @@ class EmployeeListViewModel @Inject constructor(
 
         // Step 1: Fast pre-filtering by district/station/rank
         val preFiltered = approvedEmployees.filter { emp ->
+            val stationMatch = filters.station == "All" || 
+                emp.station.equals(filters.station, ignoreCase = true) ||
+                (filters.station.endsWith(" PS", ignoreCase = true) && 
+                 emp.station?.equals(filters.station.replace(" PS", " Circle", ignoreCase = true), ignoreCase = true) == true)
+            
             (filters.district == "All" || emp.district == filters.district) &&
-            (filters.station == "All" || emp.station == filters.station) &&
+            stationMatch &&
             (filters.rank == "All" || emp.rank == filters.rank)
         }
 

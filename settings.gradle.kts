@@ -16,5 +16,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PoliceMobileDirectory" // I inferred the name from your file path
+rootProject.name = "PoliceMobileDirectory"
 include(":app")
+include(":nudi")

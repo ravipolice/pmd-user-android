@@ -43,6 +43,18 @@ class ConstantsViewModel @Inject constructor(
     private val _ranksRequiringMetalNumber = MutableStateFlow(constantsRepository.getRanksRequiringMetalNumber())
     val ranksRequiringMetalNumber: StateFlow<List<String>> = _ranksRequiringMetalNumber.asStateFlow()
 
+    private val _ministerialRanks = MutableStateFlow(Constants.ministerialRanks.toList())
+    val ministerialRanks: StateFlow<List<String>> = _ministerialRanks.asStateFlow()
+
+    private val _policeStationRanks = MutableStateFlow(Constants.policeStationRanks)
+    val policeStationRanks: StateFlow<Set<String>> = _policeStationRanks.asStateFlow()
+
+    private val _highRankingOfficers = MutableStateFlow(Constants.highRankingOfficers)
+    val highRankingOfficers: StateFlow<Set<String>> = _highRankingOfficers.asStateFlow()
+
+    private val _ksrpBattalions = MutableStateFlow(Constants.ksrpBattalions)
+    val ksrpBattalions: StateFlow<List<String>> = _ksrpBattalions.asStateFlow()
+
     // Loading and error states for refresh operation
     private val _refreshStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
     val refreshStatus: StateFlow<OperationStatus<String>> = _refreshStatus.asStateFlow()

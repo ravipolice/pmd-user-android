@@ -335,4 +335,3 @@ function uploadToFirestoreCombined(payload) {
     return false;
   }
 }
-

@@ -263,14 +263,18 @@ private fun EmployeeListContent(
         selectedUnit = selectedUnitState
     }
 
+    val ksrpBattalions by constantsViewModel.ksrpBattalions.collectAsStateWithLifecycle()
+
     var selectedDistrict by remember { mutableStateOf("All") }
     var districtExpanded by remember { mutableStateOf(false) }
     // Show "All" only for admins, regular users see only districts
-    val districtsList = remember(isAdmin, districts) {
+    // LOGIC CHANGE: If Unit is KSRP, show KSRP Battalions instead of Districts
+    val districtsList = remember(isAdmin, districts, ksrpBattalions, selectedUnit) {
+        val baseList = if (selectedUnit == "KSRP") ksrpBattalions else districts
         if (isAdmin) {
-            listOf("All") + districts
+            listOf("All") + baseList
         } else {
-            districts
+            baseList
         }
     }
 
@@ -696,23 +700,34 @@ private fun EmployeeListContent(
                                  textAlign = TextAlign.Center
                              )
                              if (searchQuery.isNotEmpty() || selectedDistrict != "All" || selectedUnit != "All") {
-                                 TextButton(onClick = {
-                                     // Reset to "All" to show ALL contact cards
-                                     val defaultDistrict = "All"
-                                     
-                                     // Update UI state explicitly
-                                     selectedDistrict = defaultDistrict
-                                     selectedUnit = "All"
-                                     selectedStation = "All"
-                                     selectedRank = "All"
+                                    TextButton(onClick = {
+                                        // Reset to "All" to show ALL contact cards
+                                        // Update UI state explicitly
+                                        selectedUnit = "All"
+                                        selectedStation = "All"
+                                        selectedRank = "All"
 
-                                     // Update ViewModel
-                                     viewModel.updateSelectedDistrict(defaultDistrict)
-                                     viewModel.updateSelectedUnit("All")
-                                     viewModel.updateSelectedStation("All")
-                                     viewModel.updateSelectedRank("All")
-                                     viewModel.updateSearchQuery("")
-                                 }) {
+                                        if (isAdmin) {
+                                            selectedDistrict = "All"
+                                            viewModel.updateSelectedDistrict("All")
+                                        } else {
+                                            // Reset to user's registered district
+                                            val userDistrict = currentUser?.district?.takeIf { it.isNotBlank() }
+                                            if (userDistrict != null && districts.contains(userDistrict)) {
+                                                selectedDistrict = userDistrict
+                                                viewModel.updateSelectedDistrict(userDistrict)
+                                            } else {
+                                                selectedDistrict = "All"
+                                                viewModel.updateSelectedDistrict("All")
+                                            }
+                                        }
+
+                                        // Update ViewModel
+                                        viewModel.updateSelectedUnit("All")
+                                        viewModel.updateSelectedStation("All")
+                                        viewModel.updateSelectedRank("All")
+                                        viewModel.updateSearchQuery("")
+                                    }) {
                                      Text("Reset All Filters")
                                  }
                              }

@@ -12,6 +12,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -32,6 +33,7 @@ fun NotificationsScreen(
     val adminNotifications by viewModel.adminNotifications.collectAsState()
     val userNotifications by viewModel.userNotifications.collectAsState()
     val notifications = if (isAdmin) adminNotifications else userNotifications
+    val pendingCount by viewModel.pendingApprovalsCount.collectAsState() // Correctly collected here
 
     LaunchedEffect(notifications, isAdmin) {
         viewModel.markNotificationsRead(isAdmin, notifications)
@@ -63,7 +65,7 @@ fun NotificationsScreen(
             ) {
                 Text(if (isAdmin) "No admin notifications yet." else "No notifications yet.")
             }
-        } else {
+    } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -71,6 +73,41 @@ fun NotificationsScreen(
                     .padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // ✅ Show Pending Approvals Card if there are any
+                if (isAdmin && pendingCount > 0) {
+                    item {
+                        Card(
+                            onClick = { navController.navigate(com.example.policemobiledirectory.navigation.Routes.PENDING_APPROVALS) },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                            ),
+                            elevation = CardDefaults.cardElevation(4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Pending Approvals",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "$pendingCount user(s) waiting for approval",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.rotate(180f))
+                            }
+                        }
+                    }
+                }
+
                 items(notifications, key = { it.id }) { notification ->
                     NotificationCard(notification)
                 }
