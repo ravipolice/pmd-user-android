@@ -9,6 +9,9 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
+import java.util.Properties
+import java.io.FileInputStream
+
 android {
     namespace = "com.example.policemobiledirectory"
     compileSdk = 35
@@ -93,11 +96,30 @@ android {
         }
     }
 
+    // START SIGNING CONFIG
+    signingConfigs {
+        create("release") {
+            val keyPropsFile = rootProject.file("key.properties")
+            if (keyPropsFile.exists()) {
+                val p = Properties()
+                p.load(FileInputStream(keyPropsFile))
+                storeFile = file(p.getProperty("storeFile"))
+                storePassword = p.getProperty("storePassword")
+                keyAlias = p.getProperty("keyAlias")
+                keyPassword = p.getProperty("keyPassword")
+            } else {
+                println("No key.properties found, skipping signing config setup")
+            }
+        }
+    }
+    // END SIGNING CONFIG
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             isDebuggable = false
+            signingConfig = signingConfigs.getByName("release") // Apply signing config
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

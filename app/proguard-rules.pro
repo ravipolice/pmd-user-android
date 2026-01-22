@@ -41,3 +41,22 @@
 
 # --- App Specific ---
 -keep class com.example.policemobiledirectory.di.** { *; }
+
+# --- Apache POI ---
+-keep class org.apache.poi.** { *; }
+-dontwarn org.apache.poi.**
+-keep class org.apache.xmlbeans.** { *; }
+-dontwarn org.apache.xmlbeans.**
+
+# --- PDFBox ---
+-keep class com.tom_roush.pdfbox.** { *; }
+-dontwarn com.tom_roush.pdfbox.**
+
+# --- uCrop ---
+-keep class com.yalantis.ucrop.** { *; }
+-keep interface com.yalantis.ucrop.** { *; }
+-dontwarn com.yalantis.ucrop.**
+
+# --- Javax / AWT classes for POI ---
+-dontwarn java.awt.**
+-dontwarn javax.xml.stream.**
