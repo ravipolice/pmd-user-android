@@ -98,6 +98,14 @@ object SearchEngine {
         filter: SearchFilter
     ): Double {
         return when (filter) {
+            SearchFilter.ALL -> {
+                 val nameScore = calculateNameScore(employee.name, queryLower) * FieldWeights.NAME_EXACT
+                 val idScore = calculateIdScore(employee.kgid, queryLower) * FieldWeights.ID_EXACT
+                 val mobileScore = calculateMobileScore(employee.mobile1, employee.mobile2, queryLower) * FieldWeights.MOBILE_EXACT
+                 val rankScore = calculateFieldScore(employee.rank, queryLower) * FieldWeights.RANK_EXACT
+                 val stationScore = calculateFieldScore(employee.station, queryLower) * FieldWeights.STATION_EXACT
+                 maxOf(nameScore, idScore, mobileScore, rankScore, stationScore)
+            }
             SearchFilter.NAME -> calculateNameScore(employee.name, queryLower) * FieldWeights.NAME_EXACT
             SearchFilter.KGID -> calculateIdScore(employee.kgid, queryLower) * FieldWeights.ID_EXACT
             SearchFilter.MOBILE -> calculateMobileScore(
@@ -198,6 +206,13 @@ object SearchEngine {
         val matched = mutableListOf<String>()
         
         when (filter) {
+            SearchFilter.ALL -> {
+                if (employee.name.lowercase().contains(queryLower)) matched.add("name")
+                if (employee.kgid.lowercase().contains(queryLower)) matched.add("kgid")
+                if (employee.mobile1?.contains(queryLower) == true) matched.add("mobile1")
+                if (employee.rank?.lowercase()?.contains(queryLower) == true) matched.add("rank")
+                if (employee.station?.lowercase()?.contains(queryLower) == true) matched.add("station")
+            }
             SearchFilter.NAME -> if (employee.name.lowercase().contains(queryLower)) matched.add("name")
             SearchFilter.KGID -> if (employee.kgid.lowercase().contains(queryLower)) matched.add("kgid")
             SearchFilter.MOBILE -> {

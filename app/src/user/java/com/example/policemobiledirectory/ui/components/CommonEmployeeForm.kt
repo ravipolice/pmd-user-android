@@ -141,9 +141,34 @@ fun CommonEmployeeForm(
         highRankingOfficers.contains(rank)
     }
 
-    // Dynamic District List Logic
-    val availableDistricts = remember(unit, ksrpBattalions, districts) {
-        if (unit == "KSRP") ksrpBattalions else districts
+    // Dynamic District List Logic (Hybrid Strategy)
+    // Fetches from Firestore Cache -> Fallback to Hardcoded
+    val availableDistricts by produceState<List<String>>(initialValue = emptyList(), key1 = unit) {
+        // Run in IO context to avoid UI thread blocking if it hits disk/db
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            constantsViewModel.getDistrictsForUnit(unit)
+        }
+    }
+    
+    // Dynamic Unit Sections
+    val unitSections by produceState<List<String>>(initialValue = emptyList(), key1 = unit) {
+        if (unit.isNotBlank()) {
+            value = constantsViewModel.getSectionsForUnit(unit)
+        } else {
+            value = emptyList()
+        }
+    }
+
+    // Auto-select if only one district is available (or "No District Required")
+    LaunchedEffect(availableDistricts) {
+        if (availableDistricts.size == 1) {
+            district = availableDistricts.first()
+            if (district == "No District Required") {
+               // Optional: maybe clear it for the actual DB save/logic, but strictly for UI 
+               // we might want to keep it or handle it. 
+               // Assuming logic elsewhere handles "No District Required" string or we pass it as is.
+            }
+        }
     }
 
     // Reset district/station if Unit changes to/from KSRP to avoid invalid selections
@@ -410,6 +435,11 @@ fun CommonEmployeeForm(
                 listOf("ISD", "CCB", "CID").contains(unit)
             }
 
+            // Check if selected unit is "District Level" (No Station)
+            val isDistrictLevelUnit by produceState(initialValue = false, key1 = unit) {
+                value = constantsViewModel.isDistrictLevelUnit(unit)
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -438,7 +468,6 @@ fun CommonEmployeeForm(
                     }
                 }
 
-                // District
                 if (!isHighRankingOfficer && !isSpecialUnit) {
                     ExposedDropdownMenuBox(
                         expanded = districtExpanded,
@@ -476,31 +505,37 @@ fun CommonEmployeeForm(
             Spacer(Modifier.height(fieldSpacing))
 
             // Row 8: Station (Full Width)
-            if (!isHighRankingOfficer && !isSpecialUnit) {
-                val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks) {
-                    val isPoliceStationRank = policeStationRanks.contains(rank)
-                    if (isPoliceStationRank) {
-                        stationsForSelectedDistrict
+            if (!isHighRankingOfficer && !isSpecialUnit && !isDistrictLevelUnit) {
+                val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks, unit, unitSections) {
+                    if (unitSections.isNotEmpty()) {
+                        unitSections
+                    } else if (unit == "State INT") {
+                         Constants.stateIntSections
                     } else {
-                        stationsForSelectedDistrict.filter { !it.endsWith(" PS", ignoreCase = true) }
+                        val isPoliceStationRank = policeStationRanks.contains(rank)
+                        if (isPoliceStationRank) {
+                            stationsForSelectedDistrict
+                        } else {
+                            stationsForSelectedDistrict.filter { !it.endsWith(" PS", ignoreCase = true) }
+                        }
                     }
                 }
 
                 ExposedDropdownMenuBox(
                     expanded = stationExpanded,
                     onExpandedChange = {
-                        if (district.isNotBlank() && filteredStations.isNotEmpty()) stationExpanded = !stationExpanded
+                        if ((district.isNotBlank() || unit == "State INT" || unitSections.isNotEmpty()) && filteredStations.isNotEmpty()) stationExpanded = !stationExpanded
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
-                        value = station.ifEmpty { if (district.isNotBlank()) "Select Station" else "Select District First" },
+                        value = station.ifEmpty { if (district.isNotBlank() || unit == "State INT" || unitSections.isNotEmpty()) "Select ${if(unit == "State INT" || unitSections.isNotEmpty()) "Section" else "Station"}" else "Select District First" },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Station*") },
+                        label = { Text(if (unit == "State INT" || unitSections.isNotEmpty()) "Section *" else "Station *") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
-                        enabled = district.isNotBlank() && filteredStations.isNotEmpty(),
+                        enabled = (district.isNotBlank() || unit == "State INT" || unitSections.isNotEmpty()) && filteredStations.isNotEmpty(),
                         isError = showValidationErrors && station.isBlank()
                     )
                     ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
@@ -513,7 +548,7 @@ fun CommonEmployeeForm(
                     }
                 }
                 if (showValidationErrors && station.isBlank()) {
-                    Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text(if(unit == "State INT" || unitSections.isNotEmpty()) "Section required" else "Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
             Spacer(Modifier.height(fieldSpacing))

@@ -260,10 +260,16 @@ open class EmployeeViewModel @Inject constructor(
             
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
+    private fun normalizeDistrict(district: String?): String {
+        if (district == null) return ""
+        // Remove suffixes like " -NR", " -ER", " -BR", " -SR", " -WR", " -NER", " -CR", " -COP"
+        return district.split(" -")[0].trim().lowercase()
+    }
+
     // --- Helper Extension Functions for Filtering ---
     private fun List<Contact>.filterByDistrict(district: String): List<Contact> {
         if (district == "All") return this
-        return this.filter { it.district?.equals(district, ignoreCase = true) == true }
+        return this.filter { normalizeDistrict(it.district) == normalizeDistrict(district) }
     }
 
     private fun List<Contact>.filterByStation(station: String): List<Contact> {
@@ -302,6 +308,7 @@ open class EmployeeViewModel @Inject constructor(
                         SearchFilter.RANK -> "rank"
                         SearchFilter.METAL_NUMBER -> "metal"
                         SearchFilter.BLOOD_GROUP -> "blood"
+                        SearchFilter.ALL -> "name"
                     }
                     contact.employee.matches(queryLower, filterString)
                 }
@@ -316,6 +323,7 @@ open class EmployeeViewModel @Inject constructor(
                              SearchFilter.RANK -> "rank"
                              SearchFilter.METAL_NUMBER -> "metal"
                              SearchFilter.BLOOD_GROUP -> "blood"
+                             SearchFilter.ALL -> "all"
                          }
                         contact.officer.matches(queryLower, filterString)
                      }
@@ -343,7 +351,7 @@ open class EmployeeViewModel @Inject constructor(
          val effectiveParams = params.copy(query = debouncedQuery)
          
          approvedEmployees
-            .filter { params.district == "All" || it.district.equals(params.district, ignoreCase = true) }
+            .filter { params.district == "All" || normalizeDistrict(it.district) == normalizeDistrict(params.district) }
             .filter { params.station == "All" || it.station.equals(params.station, ignoreCase = true) }
             .filter { params.rank == "All" || it.rank.equals(params.rank, ignoreCase = true) }
             .filter { params.unit == "All" || it.effectiveUnit.equals(params.unit, ignoreCase = true) }
@@ -359,6 +367,7 @@ open class EmployeeViewModel @Inject constructor(
                         SearchFilter.RANK -> "rank"
                         SearchFilter.METAL_NUMBER -> "metal"
                         SearchFilter.BLOOD_GROUP -> "blood"
+                        SearchFilter.ALL -> "name"
                     }
                     it.matches(effectiveParams.query.lowercase().trim(), filterString)
                 }
@@ -373,8 +382,27 @@ open class EmployeeViewModel @Inject constructor(
     val pendingStatus: StateFlow<OperationStatus<String>> = _pendingStatus.asStateFlow()
     
     // Count of pending approvals for notification badge
-    val pendingApprovalsCount: StateFlow<Int> = _pendingRegistrations.map { it.size }
+    // Count of pending approvals (Total)
+    val pendingApprovalsTotalCount: StateFlow<Int> = _pendingRegistrations.map { it.size }
         .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    // Count of unviewed pending approvals (for Badge)
+    val unviewedPendingCount: StateFlow<Int> = _pendingRegistrations.map { list ->
+        list.count { !it.viewedByAdmin }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    fun markPendingRegistrationsAsViewed() {
+        viewModelScope.launch {
+            val unviewed = _pendingRegistrations.value.filter { !it.viewedByAdmin }
+            if (unviewed.isNotEmpty()) {
+                unviewed.forEach { entity ->
+                    pendingRepo.markAsViewed(entity)
+                }
+                // Refresh to ensure UI updates
+                refreshPendingRegistrations()
+            }
+        }
+    }
 
     private val _usefulLinks = MutableStateFlow<List<ExternalLinkInfo>>(emptyList())
     val usefulLinks: StateFlow<List<ExternalLinkInfo>> = _usefulLinks.asStateFlow()
@@ -712,10 +740,12 @@ open class EmployeeViewModel @Inject constructor(
 
         return when (notification.targetType) {
             NotificationTarget.ALL -> true
-            NotificationTarget.SINGLE -> matches(notification.targetKgid, user.kgid)
+            NotificationTarget.ALL -> true
+            NotificationTarget.INDIVIDUAL -> matches(notification.targetKgid, user.kgid)
             NotificationTarget.DISTRICT -> matches(notification.targetDistrict, user.district)
             NotificationTarget.STATION -> matches(notification.targetDistrict, user.district) &&
                     matches(notification.targetStation, user.station)
+            NotificationTarget.KSRP_BATTALION -> matches(notification.targetDistrict, user.district)
             NotificationTarget.ADMIN -> user.isAdmin
         }
     }
@@ -992,7 +1022,6 @@ open class EmployeeViewModel @Inject constructor(
     private fun Employee.matchesOptimized(queryLower: String, filter: SearchFilter): Boolean {
         return when (filter) {
             SearchFilter.NAME -> {
-                // Fast path: check if query is at start (common case)
                 val nameLower = name.lowercase()
                 nameLower.startsWith(queryLower) || nameLower.contains(queryLower)
             }
@@ -1015,6 +1044,10 @@ open class EmployeeViewModel @Inject constructor(
             }
             SearchFilter.BLOOD_GROUP -> {
                 bloodGroup?.lowercase()?.contains(queryLower) == true
+            }
+            SearchFilter.ALL -> {
+                val nameLower = name.lowercase()
+                nameLower.startsWith(queryLower) || nameLower.contains(queryLower)
             }
         }
     }

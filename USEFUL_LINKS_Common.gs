@@ -288,9 +288,7 @@ function uploadBinaryToDrive(base64Data, fileName, mimeType) {
 function uploadToFirestoreCombined(payload) {
   try {
     const { appName, playUrl, apkUrl, category, iconUrl } = payload;
-    const docId = findExistingFirestoreDoc(appName, playUrl);
-
-    const body = {
+    const docId = findExistingFirestoreDoc(appName, playUrl);    const body = {
       fields: {
         name:         { stringValue: appName || "" },
         playStoreUrl: { stringValue: playUrl || "" },

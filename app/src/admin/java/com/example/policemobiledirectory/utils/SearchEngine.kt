@@ -109,6 +109,7 @@ object SearchEngine {
             SearchFilter.STATION -> calculateFieldScore(employee.station, queryLower) * FieldWeights.STATION_EXACT
             SearchFilter.METAL_NUMBER -> calculateFieldScore(employee.metalNumber, queryLower) * 0.6
             SearchFilter.BLOOD_GROUP -> calculateFieldScore(employee.bloodGroup, queryLower) * 0.4
+            SearchFilter.ALL -> calculateNameScore(employee.name, queryLower) * FieldWeights.NAME_EXACT // Fallback to name match for ALL or could average
         }
     }
     
@@ -208,6 +209,11 @@ object SearchEngine {
             SearchFilter.STATION -> if (employee.station?.lowercase()?.contains(queryLower) == true) matched.add("station")
             SearchFilter.METAL_NUMBER -> if (employee.metalNumber?.lowercase()?.contains(queryLower) == true) matched.add("metalNumber")
             SearchFilter.BLOOD_GROUP -> if (employee.bloodGroup?.lowercase()?.contains(queryLower) == true) matched.add("bloodGroup")
+            SearchFilter.ALL -> {
+                if (employee.name.lowercase().contains(queryLower)) matched.add("name")
+                if (employee.kgid.lowercase().contains(queryLower)) matched.add("kgid")
+                if (employee.rank?.lowercase()?.contains(queryLower) == true) matched.add("rank")
+            }
         }
         
         return matched

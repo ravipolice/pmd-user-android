@@ -74,7 +74,7 @@ fun EmployeeListScreen(
     val adminNotifications by viewModel.adminNotifications.collectAsState()
     val userNotificationsSeenAt by viewModel.userNotificationsLastSeen.collectAsState()
     val adminNotificationsSeenAt by viewModel.adminNotificationsLastSeen.collectAsState()
-    val pendingApprovalsCount by viewModel.pendingApprovalsCount.collectAsState()
+    val pendingApprovalsCount by viewModel.pendingApprovalsTotalCount.collectAsState()
     
     val notificationCount = if (isAdmin) {
         adminNotifications.count { (it.timestamp ?: 0L) > adminNotificationsSeenAt } + pendingApprovalsCount
@@ -498,6 +498,7 @@ private fun EmployeeListContent(
             SearchFilter.RANK -> "Rank"
             SearchFilter.NAME -> "Name"
             SearchFilter.BLOOD_GROUP -> "Blood"
+            SearchFilter.ALL -> "All"
         }
 
         // Determine keyboard type based on selected filter

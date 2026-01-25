@@ -1,0 +1,5 @@
+package com.example.policemobiledirectory.data.local
+
+enum class SearchFilter {
+    ALL, NAME, KGID, MOBILE, STATION, RANK, METAL_NUMBER, BLOOD_GROUP
+}

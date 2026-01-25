@@ -87,6 +87,7 @@ open class EmployeeRepository @Inject constructor(
     fun searchEmployees(query: String, filter: SearchFilter): Flow<List<EmployeeEntity>> {
         val searchQuery = "%${query.trim().lowercase()}%"
         return when (filter) {
+            SearchFilter.ALL -> employeeDao.searchAllFields(searchQuery)
             SearchFilter.NAME -> employeeDao.searchByName(searchQuery)
             SearchFilter.KGID -> employeeDao.searchByKgid(searchQuery)
             SearchFilter.MOBILE -> employeeDao.searchByMobile(searchQuery)

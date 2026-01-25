@@ -55,7 +55,8 @@ fun AdminPanelScreen(
     val totalEmployeesCount = employees.size
     val totalOfficersCount = officers.size
     val approvedCount = employees.count { it.isApproved }
-    val pendingCount = pendingRegistrations.size
+    val unviewedPendingCount by viewModel.unviewedPendingCount.collectAsState()
+    val pendingCount = unviewedPendingCount
     
     // Breakdown Stats
     val empDistricts by viewModel.employeesByDistrict.collectAsState()

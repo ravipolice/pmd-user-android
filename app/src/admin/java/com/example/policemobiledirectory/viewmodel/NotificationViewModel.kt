@@ -137,10 +137,12 @@ class NotificationViewModel @Inject constructor(
 
         return when (notification.targetType) {
             NotificationTarget.ALL -> true
-            NotificationTarget.SINGLE -> matches(notification.targetKgid, user.kgid)
+            NotificationTarget.ALL -> true
+            NotificationTarget.INDIVIDUAL -> matches(notification.targetKgid, user.kgid)
             NotificationTarget.DISTRICT -> matches(notification.targetDistrict, user.district)
             NotificationTarget.STATION -> matches(notification.targetDistrict, user.district) &&
                     matches(notification.targetStation, user.station)
+            NotificationTarget.KSRP_BATTALION -> matches(notification.targetDistrict, user.district) // Assuming battalion is stored in district field or requires specialized logic
             NotificationTarget.ADMIN -> user.isAdmin
         }
     }

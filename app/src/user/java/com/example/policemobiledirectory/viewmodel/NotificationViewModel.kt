@@ -88,11 +88,12 @@ class NotificationViewModel @Inject constructor(
 
         return when (notification.targetType) {
             NotificationTarget.ALL -> true
-            NotificationTarget.SINGLE -> matches(notification.targetKgid, user.kgid)
+            NotificationTarget.INDIVIDUAL -> matches(notification.targetKgid, user.kgid)
             NotificationTarget.DISTRICT -> matches(notification.targetDistrict, user.district)
             NotificationTarget.STATION -> matches(notification.targetDistrict, user.district) &&
                     matches(notification.targetStation, user.station)
             NotificationTarget.ADMIN -> false // User app never sees admin notifications
+            NotificationTarget.KSRP_BATTALION -> false
         }
     }
 

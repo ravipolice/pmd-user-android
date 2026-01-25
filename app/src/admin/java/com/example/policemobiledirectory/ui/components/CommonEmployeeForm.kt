@@ -926,8 +926,6 @@ fun CommonEmployeeForm(
                                 email = emp.email,
                                 mobile1 = emp.mobile1 ?: "",
                                 mobile2 = emp.mobile2,
-                                landline = emp.landline,
-                                landline2 = emp.landline2,
                                 pin = pin,
                                 rank = emp.rank ?: "",
                                 metalNumber = emp.metalNumber,

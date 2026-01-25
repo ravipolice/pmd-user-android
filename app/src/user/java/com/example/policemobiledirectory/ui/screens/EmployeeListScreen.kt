@@ -248,6 +248,7 @@ private fun EmployeeListContent(
     // Get constants from ViewModel
     val districts by constantsViewModel.districts.collectAsStateWithLifecycle()
     val units by constantsViewModel.units.collectAsStateWithLifecycle()
+    val fullUnits by constantsViewModel.fullUnits.collectAsStateWithLifecycle()
     val stationsByDistrict by constantsViewModel.stationsByDistrict.collectAsStateWithLifecycle()
     val ranks by constantsViewModel.ranks.collectAsStateWithLifecycle()
 
@@ -267,6 +268,28 @@ private fun EmployeeListContent(
 
     var selectedDistrict by remember { mutableStateOf("All") }
     var districtExpanded by remember { mutableStateOf(false) }
+
+    // Filter Units based on selected District
+    val filteredUnitNames = remember(fullUnits, units, selectedDistrict) {
+        if (selectedDistrict == "All" || selectedDistrict.isBlank()) {
+             units
+        } else {
+             if (fullUnits.isNotEmpty()) {
+                 fullUnits.filter { u ->
+                     when (u.mappingType) {
+                         "all", "" -> true
+                         "none" -> true
+                         "state" -> selectedDistrict == "HQ"
+                         "commissionerate", "single", "subset" -> u.mappedDistricts.any { it.equals(selectedDistrict, ignoreCase = true) }
+                         else -> true 
+                     }
+                 }.map { it.name }.sorted()
+             } else {
+                 units
+             }
+        }
+    }
+
     // Show "All" only for admins, regular users see only districts
     // LOGIC CHANGE: If Unit is KSRP, show KSRP Battalions instead of Districts
     val districtsList = remember(isAdmin, districts, ksrpBattalions, selectedUnit) {
@@ -410,7 +433,7 @@ private fun EmployeeListContent(
                         expanded = unitExpanded,
                         onDismissRequest = { unitExpanded = false }
                     ) {
-                        units.forEach { unit ->
+                        filteredUnitNames.forEach { unit ->
                             DropdownMenuItem(
                                 text = { Text(unit) },
                                 onClick = {

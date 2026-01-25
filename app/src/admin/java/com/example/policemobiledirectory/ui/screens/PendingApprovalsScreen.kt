@@ -61,6 +61,7 @@ fun PendingApprovalsScreen(
         // Only refresh if we're on the pending approvals screen
         if (currentRoute == com.example.policemobiledirectory.navigation.Routes.PENDING_APPROVALS) {
             viewModel.refreshPendingRegistrations()
+            viewModel.markPendingRegistrationsAsViewed()
         }
     }
 

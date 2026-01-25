@@ -94,6 +94,24 @@ class PendingRegistrationRepository @Inject constructor(
         }
     }
 
+    suspend fun markAsViewed(entity: PendingRegistrationEntity): RepoResult<String> {
+        return try {
+            val docId = entity.firestoreId ?: return RepoResult.Error(message = "Missing document id")
+
+            firestore.collection("pending_registrations")
+                .document(docId)
+                .update("viewedByAdmin", true)
+                .await()
+            
+            val updated = entity.copy(viewedByAdmin = true)
+            withContext(ioDispatcher) { dao.update(updated) }
+            
+            RepoResult.Success("Marked as viewed")
+        } catch (e: Exception) {
+            RepoResult.Error(e, "Failed to mark as viewed")
+        }
+    }
+
 
     /* ----------------------------------------------------------
         UPLOAD PHOTO FOR APPROVAL

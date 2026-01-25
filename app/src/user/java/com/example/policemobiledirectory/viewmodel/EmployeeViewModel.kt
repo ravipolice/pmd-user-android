@@ -200,6 +200,12 @@ open class EmployeeViewModel @Inject constructor(
         return rankPriorityMap[normalized] ?: 998 // Unknown ranks below known ones
     }
 
+    private fun normalizeDistrict(district: String?): String {
+        if (district == null) return ""
+        // Remove suffixes like " -NR", " -ER", " -BR", " -SR", " -WR", " -NER", " -CR", " -COP"
+        return district.split(" -")[0].trim().lowercase()
+    }
+
     // Optimized search with pre-filtering and efficient matching
     val filteredContacts: StateFlow<List<Contact>> = combine(
         allContacts,
@@ -214,7 +220,7 @@ open class EmployeeViewModel @Inject constructor(
         // Step 1: Fast pre-filtering by district/station/rank/unit
         val preFiltered = contacts.filter { contact ->
             val districtMatch = filters.district == "All" || 
-                (contact.district?.equals(filters.district, ignoreCase = true) == true)
+                normalizeDistrict(contact.district) == normalizeDistrict(filters.district)
             val stationMatch = filters.station == "All" || 
                 (contact.station?.equals(filters.station, ignoreCase = true) == true)
             val rankMatch = filters.rank == "All" || 
@@ -252,7 +258,7 @@ open class EmployeeViewModel @Inject constructor(
                 preFiltered.filter { contact ->
                     when {
                         contact.employee != null -> {
-                            contact.employee.matchesOptimized(queryLower, filters.filter.name.lowercase())
+                            contact.employee.matchesOptimized(queryLower, filters.filter)
                         }
                         contact.officer != null -> {
                             if (filters.filter == SearchFilter.METAL_NUMBER) {
@@ -309,7 +315,7 @@ open class EmployeeViewModel @Inject constructor(
         
         // Step 1: Fast pre-filtering by district/station/rank/unit
         val preFiltered = approvedEmployees.filter { emp ->
-            (filters.district == "All" || emp.district == filters.district) &&
+            (filters.district == "All" || normalizeDistrict(emp.district) == normalizeDistrict(filters.district)) &&
             (filters.station == "All" || emp.station == filters.station) &&
             (filters.rank == "All" || emp.rank == filters.rank) &&
             (filters.unit == "All" || emp.effectiveUnit.equals(filters.unit, ignoreCase = true))
@@ -624,11 +630,12 @@ open class EmployeeViewModel @Inject constructor(
 
         return when (notification.targetType) {
             NotificationTarget.ALL -> true
-            NotificationTarget.SINGLE -> matches(notification.targetKgid, user.kgid)
+            NotificationTarget.INDIVIDUAL -> matches(notification.targetKgid, user.kgid)
             NotificationTarget.DISTRICT -> matches(notification.targetDistrict, user.district)
             NotificationTarget.STATION -> matches(notification.targetDistrict, user.district) &&
                     matches(notification.targetStation, user.station)
             NotificationTarget.ADMIN -> user.isAdmin
+            NotificationTarget.KSRP_BATTALION -> false // Standard behavior for now
         }
     }
 
@@ -856,6 +863,16 @@ open class EmployeeViewModel @Inject constructor(
     // Optimized matching function (query is already lowercase)
     private fun Employee.matchesOptimized(queryLower: String, filter: SearchFilter): Boolean {
         return when (filter) {
+            SearchFilter.ALL -> {
+                val nameLower = name.lowercase()
+                nameLower.startsWith(queryLower) || nameLower.contains(queryLower) ||
+                kgid.lowercase().contains(queryLower) ||
+                mobile1?.contains(queryLower) == true || mobile2?.contains(queryLower) == true ||
+                station?.lowercase()?.contains(queryLower) == true ||
+                rank?.lowercase()?.contains(queryLower) == true ||
+                metalNumber?.lowercase()?.contains(queryLower) == true ||
+                bloodGroup?.lowercase()?.contains(queryLower) == true
+            }
             SearchFilter.NAME -> {
                 // Fast path: check if query is at start (common case)
                 val nameLower = name.lowercase()

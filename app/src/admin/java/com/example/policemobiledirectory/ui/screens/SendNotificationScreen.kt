@@ -95,10 +95,10 @@ fun SendNotificationScreen(
 
     // Reset dependent fields when target changes
     LaunchedEffect(target) {
-        if (target != NotificationTarget.SINGLE) {
+        if (target != NotificationTarget.INDIVIDUAL) {
             searchKgid = ""
         }
-        if (target != NotificationTarget.DISTRICT && target != NotificationTarget.STATION) {
+        if (target != NotificationTarget.DISTRICT && target != NotificationTarget.STATION && target != NotificationTarget.KSRP_BATTALION) {
             selectedDistrict = "All"
             selectedStation = "All"
         }
@@ -172,9 +172,10 @@ fun SendNotificationScreen(
                                 Text(
                                     when (notificationTarget) {
                                         NotificationTarget.ALL -> "All Users"
-                                        NotificationTarget.SINGLE -> "Single User (by KGID)"
+                                        NotificationTarget.INDIVIDUAL -> "Single User (by KGID)"
                                         NotificationTarget.DISTRICT -> "District / Commissionerate / Unit"
                                         NotificationTarget.STATION -> "Police Station"
+                                        NotificationTarget.KSRP_BATTALION -> "KSRP Battalion"
                                         NotificationTarget.ADMIN -> "Admin Users"
                                     }
                                 )
@@ -189,7 +190,7 @@ fun SendNotificationScreen(
             }
 
             // --- Single KGID selector ---
-            if (target == NotificationTarget.SINGLE) {
+            if (target == NotificationTarget.INDIVIDUAL) {
                 ExposedDropdownMenuBox(expanded = kGidExpanded, onExpandedChange = { kGidExpanded = !kGidExpanded }) {
                     OutlinedTextField(
                         value = searchKgid,
@@ -256,9 +257,10 @@ fun SendNotificationScreen(
                 onClick = {
                     // Validate inputs based on target type
                     val isValid = when (target) {
-                        NotificationTarget.SINGLE -> searchKgid.isNotBlank()
+                        NotificationTarget.INDIVIDUAL -> searchKgid.isNotBlank()
                         NotificationTarget.DISTRICT -> selectedDistrict != "All"
                         NotificationTarget.STATION -> selectedDistrict != "All" && selectedStation != "All"
+                        NotificationTarget.KSRP_BATTALION -> selectedDistrict != "All" // Assuming district field is used for battalion selection
                         else -> true // ALL and ADMIN don't need additional validation
                     }
                     
@@ -266,17 +268,18 @@ fun SendNotificationScreen(
                         isSending = true // Mark that we started sending
                         viewModel.sendNotification(
                             title, body, target,
-                            k = if (target == NotificationTarget.SINGLE) searchKgid else null,
-                            d = if (target == NotificationTarget.DISTRICT || target == NotificationTarget.STATION) selectedDistrict else null,
+                            k = if (target == NotificationTarget.INDIVIDUAL) searchKgid else null,
+                            d = if (target == NotificationTarget.DISTRICT || target == NotificationTarget.STATION || target == NotificationTarget.KSRP_BATTALION) selectedDistrict else null,
                             s = if (target == NotificationTarget.STATION) selectedStation else null
                         )
                     } else {
                         coroutineScope.launch {
                             snackbarHostState.showSnackbar(
                                 when (target) {
-                                    NotificationTarget.SINGLE -> "Please select an employee KGID"
+                                    NotificationTarget.INDIVIDUAL -> "Please select an employee KGID"
                                     NotificationTarget.DISTRICT -> "Please select a district"
                                     NotificationTarget.STATION -> "Please select a district and station"
+                                    NotificationTarget.KSRP_BATTALION -> "Please select a battalion"
                                     else -> "Please fill all required fields"
                                 }
                             )

@@ -43,6 +43,9 @@ class ConstantsViewModel @Inject constructor(
     private val _units = MutableStateFlow<List<String>>(emptyList())
     val units: StateFlow<List<String>> = _units.asStateFlow()
 
+    private val _fullUnits = MutableStateFlow<List<com.example.policemobiledirectory.model.UnitModel>>(emptyList())
+    val fullUnits: StateFlow<List<com.example.policemobiledirectory.model.UnitModel>> = _fullUnits.asStateFlow()
+
     private val _stationsByDistrict = MutableStateFlow<Map<String, List<String>>>(emptyMap())
     val stationsByDistrict: StateFlow<Map<String, List<String>>> = _stationsByDistrict.asStateFlow()
 
@@ -80,6 +83,13 @@ class ConstantsViewModel @Inject constructor(
     }
 
     /**
+     * Check if a unit is District Level (No Station Required)
+     */
+    suspend fun isDistrictLevelUnit(unitName: String): Boolean {
+        return constantsRepository.isDistrictLevelUnit(unitName)
+    }
+
+    /**
      * Load constants and check version
      * Shows Toast if server version doesn't match local version
      */
@@ -113,6 +123,7 @@ class ConstantsViewModel @Inject constructor(
     private suspend fun refreshConstants() {
         _districts.value = constantsRepository.getDistricts()
         _units.value = constantsRepository.getUnits()
+        _fullUnits.value = constantsRepository.getFullUnits()
         _stationsByDistrict.value = constantsRepository.getStationsByDistrict()
         _ranks.value = constantsRepository.getRanks()
         _bloodGroups.value = constantsRepository.getBloodGroups()
@@ -176,47 +187,34 @@ class ConstantsViewModel @Inject constructor(
         viewModelScope.launch {
             _refreshStatus.value = OperationStatus.Loading
             try {
-                // Clear units cache specifically
-                prefs.edit()
-                    .remove(UNITS_CACHE_KEY)
-                    .remove("${UNITS_CACHE_KEY}_timestamp")
-                    .apply()
-
-                // Fetch units from Firestore
-                val snapshot = firestore.collection("units")
-                    .whereEqualTo("isActive", true)
-                    .get()
-                    .await()
-
-                val unitNames = snapshot.documents
-                    .mapNotNull { it.getString("name") }
-                    .distinct()
-                    .sorted()
-
-                if (unitNames.isNotEmpty()) {
-                    val json = Gson().toJson(unitNames)
-                    val now = System.currentTimeMillis()
-                    prefs.edit()
-                        .putString(UNITS_CACHE_KEY, json)
-                        .putLong("${UNITS_CACHE_KEY}_timestamp", now)
-                        .apply()
-
-                    // Update StateFlow
-                    _units.value = unitNames
-                    _refreshStatus.value = OperationStatus.Success("Units refreshed successfully. Found ${unitNames.size} units")
+                constantsRepository.clearCache() // Simple way to force refresh from Firestore on next pull
+                val success = constantsRepository.refreshConstants()
+                if (success) {
+                    refreshConstants()
+                    _refreshStatus.value = OperationStatus.Success("Units refreshed successfully.")
                 } else {
-                    _refreshStatus.value = OperationStatus.Error("No units found in database")
+                    _refreshStatus.value = OperationStatus.Error("Failed to refresh units.")
                 }
             } catch (e: Exception) {
-                _refreshStatus.value = OperationStatus.Error("Error refreshing units: ${e.message ?: "Unknown error"}")
+                _refreshStatus.value = OperationStatus.Error("Error: ${e.message}")
             }
         }
     }
-}
 
-    // =================================================================================
-    // NEW: ViewModel Wrappers for Manage Resources
-    // =================================================================================
+    /**
+     * Get districts for a specific unit (Hybrid Strategy)
+     */
+    fun getDistrictsForUnit(unitName: String): List<String> {
+        return constantsRepository.getDistrictsForUnit(unitName)
+    }
+
+    /**
+     * Get sections for a specific unit (e.g. State INT)
+     */
+    suspend fun getSectionsForUnit(unitName: String): List<String> {
+        return constantsRepository.getUnitSections(unitName)
+    }
+}
 
 
 

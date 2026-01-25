@@ -17,6 +17,7 @@ import com.example.policemobiledirectory.repository.RepoResult
 import com.example.policemobiledirectory.data.local.EmployeeEntity
 import com.example.policemobiledirectory.data.local.EmployeeDao
 import com.example.policemobiledirectory.data.local.PendingRegistrationEntity
+import com.example.policemobiledirectory.data.local.toEmployee
 import com.example.policemobiledirectory.data.local.SearchFilter
 import com.example.policemobiledirectory.utils.PinHasher
 import com.example.policemobiledirectory.api.EmployeeApiService
@@ -94,6 +95,7 @@ open class EmployeeRepository @Inject constructor(
             SearchFilter.METAL_NUMBER -> employeeDao.searchByMetalNumber(searchQuery)
             SearchFilter.RANK -> employeeDao.searchByRank(searchQuery)
             SearchFilter.BLOOD_GROUP -> employeeDao.searchByBloodGroup(searchQuery)
+            SearchFilter.ALL -> employeeDao.searchByName(searchQuery)
         }
     }
 
@@ -889,7 +891,7 @@ open class EmployeeRepository @Inject constructor(
                     bloodGroup = it.bloodGroup ?: "",
                     photoUrl = it.photoUrl ?: "",
                     firebaseUid = it.firebaseUid ?: "",
-                    createdAt = it.createdAt ?: Date()
+                    submittedAt = it.createdAt?.time ?: System.currentTimeMillis()
                 )
             }
         }
@@ -1182,22 +1184,7 @@ open class EmployeeRepository @Inject constructor(
         )
     }
 
-    private fun PendingRegistrationEntity.toEmployee() = Employee(
-        kgid = kgid,
-        name = name,
-        email = email,
-        mobile1 = mobile1,
-        mobile2 = mobile2,
-        rank = rank ?: RANK_PENDING,
-        station = station,
-        district = district,
-        bloodGroup = bloodGroup,
-        photoUrl = photoUrl,
-        fcmToken = "",
-        isAdmin = false,
-        firebaseUid = firebaseUid,
-        createdAt = createdAt
-    )
+
 
     // -------------------------
     // Additional helpers expected by ViewModel / calling code

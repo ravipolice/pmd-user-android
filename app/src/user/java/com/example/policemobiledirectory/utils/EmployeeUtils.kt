@@ -1,6 +1,7 @@
 package com.example.policemobiledirectory.utils
 
 import com.example.policemobiledirectory.model.Employee
+import com.example.policemobiledirectory.data.local.SearchFilter
 import androidx.compose.ui.graphics.Color
 
 // Function to filter employees
@@ -21,7 +22,10 @@ fun filterEmployees(
                 emp.station?.lowercase()?.contains(lowerQuery) == true ||
                 emp.rank?.lowercase()?.contains(lowerQuery) == true ||
                 emp.mobile1?.lowercase()?.contains(lowerQuery) == true ||
-                emp.mobile2?.lowercase()?.contains(lowerQuery) == true
+                emp.mobile2?.lowercase()?.contains(lowerQuery) == true ||
+                emp.metalNumber?.lowercase()?.contains(lowerQuery) == true ||
+                (emp.bloodGroup ?: "").lowercase().contains(lowerQuery) || 
+                getFormattedBloodGroup(emp.bloodGroup).lowercase().contains(lowerQuery)
             }
             SearchFilter.NAME -> emp.name.lowercase().contains(lowerQuery)
             SearchFilter.KGID -> emp.kgid.lowercase().contains(lowerQuery)
@@ -35,6 +39,7 @@ fun filterEmployees(
                 getFormattedBloodGroup(emp.bloodGroup).lowercase().contains(lowerQuery) ||
                 (emp.bloodGroup ?: "").lowercase().contains(lowerQuery)
             }
+            SearchFilter.METAL_NUMBER -> emp.metalNumber?.lowercase()?.contains(lowerQuery) == true
         }
     }
 }

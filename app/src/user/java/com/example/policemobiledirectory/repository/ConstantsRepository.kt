@@ -17,6 +17,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import java.util.concurrent.TimeUnit
+import com.example.policemobiledirectory.model.UnitModel
 import com.example.policemobiledirectory.data.local.EmployeeDao
 
 /**
@@ -47,6 +48,7 @@ class ConstantsRepository @Inject constructor(
     private val CACHE_KEY = "remote_constants"
     private val CACHE_TIMESTAMP_KEY = "cache_timestamp"
     private val UNITS_CACHE_KEY = "units_cache"
+    private val FULL_UNITS_CACHE_KEY = "full_units_cache"
     private val DISTRICTS_CACHE_KEY = "districts_cache"
     private val RANKS_CACHE_KEY = "ranks_cache"
     private val STATIONS_CACHE_KEY = "stations_cache"
@@ -152,30 +154,90 @@ class ConstantsRepository @Inject constructor(
         return@withContext firestoreSuccess
     }
 
+    // =================================================================================
+    // NEW: Hybrid Unit-District Mapping Strategy
+    // =================================================================================
+
+    data class UnitMapping(
+        val unitName: String,
+        val mappingType: String = "all", // "all", "subset", "single", "none"
+        val mappedDistricts: List<String> = emptyList(),
+        val isDistrictLevel: Boolean = false
+    )
+
+    private val UNIT_MAPPINGS_CACHE_KEY = "unit_mappings_cache"
+
     /**
      * Fetch units from Firestore "units" collection
+     * Now fetches extended fields: mappingType, mappedDistricts
      */
     private suspend fun fetchUnitsFromFirestore() {
         try {
-            Log.d("ConstantsRepository", "🔄 Fetching units from Firestore...")
+            Log.d("ConstantsRepository", "🔄 Fetching units (hybrid) from Firestore...")
             val snapshot = firestore.collection("units")
                 .whereEqualTo("isActive", true)
                 .get()
                 .await()
 
-            val unitNames = snapshot.documents
-                .mapNotNull { it.getString("name") }
+            // 1. Plain list of names for the Unit Dropdown
+            val unitNames: List<String> = snapshot.documents
+                .mapNotNull { doc -> doc.getString("name") }
                 .distinct()
                 .sorted()
 
+            // 2. Full Mappings for the District Resolution
+            val mappings: Map<String, UnitMapping> = snapshot.documents.mapNotNull { doc ->
+                val name = doc.getString("name")
+                if (name != null) {
+                    val type = doc.getString("mappingType") ?: "all"
+                    // Handle "mappedDistricts" safely
+                    val districtsObj = doc.get("mappedDistricts")
+                    val districtsList = when (districtsObj) {
+                        is List<*> -> districtsObj.mapNotNull { it?.toString() }
+                        else -> emptyList<String>()
+                    }
+                    val isDistrictLevel = doc.getBoolean("isDistrictLevel") ?: false
+                    UnitMapping(name, type, districtsList, isDistrictLevel)
+                } else null
+            }.associateBy { it.unitName }
+
             if (unitNames.isNotEmpty()) {
-                val json = Gson().toJson(unitNames)
                 val now = System.currentTimeMillis()
+                val gson = Gson()
+                
+                // Map to UnitModel for full cache
+                val unitModels: List<UnitModel> = snapshot.documents.mapNotNull { doc ->
+                    val name = doc.getString("name")
+                    if (name != null) {
+                        UnitModel(
+                            id = doc.id,
+                            name = name,
+                            isActive = doc.getBoolean("isActive") ?: true,
+                            mappingType = doc.getString("mappingType") ?: "all",
+                            mappedDistricts = (doc.get("mappedDistricts") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList(),
+                            isDistrictLevel = doc.getBoolean("isDistrictLevel") ?: false,
+                            scopes = (doc.get("scopes") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+                        )
+                    } else null
+                }.sortedBy { it.name }
+
+                // Save plain list
                 prefs.edit()
-                    .putString(UNITS_CACHE_KEY, json)
+                    .putString(UNITS_CACHE_KEY, gson.toJson(unitNames))
                     .putLong("${UNITS_CACHE_KEY}_timestamp", now)
                     .apply()
-                Log.d("ConstantsRepository", "✅ Fetched ${unitNames.size} units from Firestore")
+
+                // Save full models
+                prefs.edit()
+                    .putString(FULL_UNITS_CACHE_KEY, gson.toJson(unitModels))
+                    .apply()
+
+                // Save mappings map
+                prefs.edit()
+                    .putString(UNIT_MAPPINGS_CACHE_KEY, gson.toJson(mappings))
+                    .apply()
+
+                Log.d("ConstantsRepository", "✅ Fetched ${unitNames.size} units & ${mappings.size} mappings")
             } else {
                 Log.w("ConstantsRepository", "⚠️ No active units found in Firestore")
             }
@@ -185,8 +247,99 @@ class ConstantsRepository @Inject constructor(
     }
 
     /**
-     * Fetch districts from Firestore "districts" collection
+     * Get districts for a specific unit using Hybrid Strategy:
+     * 1. Dynamic (Cache)
+     * 2. Hardcoded Fallback (Safety Net)
      */
+    fun getDistrictsForUnit(unitName: String): List<String> {
+        val startTime = System.currentTimeMillis()
+        var source = "Unknown"
+        var result: List<String> = Constants.districtsList // Default 'all'
+
+        // Step 1: Check Cached Dynamic Mappings
+        val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null)
+        if (!json.isNullOrEmpty()) {
+            try {
+                val type = object : TypeToken<Map<String, UnitMapping>>() {}.type
+                val cachedMappings: Map<String, UnitMapping> = Gson().fromJson(json, type)
+                
+                val mapping = cachedMappings[unitName]
+                if (mapping != null) {
+                   source = "Firestore Cache" 
+                   result = when (mapping.mappingType) {
+                       "subset", "single" -> {
+                           if (mapping.mappedDistricts.isNotEmpty()) {
+                               mapping.mappedDistricts.sorted()
+                           } else {
+                               Constants.districtsList
+                           }
+                       }
+                       "none" -> listOf("No District Required")
+                       "all" -> getDistricts()
+                       else -> getDistricts()
+                   }
+                } else {
+                    source = "Hardcoded Fallback (Cache Miss)"
+                    result = getHardcodedFallback(unitName)
+                }
+            } catch (e: Exception) {
+                Log.e("ConstantsRepository", "Failed to parse unit mappings", e)
+                source = "Hardcoded Fallback (Error)"
+                result = getHardcodedFallback(unitName)
+            }
+        } else {
+            source = "Hardcoded Fallback (No Cache)"
+            result = getHardcodedFallback(unitName)
+        }
+
+        Log.d("ConstantsRepository", "🔍 Resolved districts for unit '$unitName': Count=${result.size}, Source=$source, Time=${System.currentTimeMillis() - startTime}ms")
+        return result
+    }
+
+    fun isDistrictLevelUnit(unitName: String): Boolean {
+        val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null)
+        if (!json.isNullOrEmpty()) {
+            try {
+                val type = object : TypeToken<Map<String, UnitMapping>>() {}.type
+                val cachedMappings: Map<String, UnitMapping> = Gson().fromJson(json, type)
+                return cachedMappings[unitName]?.isDistrictLevel == true
+            } catch (e: Exception) {
+                Log.e("ConstantsRepository", "Failed to parse unit mappings for check", e)
+            }
+        }
+        return false
+    }
+
+    private fun getHardcodedFallback(unitName: String): List<String> {
+        return when (unitName) {
+            "KSRP" -> Constants.ksrpBattalions
+            "SCRB" -> listOf("Bengaluru City")
+            "STATE" -> listOf("No District Required")
+            else -> Constants.districtsList
+        }
+    }
+
+    /**
+     * Get sections for a specific unit (e.g. "State INT")
+     */
+    suspend fun getUnitSections(unitName: String): List<String> = withContext(Dispatchers.IO) {
+        try {
+            // Check cache or fetch from Firestore "sections" subcollection
+            val snapshot = firestore.collection("units")
+                .document(unitName)
+                .collection("sections")
+                .get()
+                .await()
+            
+            val sections = snapshot.documents.mapNotNull { it.getString("name") }.sorted()
+            Log.d("ConstantsRepository", "Found ${sections.size} sections for unit $unitName")
+            sections
+        } catch (e: Exception) {
+            Log.e("ConstantsRepository", "Error fetching sections for $unitName", e)
+            emptyList()
+        }
+    }
+
     private suspend fun fetchDistrictsFromFirestore() {
         try {
             Log.d("ConstantsRepository", "🔄 Fetching districts from Firestore...")
@@ -232,7 +385,7 @@ class ConstantsRepository @Inject constructor(
             }
             
             // Sort by seniority order
-            val sortedRankIds = ranks.sortedBy { it.second }.map { it.first }
+            val sortedRankIds: List<String> = ranks.sortedBy { it.second }.map { it.first }
 
             if (sortedRankIds.isNotEmpty()) {
                 val json = Gson().toJson(sortedRankIds)
@@ -334,6 +487,20 @@ class ConstantsRepository @Inject constructor(
     }
 
     /**
+     * Generic helper to parse cached lists
+     */
+    private fun <T> getCachedList(key: String, typeToken: TypeToken<List<T>>): List<T> {
+        val json = prefs.getString(key, null)
+        if (json.isNullOrEmpty()) return emptyList()
+        return try {
+            Gson().fromJson(json, typeToken.type)
+        } catch (e: Exception) {
+            Log.e("ConstantsRepository", "Failed to parse cached list for key: $key", e)
+            emptyList()
+        }
+    }
+
+    /**
      * Get ranks from local Constants + Firestore + Google Sheets
      */
     fun getRanks(): List<String> {
@@ -342,17 +509,7 @@ class ConstantsRepository @Inject constructor(
         val hardcodedRanks = Constants.allRanksList
         
         // Get Firestore ranks
-        val firestoreRanksJson = prefs.getString(RANKS_CACHE_KEY, null)
-        val firestoreRanks = if (!firestoreRanksJson.isNullOrEmpty()) {
-            try {
-                val type = object : TypeToken<List<String>>() {}.type
-                Gson().fromJson<List<String>>(firestoreRanksJson, type)
-            } catch (e: Exception) {
-                emptyList<String>()
-            }
-        } else {
-            emptyList()
-        }
+        val firestoreRanks = getCachedList(RANKS_CACHE_KEY, object : TypeToken<List<String>>() {})
 
         // Merge: Firestore > Sheet > Hardcoded
         val combined = (firestoreRanks + sheetRanks + hardcodedRanks).distinct()
@@ -368,217 +525,93 @@ class ConstantsRepository @Inject constructor(
         val hardcodedDistricts = Constants.districtsList
         
         // Get Firestore districts
-        val firestoreDistrictsJson = prefs.getString(DISTRICTS_CACHE_KEY, null)
-        val firestoreDistricts = if (!firestoreDistrictsJson.isNullOrEmpty()) {
-            try {
-                val type = object : TypeToken<List<String>>() {}.type
-                Gson().fromJson<List<String>>(firestoreDistrictsJson, type)
-            } catch (e: Exception) {
-                emptyList<String>()
-            }
-        } else {
-            emptyList()
-        }
+        val firestoreDistricts = getCachedList(DISTRICTS_CACHE_KEY, object : TypeToken<List<String>>() {})
 
         // Merge: Firestore > Sheet > Hardcoded
         return (firestoreDistricts + sheetDistricts + hardcodedDistricts).distinct().sorted()
     }
 
     /**
+     * Get full Unit models
+     */
+    fun getFullUnits(): List<UnitModel> {
+        return getCachedList(FULL_UNITS_CACHE_KEY, object : TypeToken<List<UnitModel>>() {})
+    }
+
+    /**
      * Get units with fallback to hardcoded constants
-     * Now attempts to load from Firestore cache first
-     * Uses shorter cache expiry (15 minutes) for faster updates
+     * Now attempts to load from Full Unit Model Cache first
      */
     fun getUnits(): List<String> {
-        val json = prefs.getString(UNITS_CACHE_KEY, null)
-        val timestamp = prefs.getLong("${UNITS_CACHE_KEY}_timestamp", 0)
-        val now = System.currentTimeMillis()
+        // Try full models first
+        val full = getFullUnits()
+        if (full.isNotEmpty()) return full.map { it.name }
 
-        // Check if cache is valid (not expired)
-        if (!json.isNullOrEmpty() && timestamp > 0 && (now - timestamp) < UNITS_CACHE_EXPIRY_MS) {
-            try {
-                val type = object : TypeToken<List<String>>() {}.type
-                val cachedUnits: List<String> = Gson().fromJson(json, type)
-                if (cachedUnits.isNotEmpty()) {
-                    return cachedUnits
-                }
-            } catch (e: Exception) {
-                Log.e("ConstantsRepository", "Failed to parse cached units", e)
-            }
-        }
-
-        // Cache expired or invalid, return hardcoded list and trigger background refresh
-        Log.d("ConstantsRepository", "Units cache expired or invalid, using hardcoded list")
+        // Fallback to legacy string cache
+        val cachedUnits = getCachedList(UNITS_CACHE_KEY, object : TypeToken<List<String>>() {})
+        if (cachedUnits.isNotEmpty()) return cachedUnits
+        
         return Constants.defaultUnitsList
     }
 
     /**
-     * Get stations by district with fallback to hardcoded constants
-     * ✅ CRITICAL FIX: Always use hardcoded stations (which includes all common units) as the base.
-     * If API/cached data exists, merge it with hardcoded to add any new stations, but always keep
-     * all hardcoded stations (including common units) in the result.
-     * ✅ FIXED: Case-insensitive district matching to handle mismatches between API and hardcoded names.
+     * Get stations by district with robust merging (Hardcoded + API + Firestore)
+     * Strategy: 3-Pass Merge (Gather -> Normalize -> Build)
      */
     fun getStationsByDistrict(): Map<String, List<String>> {
-        val cached = getCachedData()
-        val hardcodedStations = Constants.stationsByDistrictMap
-        
-        
-        Log.d("ConstantsRepository", "🔍 DEBUG: Starting getStationsByDistrict with ${hardcodedStations.size} districts")
+        // --- PASS 1: GATHER ALL DATA ---
+        val hardcodedMap = Constants.stationsByDistrictMap
+        val sheetsMap = getCachedData()?.stationsbydistrict ?: emptyMap()
+        val firestoreMap = getFirestoreStationsMap()
 
-        
-        // Create case-insensitive lookup for districts
-        val districtLookup = hardcodedStations.keys.associateBy { it.lowercase() }
-        
-        // Always start with hardcoded stations as base (includes all common units for all districts)
-        val resultMap = hardcodedStations.mapValues { (district, hardcodedList) ->
-            // For each district, start with hardcoded list (includes common units)
-            val baseStations = hardcodedList.toMutableList()
-            
-            // Find matching API district (case-insensitive)
-            val matchingApiDistrict = cached?.stationsbydistrict?.keys?.find { 
-                it.lowercase().trim() == district.lowercase().trim() 
-            }
-            
-            // If API has data for this district, merge it in
-            val apiStations = matchingApiDistrict?.let { 
-                val stations = cached.stationsbydistrict[it] ?: emptyList()
-                Log.d("ConstantsRepository", "District: $district -> API match: $it, Stations count: ${stations.size}")
-                stations
-            } ?: emptyList()
-            
-            if (apiStations.isNotEmpty()) {
-                // Add API stations that aren't already in hardcoded list (case-insensitive check)
-                apiStations.forEach { apiStation ->
-                    val exists = baseStations.any { 
-                        it.lowercase().trim() == apiStation.lowercase().trim() 
-                    }
-                    if (!exists) {
-                        baseStations.add(apiStation)
-                    }
-                }
-            }
-            
-            // --- NEW: Merge Firestore Stations ---
-            val firestoreStationsJson = prefs.getString(STATIONS_CACHE_KEY, null)
-            if (!firestoreStationsJson.isNullOrEmpty()) {
-                try {
-                    val type = object : TypeToken<Map<String, List<String>>>() {}.type
-                    val firestoreStationMap: Map<String, List<String>> = Gson().fromJson(firestoreStationsJson, type)
-                    
-                    // Find matching district in Firestore map (Sanitized Fuzzy Match)
-                    val matchingFirestoreKey = firestoreStationMap.keys.find { fKey -> 
-                        val fKeyClean = fKey.replace("[^a-zA-Z0-9]".toRegex(), "").lowercase()
-                        val districtClean = district.replace("[^a-zA-Z0-9]".toRegex(), "").lowercase()
-                        fKeyClean == districtClean || districtClean.contains(fKeyClean) || fKeyClean.contains(districtClean)
-                    }
-                    
-                    matchingFirestoreKey?.let { key ->
-                        val fStations = firestoreStationMap[key] ?: emptyList()
-                        fStations.forEach { fStation ->
-                            val exists = baseStations.any { 
-                                it.equals(fStation, ignoreCase = true) 
-                            }
-                            if (!exists) {
-                                baseStations.add(fStation)
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("ConstantsRepository", "Failed to parse firestore stations", e)
-                }
-            }
-            
-             else if (cached != null) {
-                // Debug: Check if district exists in API with different spelling
-                val apiDistrictKeys = cached.stationsbydistrict.keys
-                val possibleMatches = apiDistrictKeys.filter { 
-                    it.lowercase().trim().contains(district.lowercase().trim()) || 
-                    district.lowercase().trim().contains(it.lowercase().trim())
-                }
-                if (possibleMatches.isNotEmpty()) {
-                    Log.w("ConstantsRepository", "⚠️ District '$district' not found in API, but found possible matches: $possibleMatches")
-                }
-            }
-            
+        // --- PASS 2: MERGE INTO A NORMALIZED, CASE-INSENSITIVE MAP ---
+        // Key: Normalized District Name (lowercase, trimmed), Value: Set of Stations
+        val mergedStations = mutableMapOf<String, MutableSet<String>>()
 
-            
-            // Ensure district name is included, remove duplicates, sort
-            (baseStations + district).distinct().sorted()
-        }.toMutableMap()
-        
-        // Also handle any districts that exist in API but not in hardcoded (case-insensitive check)
-        // AND handle districts from Firestore that aren't in hardcoded
-        
-        // 1. Legacy API (Google Sheets)
-        cached?.stationsbydistrict?.forEach { (apiDistrict, apiStations) ->
-            val exists = resultMap.keys.any { 
-                it.lowercase().trim() == apiDistrict.lowercase().trim() 
-            }
-            if (!exists) {
-                // District exists in API but not in hardcoded - use API data + district name
-                resultMap[apiDistrict] = (apiStations + apiDistrict).distinct().sorted()
-                Log.d("ConstantsRepository", "Added new district from API: $apiDistrict")
-            }
-        }
-        
-        // 2. Firestore Stations
-        val firestoreStationsJson = prefs.getString(STATIONS_CACHE_KEY, null)
-        if (!firestoreStationsJson.isNullOrEmpty()) {
-             try {
-                val type = object : TypeToken<Map<String, List<String>>>() {}.type
-                val firestoreStationMap: Map<String, List<String>> = Gson().fromJson(firestoreStationsJson, type)
-                
-                firestoreStationMap.forEach { (fDistrict, fStations) ->
-                    val exists = resultMap.keys.any { 
-                        it.equals(fDistrict, ignoreCase = true)
-                    }
-                    if (!exists) {
-                        resultMap[fDistrict] = (fStations + fDistrict).distinct().sorted()
-                        Log.d("ConstantsRepository", "Added new district from Firestore: $fDistrict")
-                    }
+        val allMaps = listOf(hardcodedMap, sheetsMap, firestoreMap)
+        for (sourceMap in allMaps) {
+            sourceMap.forEach { (district, stations) ->
+                if (district.isNotBlank()) {
+                    val normalizedKey = district.trim().lowercase()
+                    mergedStations.getOrPut(normalizedKey) { mutableSetOf() }.addAll(stations.filter { it.isNotBlank() })
                 }
-             } catch (e: Exception) { /* IGNORE */ }
-        }
-        
-        // Final verification: Ensure all hardcoded districts have stations
-        hardcodedStations.keys.forEach { district ->
-            if (!resultMap.containsKey(district) || resultMap[district].isNullOrEmpty()) {
-                Log.w("ConstantsRepository", "⚠️ WARNING: District '$district' has no stations in result! Using hardcoded fallback.")
-                val fallbackStations = (hardcodedStations[district]?.toList() ?: emptyList<String>()) + district
-                resultMap[district] = fallbackStations.distinct().sorted()
             }
         }
-        
-        // CRITICAL FIX: Normalize keys to match exactly with Constants.districtsList
-        // Use districtsList as the source of truth for exact district names
-        val normalizedMap = mutableMapOf<String, List<String>>()
-        Constants.districtsList.forEach { exactDistrictName ->
-            // Find matching entry in resultMap (Sanitized Fuzzy Match)
-            val matchingKey = resultMap.keys.find { rKey -> 
-                val rKeyClean = rKey.replace("[^a-zA-Z0-9]".toRegex(), "").lowercase()
-                val exactClean = exactDistrictName.replace("[^a-zA-Z0-9]".toRegex(), "").lowercase()
-                rKeyClean == exactClean || rKeyClean.contains(exactClean) || exactClean.contains(rKeyClean)
-            }
-            val stations = matchingKey?.let { resultMap[it] } 
-                ?: (hardcodedStations[exactDistrictName]?.toList() ?: emptyList()) + exactDistrictName
-            
-            // Ensure we always have stations (at least district name + hardcoded stations)
-            normalizedMap[exactDistrictName] = stations.distinct().sorted()
-        }
-        
 
-        
-        // Verify all districts from Constants.districtsList are in the map
-        Constants.districtsList.forEach { district ->
-            if (!normalizedMap.containsKey(district)) {
-                Log.e("ConstantsRepository", "❌ CRITICAL: District '$district' from Constants.districtsList missing from map!")
-            }
+        // --- PASS 3: BUILD THE FINAL, CASE-SENSITIVE MAP ---
+        // Use definitive district names from all sources + Constants.districtsList
+        val allDistrictNames = (Constants.districtsList + hardcodedMap.keys + sheetsMap.keys + firestoreMap.keys)
+            .filter { it.isNotBlank() }
+            .distinctBy { it.trim().lowercase() }
+            .sorted()
+
+        val finalMap = mutableMapOf<String, List<String>>()
+
+        allDistrictNames.forEach { districtName ->
+            val normalizedKey = districtName.trim().lowercase()
+            val stations = mergedStations[normalizedKey] ?: emptySet()
+            // Ensure the district name itself is always an option and sort the final list
+            val cleanedStations = (stations + districtName).filter { it.isNotBlank() }.distinct().sorted()
+            
+            finalMap[districtName] = cleanedStations
         }
         
-        Log.d("ConstantsRepository", "📋 Final map has ${normalizedMap.size} districts")
-        
-        return normalizedMap
+        Log.d("ConstantsRepository", "📋 Final merged map has ${finalMap.size} districts")
+        return finalMap
+    }
+
+    /**
+     * Helper to parse Firestore stations from cache
+     */
+    private fun getFirestoreStationsMap(): Map<String, List<String>> {
+        val json = prefs.getString(STATIONS_CACHE_KEY, null) ?: return emptyMap()
+        return try {
+            val type = object : TypeToken<Map<String, List<String>>>() {}.type
+            Gson().fromJson(json, type)
+        } catch (e: Exception) {
+            Log.e("ConstantsRepository", "Failed to parse Firestore stations cache", e)
+            emptyMap()
+        }
     }
 
     /**

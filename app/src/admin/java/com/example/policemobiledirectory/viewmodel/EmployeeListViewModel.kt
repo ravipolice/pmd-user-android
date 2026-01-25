@@ -182,6 +182,7 @@ class EmployeeListViewModel @Inject constructor(
                 SearchFilter.RANK -> "rank"
                 SearchFilter.METAL_NUMBER -> "" // Officers don't have metal numbers
                 SearchFilter.BLOOD_GROUP -> "blood"
+                SearchFilter.ALL -> "all"
             }
             if (filterString.isNotBlank()) {
                 SearchEngine.searchOfficers(officers, queryLower, filterString)
@@ -372,6 +373,10 @@ class EmployeeListViewModel @Inject constructor(
             }
             SearchFilter.BLOOD_GROUP -> {
                 bloodGroup?.lowercase()?.contains(queryLower) == true
+            }
+            SearchFilter.ALL -> {
+                val nameLower = name.lowercase()
+                nameLower.startsWith(queryLower) || nameLower.contains(queryLower)
             }
         }
     }

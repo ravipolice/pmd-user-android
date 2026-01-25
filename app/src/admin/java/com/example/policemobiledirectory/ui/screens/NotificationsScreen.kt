@@ -33,7 +33,7 @@ fun NotificationsScreen(
     val adminNotifications by viewModel.adminNotifications.collectAsState()
     val userNotifications by viewModel.userNotifications.collectAsState()
     val notifications = if (isAdmin) adminNotifications else userNotifications
-    val pendingCount by viewModel.pendingApprovalsCount.collectAsState() // Correctly collected here
+    val pendingCount by viewModel.pendingApprovalsTotalCount.collectAsState() // Correctly collected here
 
     LaunchedEffect(notifications, isAdmin) {
         viewModel.markNotificationsRead(isAdmin, notifications)
