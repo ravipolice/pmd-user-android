@@ -190,6 +190,7 @@ fun AdminPanelScreen(
                     constantsViewModel = constantsViewModel,
                     onAddOfficer = { navController.navigate(Routes.ADD_OFFICER) },
                     onEditOfficer = { id -> navController.navigate("${Routes.ADD_OFFICER}?officerId=$id") },
+                    onDeleteOfficer = { id -> viewModel.deleteOfficer(id) },
                     onBack = { showDashboard = true }
                 )
             }

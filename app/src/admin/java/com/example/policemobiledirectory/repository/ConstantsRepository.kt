@@ -54,6 +54,15 @@ class ConstantsRepository @Inject constructor(
      * Check if cache needs refresh (expired or doesn't exist)
      */
     fun shouldRefreshCache(): Boolean {
+        // 1. Version Check - Invalidate cache if app update changed constants
+        val cachedVersion = prefs.getInt("local_constants_version", 0)
+        if (cachedVersion != Constants.LOCAL_CONSTANTS_VERSION) {
+            Log.d("ConstantsRepository", "⚠️ Local constants version mismatch (Cached: $cachedVersion, Current: ${Constants.LOCAL_CONSTANTS_VERSION}). Invalidating cache.")
+            clearCache()
+            prefs.edit().putInt("local_constants_version", Constants.LOCAL_CONSTANTS_VERSION).apply()
+            return true
+        }
+
         val timestamp = prefs.getLong(CACHE_TIMESTAMP_KEY, 0)
         if (timestamp == 0L) return true // No cache exists
         
@@ -423,6 +432,12 @@ class ConstantsRepository @Inject constructor(
         if (cachedUnits.isNotEmpty()) return cachedUnits
         
         return Constants.defaultUnitsList
+    }
+
+    fun isDistrictLevelUnit(unitName: String): Boolean {
+        // Use full units cache to check district level status
+        val fullUnits = getFullUnits()
+        return fullUnits.find { it.name == unitName }?.isDistrictLevel == true
     }
 
     /**

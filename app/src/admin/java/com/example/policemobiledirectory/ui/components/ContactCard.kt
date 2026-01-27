@@ -16,7 +16,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +38,9 @@ import com.example.policemobiledirectory.ui.theme.*
 import com.example.policemobiledirectory.utils.IntentUtils
 import com.example.policemobiledirectory.utils.getBloodGroupColor
 import com.example.policemobiledirectory.utils.getFormattedBloodGroup
+import com.example.policemobiledirectory.ui.theme.components.DeleteEmployeeDialog
+
+import com.example.policemobiledirectory.ui.theme.CardStyle
 
 /**
  * Unified contact card that works for both Employee and Officer
@@ -48,7 +54,8 @@ fun ContactCard(
     isAdmin: Boolean = false,
     onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null, // ✅ Added onDelete callback
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
+    cardStyle: CardStyle = CardStyle.Vibrant
 ) {
     val context = LocalContext.current
     
@@ -62,6 +69,8 @@ fun ContactCard(
     val landlineNumber = officer?.landline
     val photoUrl = employee?.photoUrl ?: employee?.photoUrlFromGoogle ?: officer?.photoUrl
     val placeholderRes = if (employee != null) R.drawable.officer else R.drawable.ic_officer_building
+
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     // Determine background color based on unit or station
     val backgroundColor = remember(station, employee?.unit, officer?.unit) {
@@ -251,7 +260,7 @@ fun ContactCard(
                             // ✅ Delete Icon (Only for Admins and if onDelete is provided)
                             if (isAdmin && onDelete != null) {
                                 IconButton(
-                                    onClick = onDelete,
+                                    onClick = { showDeleteDialog = true },
                                     modifier = Modifier.size(24.dp)
                                 ) {
                                     Icon(
@@ -261,6 +270,17 @@ fun ContactCard(
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
+                                
+                                DeleteEmployeeDialog(
+                                    showDialog = showDeleteDialog,
+                                    onDismiss = { showDeleteDialog = false },
+                                    onConfirm = {
+                                        showDeleteDialog = false
+                                        onDelete()
+                                    },
+                                    title = if (officer != null) "Delete Officer/Unit" else "Delete Contact",
+                                    text = "Are you sure you want to delete this Officer/Unit? This action cannot be undone."
+                                )
                             }
                         }
                     }

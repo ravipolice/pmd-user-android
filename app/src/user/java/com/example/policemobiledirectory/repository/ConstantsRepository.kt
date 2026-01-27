@@ -57,6 +57,15 @@ class ConstantsRepository @Inject constructor(
      * Check if cache needs refresh (expired or doesn't exist)
      */
     fun shouldRefreshCache(): Boolean {
+        // 1. Version Check - Invalidate cache if app update changed constants
+        val cachedVersion = prefs.getInt("local_constants_version", 0)
+        if (cachedVersion != Constants.LOCAL_CONSTANTS_VERSION) {
+            Log.d("ConstantsRepository", "⚠️ Local constants version mismatch (Cached: $cachedVersion, Current: ${Constants.LOCAL_CONSTANTS_VERSION}). Invalidating cache.")
+            clearCache()
+            prefs.edit().putInt("local_constants_version", Constants.LOCAL_CONSTANTS_VERSION).apply()
+            return true
+        }
+
         val timestamp = prefs.getLong(CACHE_TIMESTAMP_KEY, 0)
         if (timestamp == 0L) return true // No cache exists
         

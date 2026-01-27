@@ -107,11 +107,12 @@ open class EmployeeRepository @Inject constructor(
     // -------------------------------------------------------------------
     fun loginUserWithPin(email: String, pin: String): Flow<RepoResult<Employee>> = flow {
         emit(RepoResult.Loading)
+        val normalizedEmail = email.trim().lowercase()
         try {
             ensureFirestoreAuth()
 
             // Step 1 — Local lookup (Room)
-            val localEmployee = employeeDao.getEmployeeByEmail(email)
+            val localEmployee = employeeDao.getEmployeeByEmail(normalizedEmail)
             if (localEmployee != null) {
                 val storedHash = localEmployee.pin
                 if (!storedHash.isNullOrEmpty() && PinHasher.verifyPin(pin, storedHash)) {
@@ -156,7 +157,7 @@ open class EmployeeRepository @Inject constructor(
 
             // Step 2 — Firestore fallback
             val snapshot = employeesCollection
-                .whereEqualTo(FIELD_EMAIL, email)
+                .whereEqualTo(FIELD_EMAIL, normalizedEmail)
                 .limit(1)
                 .get()
                 .await()
@@ -576,9 +577,10 @@ open class EmployeeRepository @Inject constructor(
                 emp.firebaseUid?.takeIf { it.isNotBlank() } ?: null
             }
             
-            // ✅ CRITICAL FIX: Ensure kgid and firebaseUid are explicitly set
+            // ✅ CRITICAL FIX: Ensure kgid and firebaseUid are explicitly set, and email is normalized
             var finalEmp = emp.copy(
                 kgid = kgid,
+                email = emp.email!!.trim().lowercase(),
                 firebaseUid = firebaseUidToUse
             )
             
@@ -972,12 +974,13 @@ open class EmployeeRepository @Inject constructor(
     }
 
     suspend fun getEmployeeByEmail(email: String): EmployeeEntity? = withContext(ioDispatcher) {
+        val normalizedEmail = email.trim().lowercase()
         // Primary: local Room
-        val local = employeeDao.getEmployeeByEmail(email)
+        val local = employeeDao.getEmployeeByEmail(normalizedEmail)
         if (local != null) return@withContext local
 
         // Fallback: Firestore
-        val snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, email).limit(1).get().await()
+        val snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
         val doc = snapshot.documents.firstOrNull()
         // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
         val docKgid = doc?.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc?.id ?: ""
@@ -1318,8 +1321,9 @@ open class EmployeeRepository @Inject constructor(
                     doc.exists()
                 }
                 !email.isNullOrBlank() -> {
+                    val normalizedEmail = email.trim().lowercase()
                     val snapshot = employeesCollection
-                        .whereEqualTo(FIELD_EMAIL, email)
+                        .whereEqualTo(FIELD_EMAIL, normalizedEmail)
                         .limit(1)
                         .get()
                         .await()

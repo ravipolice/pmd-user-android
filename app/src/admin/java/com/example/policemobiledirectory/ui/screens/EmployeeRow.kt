@@ -28,6 +28,8 @@ import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.ui.theme.*
 import com.example.policemobiledirectory.utils.IntentUtils
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import androidx.compose.runtime.*
+import com.example.policemobiledirectory.ui.theme.components.DeleteEmployeeDialog
 
 @Composable
 fun EmployeeRow(
@@ -37,6 +39,7 @@ fun EmployeeRow(
     viewModel: EmployeeViewModel
 ) {
     val context = LocalContext.current
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -207,9 +210,7 @@ fun EmployeeRow(
 
                         // Delete Button
                         IconButton(
-                            onClick = {
-                                viewModel.deleteEmployee(employee.kgid, employee.photoUrl)
-                            },
+                            onClick = { showDeleteDialog = true },
                             modifier = Modifier
                                 .size(40.dp)
                                 .background(
@@ -224,6 +225,15 @@ fun EmployeeRow(
                                 modifier = Modifier.size(20.dp)
                             )
                         }
+
+                        DeleteEmployeeDialog(
+                            showDialog = showDeleteDialog,
+                            onDismiss = { showDeleteDialog = false },
+                            onConfirm = {
+                                showDeleteDialog = false
+                                viewModel.deleteEmployee(employee.kgid, employee.photoUrl)
+                            }
+                        )
                     }
                 }
             }

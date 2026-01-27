@@ -276,6 +276,11 @@ private fun EmployeeListContent(
         }
     }
 
+    // Check if selected unit is District Level (hides Station)
+    val isDistrictLevelUnit by produceState(initialValue = false, key1 = selectedUnit) {
+        value = constantsViewModel.isDistrictLevelUnit(selectedUnit)
+    }
+
     var selectedDistrict by remember { mutableStateOf("All") }
     var districtExpanded by remember { mutableStateOf(false) }
 
@@ -551,12 +556,13 @@ private fun EmployeeListContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // STATION Dropdown
-            Box(
-                modifier = Modifier
-                    .weight(0.6f)
-                    .zIndex(9f)
-            ) {
+            // STATION Dropdown (Hidden for District Level Units)
+            if (!isDistrictLevelUnit) {
+                Box(
+                    modifier = Modifier
+                        .weight(0.6f)
+                        .zIndex(9f)
+                ) {
                 ExposedDropdownMenuBox(
                     expanded = stationExpanded,
                     onExpandedChange = {
@@ -601,11 +607,12 @@ private fun EmployeeListContent(
                     }
                 }
             }
+            }
             
             // RANK Dropdown
             Box(
                 modifier = Modifier
-                    .weight(0.4f)
+                    .weight(if (isDistrictLevelUnit) 1f else 0.4f)
                     .zIndex(9f)
             ) {
                 ExposedDropdownMenuBox(

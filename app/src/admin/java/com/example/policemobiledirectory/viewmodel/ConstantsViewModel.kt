@@ -283,6 +283,17 @@ class ConstantsViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * Check if a unit is District Level (No Station Required)
+     */
+    suspend fun isDistrictLevelUnit(unitName: String): Boolean {
+        return constantsRepository.isDistrictLevelUnit(unitName)
+    }
+
+    suspend fun getSectionsForUnit(unitName: String): List<String> {
+        return constantsRepository.getUnitSections(unitName)
+    }
 }
 
 

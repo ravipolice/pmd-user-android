@@ -31,7 +31,9 @@ import androidx.compose.runtime.Composable
 fun DeleteEmployeeDialog(
     showDialog: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
+    title: String = "Delete Employee",
+    text: String = "Are you sure you want to delete this employee? This action cannot be undone."
 ) {
     if (showDialog) {
         AlertDialog(
@@ -53,14 +55,13 @@ fun DeleteEmployeeDialog(
             },
             title = {
                 Text(
-                    text = "Delete Employee",
+                    text = title,
                     style = MaterialTheme.typography.titleLarge
                 )
             },
             text = {
                 Text(
-                    "Are you sure you want to delete this employee? " +
-                            "This action cannot be undone.",
+                    text = text,
                     style = MaterialTheme.typography.bodyMedium
                 )
             },

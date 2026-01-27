@@ -42,7 +42,7 @@ import com.example.policemobiledirectory.data.local.SearchFilter
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.navigation.Routes
 import com.example.policemobiledirectory.ui.theme.*
-import com.example.policemobiledirectory.ui.theme.components.ContactCard
+import com.example.policemobiledirectory.ui.components.ContactCard
 import com.example.policemobiledirectory.ui.theme.components.EmployeeCardAdmin
 import com.example.policemobiledirectory.utils.Constants
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
@@ -309,6 +309,11 @@ private fun EmployeeListContent(
         }
     }
     
+    // Check if selected unit is District Level (hides Station)
+    val isDistrictLevelUnit by produceState(initialValue = false, key1 = searchParams.unit) {
+        value = constantsViewModel.isDistrictLevelUnit(searchParams.unit)
+    }
+    
     // Derived UI-specific lists
     // LOGIC CHANGE: If Unit is KSRP, show KSRP Battalions instead of Districts
     val districtsList = remember(districts, ksrpBattalions, searchParams.unit) {
@@ -345,7 +350,6 @@ private fun EmployeeListContent(
 
 
     val searchFields = SearchFilter.values().toList()
-    var employeeToDelete by remember { mutableStateOf<Employee?>(null) }
     val listState = rememberLazyListState()
 
     Column(
@@ -467,12 +471,13 @@ private fun EmployeeListContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // STATION Dropdown
-            Box(
-                modifier = Modifier
-                    .weight(0.6f)
-                    .zIndex(9f)
-            ) {
+            // STATION Dropdown (Hidden for District Level Units)
+            if (!isDistrictLevelUnit) {
+                Box(
+                    modifier = Modifier
+                        .weight(0.6f)
+                        .zIndex(9f)
+                ) {
                 ExposedDropdownMenuBox(
                     expanded = stationExpanded,
                     onExpandedChange = {
@@ -507,11 +512,12 @@ private fun EmployeeListContent(
                     }
                 }
             }
+            }
             
             // RANK Dropdown
             Box(
                 modifier = Modifier
-                    .weight(0.4f)
+                    .weight(if (isDistrictLevelUnit) 1f else 0.4f)
                     .zIndex(9f)
             ) {
                 ExposedDropdownMenuBox(
@@ -705,7 +711,9 @@ private fun EmployeeListContent(
                                     isAdmin = true,
                                     fontScale = fontScale,
                                     navController = navController,
-                                    onDelete = { employeeToDelete = contact.employee },
+                                    onDelete = { emp -> 
+                                        viewModel.deleteEmployee(emp.kgid, emp.photoUrl ?: emp.photoUrlFromGoogle) 
+                                    },
                                     context = context,
                                     cardStyle = cardStyle
                                 )
@@ -717,6 +725,9 @@ private fun EmployeeListContent(
                                     isAdmin = isAdmin,
                                     onEdit = { 
                                         navController.navigate("${Routes.ADD_OFFICER}?officerId=${contact.officer?.agid ?: ""}")
+                                    },
+                                    onDelete = {
+                                        contact.officer?.agid?.let { id -> viewModel.deleteOfficer(id) }
                                     },
                                     onClick = {},
                                     cardStyle = cardStyle

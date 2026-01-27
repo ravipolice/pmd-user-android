@@ -159,6 +159,11 @@ fun CommonEmployeeForm(
         }
     }
 
+    // Check if selected unit is "District Level" (No Station)
+    val isDistrictLevelUnit by produceState(initialValue = false, key1 = unit) {
+        value = constantsViewModel.isDistrictLevelUnit(unit)
+    }
+
     // Auto-select if only one district is available (or "No District Required")
     LaunchedEffect(availableDistricts) {
         if (availableDistricts.size == 1) {
@@ -430,15 +435,7 @@ fun CommonEmployeeForm(
             }
             Spacer(Modifier.height(fieldSpacing))
 
-            // Row 7: Unit and District (Unit first, then District)
-            val isSpecialUnit = remember(unit) {
-                listOf("ISD", "CCB", "CID").contains(unit)
-            }
 
-            // Check if selected unit is "District Level" (No Station)
-            val isDistrictLevelUnit by produceState(initialValue = false, key1 = unit) {
-                value = constantsViewModel.isDistrictLevelUnit(unit)
-            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -468,7 +465,7 @@ fun CommonEmployeeForm(
                     }
                 }
 
-                if (!isHighRankingOfficer && !isSpecialUnit) {
+                if (!isHighRankingOfficer) {
                     ExposedDropdownMenuBox(
                         expanded = districtExpanded,
                         onExpandedChange = {
@@ -499,13 +496,13 @@ fun CommonEmployeeForm(
                     }
                 }
             }
-            if (showValidationErrors && district.isBlank() && !isHighRankingOfficer && !isSpecialUnit) {
+            if (showValidationErrors && district.isBlank() && !isHighRankingOfficer) {
                 Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             Spacer(Modifier.height(fieldSpacing))
 
             // Row 8: Station (Full Width)
-            if (!isHighRankingOfficer && !isSpecialUnit && !isDistrictLevelUnit) {
+            if (!isHighRankingOfficer && !isDistrictLevelUnit) {
                 val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks, unit, unitSections) {
                     if (unitSections.isNotEmpty()) {
                         unitSections
@@ -547,7 +544,7 @@ fun CommonEmployeeForm(
                         }
                     }
                 }
-                if (showValidationErrors && station.isBlank()) {
+                if (showValidationErrors && station.isBlank() && !isDistrictLevelUnit) {
                     Text(if(unit == "State INT" || unitSections.isNotEmpty()) "Section required" else "Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -588,11 +585,11 @@ fun CommonEmployeeForm(
                 if (showValidationErrors && bloodGroup.isBlank()) {
                     Text("Blood Group is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
-                if (showValidationErrors && station.isBlank() && !isHighRankingOfficer) {
+                if (showValidationErrors && station.isBlank() && !isHighRankingOfficer && !isDistrictLevelUnit && !isMinisterial) {
                     Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 } else {
-                     if (showValidationErrors && station.isBlank() && !isMinisterial) {
+                     if (showValidationErrors && station.isBlank() && !isMinisterial && !isDistrictLevelUnit) {
                         Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.height(fieldSpacing))
                     }
@@ -917,7 +914,7 @@ fun CommonEmployeeForm(
                         return@Button
                     }
                     // Validate station
-                    if (station.isBlank() && !isMinisterial && !isHighRankingOfficer) {
+                    if (station.isBlank() && !isMinisterial && !isHighRankingOfficer && !isDistrictLevelUnit) {
                         Toast.makeText(context, "Station is required", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
@@ -952,7 +949,7 @@ fun CommonEmployeeForm(
                 val emp = Employee(
                     kgid = finalKgid,
                     name = name.trim(),
-                    email = email.trim(),
+                    email = email.trim().lowercase(),
                     mobile1 = mobile1.trim(),
                     mobile2 = mobile2.trim().takeIf { it.isNotBlank() },
                     landline = landline.trim().takeIf { it.isNotBlank() },

@@ -170,10 +170,15 @@ fun CommonEmployeeForm(
     // Fetches sections for the selected unit (e.g. State INT -> Special Branch, etc.)
     val unitSections by produceState<List<String>>(initialValue = emptyList(), key1 = unit) {
         if (unit.isNotBlank()) {
-            value = constantsViewModel.getUnitSections(unit)
+            value = constantsViewModel.getSectionsForUnit(unit)
         } else {
             value = emptyList()
         }
+    }
+
+    // Check if selected unit is "District Level" (No Station)
+    val isDistrictLevelUnit by produceState(initialValue = false, key1 = unit) {
+        value = constantsViewModel.isDistrictLevelUnit(unit)
     }
 
     val stationsForSelectedDistrict = remember(district, unit, stationsByDistrict, unitSections) {
@@ -457,7 +462,7 @@ fun CommonEmployeeForm(
                 }
 
                 // District
-                if (!isHighRankingOfficer && !isSpecialUnit) {
+                if (!isHighRankingOfficer) {
                     ExposedDropdownMenuBox(
                         expanded = districtExpanded,
                         onExpandedChange = {
@@ -488,13 +493,13 @@ fun CommonEmployeeForm(
                     }
                 }
             }
-            if (showValidationErrors && district.isBlank() && !isHighRankingOfficer && !isSpecialUnit) {
+            if (showValidationErrors && district.isBlank() && !isHighRankingOfficer) {
                 Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             Spacer(Modifier.height(fieldSpacing))
 
             // Row 8: Station (Full Width)
-            if (!isHighRankingOfficer && !isSpecialUnit) {
+            if (!isHighRankingOfficer && !isDistrictLevelUnit) {
                 val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks) {
                     val isPoliceStationRank = policeStationRanks.contains(rank)
                     if (isPoliceStationRank) {
@@ -534,7 +539,7 @@ fun CommonEmployeeForm(
                         }
                     }
                 }
-                if (showValidationErrors && station.isBlank()) {
+                if (showValidationErrors && station.isBlank() && !isDistrictLevelUnit) {
                     Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -572,12 +577,12 @@ fun CommonEmployeeForm(
                         }
                     }
                 }
-                if (showValidationErrors && station.isBlank()) {
+                if (showValidationErrors && station.isBlank() && !isDistrictLevelUnit && !isMinisterial) {
                     Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 Spacer(Modifier.height(fieldSpacing))
                 } else {
-                     if (showValidationErrors && station.isBlank() && !isMinisterial) {
+                     if (showValidationErrors && station.isBlank() && !isMinisterial && !isDistrictLevelUnit) {
                         Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.height(fieldSpacing))
                     }
@@ -740,6 +745,27 @@ fun CommonEmployeeForm(
                 Spacer(Modifier.height(fieldSpacing))
             }
 
+            // Unit (Moved here for proper dependency flow: Unit -> District -> Station)
+            ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = !unitExpanded }) {
+                OutlinedTextField(
+                    value = unit.ifEmpty { "Unit" },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Unit") },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) }
+                )
+                ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
+                    units.forEach { selection ->
+                        DropdownMenuItem(text = { Text(selection) }, onClick = {
+                            unit = selection
+                            unitExpanded = false
+                        })
+                    }
+                }
+            }
+            Spacer(Modifier.height(fieldSpacing))
+
             // District (admin & registration editable; self-edit disabled)
             ExposedDropdownMenuBox(expanded = districtExpanded, onExpandedChange = {
                 if (!isSelfEdit) districtExpanded = !districtExpanded
@@ -798,26 +824,7 @@ fun CommonEmployeeForm(
             if (showValidationErrors && station.isBlank() && !isHighRankingOfficer) Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(fieldSpacing))
 
-            // Unit
-            ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = !unitExpanded }) {
-                OutlinedTextField(
-                    value = unit.ifEmpty { "Unit" },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Unit") },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) }
-                )
-                ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
-                    units.forEach { selection ->
-                        DropdownMenuItem(text = { Text(selection) }, onClick = {
-                            unit = selection
-                            unitExpanded = false
-                        })
-                    }
-                }
-            }
-            Spacer(Modifier.height(fieldSpacing))
+
 
             Spacer(Modifier.height(fieldSpacing))
 
@@ -887,7 +894,7 @@ fun CommonEmployeeForm(
                         return@Button
                     }
                     // Validate station
-                    if (station.isBlank() && !isMinisterial && !isHighRankingOfficer) {
+                    if (station.isBlank() && !isMinisterial && !isHighRankingOfficer && !isDistrictLevelUnit) {
                         Toast.makeText(context, "Station is required", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
@@ -913,7 +920,7 @@ fun CommonEmployeeForm(
                 val emp = Employee(
                     kgid = finalKgid,
                     name = name.trim(),
-                    email = email.trim(),
+                    email = email.trim().lowercase(),
                     mobile1 = mobile1.trim(),
                     mobile2 = mobile2.trim().takeIf { it.isNotBlank() },
                     landline = landline.trim().takeIf { it.isNotBlank() },

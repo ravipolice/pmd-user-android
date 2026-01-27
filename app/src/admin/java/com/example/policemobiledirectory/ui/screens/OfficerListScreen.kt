@@ -59,6 +59,7 @@ fun StaffListScreen(
         constantsViewModel = constantsViewModel,
         onAddOfficer = { navController.navigate(Routes.ADD_OFFICER) },
         onEditOfficer = { officerId -> navController.navigate("${Routes.ADD_OFFICER}?officerId=$officerId") },
+        onDeleteOfficer = { officerId -> viewModel.deleteOfficer(officerId) },
         onBack = { navController.navigateUp() }
     )
 }
@@ -70,6 +71,7 @@ fun StaffListContent(
     constantsViewModel: ConstantsViewModel,
     onAddOfficer: () -> Unit,
     onEditOfficer: (String) -> Unit,
+    onDeleteOfficer: (String) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -273,7 +275,8 @@ fun StaffListContent(
                                 officer = contact.officer,
                                 fontScale = fontScale,
                                 isAdmin = isAdmin,
-                                onEdit = { onEditOfficer(contact.id) }
+                                onEdit = { onEditOfficer(contact.id) },
+                                onDelete = { onDeleteOfficer(contact.id) }
                             )
                         }
                     }
