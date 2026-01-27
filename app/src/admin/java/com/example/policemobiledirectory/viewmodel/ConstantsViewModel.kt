@@ -34,6 +34,9 @@ class ConstantsViewModel @Inject constructor(
     private val _units = MutableStateFlow<List<String>>(emptyList())
     val units: StateFlow<List<String>> = _units.asStateFlow()
 
+    private val _fullUnits = MutableStateFlow<List<com.example.policemobiledirectory.model.UnitModel>>(emptyList())
+    val fullUnits: StateFlow<List<com.example.policemobiledirectory.model.UnitModel>> = _fullUnits.asStateFlow()
+
     private val _stationsByDistrict = MutableStateFlow<Map<String, List<String>>>(emptyMap())
     val stationsByDistrict: StateFlow<Map<String, List<String>>> = _stationsByDistrict.asStateFlow()
 
@@ -101,6 +104,7 @@ class ConstantsViewModel @Inject constructor(
     private fun refreshConstants() {
         _districts.value = constantsRepository.getDistricts()
         _units.value = constantsRepository.getUnits()
+        _fullUnits.value = constantsRepository.getFullUnits()
         _stationsByDistrict.value = constantsRepository.getStationsByDistrict()
         _ranks.value = constantsRepository.getRanks()
         _bloodGroups.value = constantsRepository.getBloodGroups()

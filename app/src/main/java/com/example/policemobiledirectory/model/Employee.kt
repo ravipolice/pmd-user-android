@@ -104,7 +104,7 @@ data class Employee(
             "metal" -> (metalNumber ?: "").lowercase().contains(queryLower)
             "blood" -> (bloodGroup ?: "").lowercase().contains(queryLower)
             else -> listOfNotNull(
-                name, kgid, rank, mobile1, mobile2, district, station, email, metalNumber, bloodGroup
+                name, kgid, rank, mobile1, mobile2, district, station, email, metalNumber, bloodGroup, unit, effectiveUnit
             ).any { it.lowercase().contains(queryLower) }
         }
     }

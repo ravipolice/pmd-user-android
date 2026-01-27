@@ -1047,7 +1047,15 @@ open class EmployeeViewModel @Inject constructor(
             }
             SearchFilter.ALL -> {
                 val nameLower = name.lowercase()
-                nameLower.startsWith(queryLower) || nameLower.contains(queryLower)
+                nameLower.startsWith(queryLower) || nameLower.contains(queryLower) ||
+                kgid.lowercase().contains(queryLower) ||
+                mobile1?.contains(queryLower) == true || mobile2?.contains(queryLower) == true ||
+                station?.lowercase()?.contains(queryLower) == true ||
+                rank?.lowercase()?.contains(queryLower) == true ||
+                metalNumber?.lowercase()?.contains(queryLower) == true ||
+                bloodGroup?.lowercase()?.contains(queryLower) == true || 
+                unit?.lowercase()?.contains(queryLower) == true ||
+                effectiveUnit.lowercase().contains(queryLower)
             }
         }
     }

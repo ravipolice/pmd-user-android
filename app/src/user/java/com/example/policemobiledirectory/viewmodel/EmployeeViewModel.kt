@@ -871,7 +871,9 @@ open class EmployeeViewModel @Inject constructor(
                 station?.lowercase()?.contains(queryLower) == true ||
                 rank?.lowercase()?.contains(queryLower) == true ||
                 metalNumber?.lowercase()?.contains(queryLower) == true ||
-                bloodGroup?.lowercase()?.contains(queryLower) == true
+                bloodGroup?.lowercase()?.contains(queryLower) == true ||
+                unit?.lowercase()?.contains(queryLower) == true ||
+                effectiveUnit.lowercase().contains(queryLower)
             }
             SearchFilter.NAME -> {
                 // Fast path: check if query is at start (common case)

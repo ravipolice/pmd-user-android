@@ -71,7 +71,7 @@ data class Officer(
             "email" -> (email ?: "").lowercase().contains(queryLower)
             "blood" -> (bloodGroup ?: "").lowercase().contains(queryLower)
             else -> listOfNotNull(
-                name, agid, rank, mobile, landline, district, station, email, bloodGroup
+                name, agid, rank, mobile, landline, district, station, email, bloodGroup, unit, effectiveUnit
             ).any { it.lowercase().contains(queryLower) }
         }
     }

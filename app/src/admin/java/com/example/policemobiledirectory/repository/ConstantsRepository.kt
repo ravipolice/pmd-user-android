@@ -668,4 +668,31 @@ class ConstantsRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    /**
+     * Get sections for a specific unit (e.g. "State INT")
+     * Fixed to match Web Admin schema: Root collection "unit_sections" -> doc(unitName) -> field "sections" (array)
+     */
+    suspend fun getUnitSections(unitName: String): List<String> = withContext(Dispatchers.IO) {
+        try {
+            // Check cache or fetch from Firestore "unit_sections" collection
+            val docSnapshot = firestore.collection("unit_sections")
+                .document(unitName)
+                .get()
+                .await()
+            
+            if (docSnapshot.exists()) {
+                val sections = docSnapshot.get("sections") as? List<String>
+                val sortedSections = sections?.filter { it.isNotBlank() }?.sorted() ?: emptyList()
+                Log.d("ConstantsRepository", "Found ${sortedSections.size} sections for unit $unitName from unit_sections")
+                sortedSections
+            } else {
+                Log.d("ConstantsRepository", "No sections found for unit $unitName")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Log.e("ConstantsRepository", "Error fetching sections for $unitName", e)
+            emptyList()
+        }
+    }
 }

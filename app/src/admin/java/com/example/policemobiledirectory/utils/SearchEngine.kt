@@ -213,6 +213,8 @@ object SearchEngine {
                 if (employee.name.lowercase().contains(queryLower)) matched.add("name")
                 if (employee.kgid.lowercase().contains(queryLower)) matched.add("kgid")
                 if (employee.rank?.lowercase()?.contains(queryLower) == true) matched.add("rank")
+                if (employee.unit?.lowercase()?.contains(queryLower) == true) matched.add("unit")
+                if (employee.effectiveUnit.lowercase().contains(queryLower)) matched.add("effectiveUnit")
             }
         }
         

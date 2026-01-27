@@ -290,6 +290,7 @@ private fun EmployeeListContent(
     // Get constants from ViewModel
     val districts by constantsViewModel.districts.collectAsState()
     val units by constantsViewModel.units.collectAsState()
+    val fullUnits by constantsViewModel.fullUnits.collectAsState()
     val ranks by constantsViewModel.ranks.collectAsState()
     val ksrpBattalions by constantsViewModel.ksrpBattalions.collectAsState()
     
@@ -299,13 +300,47 @@ private fun EmployeeListContent(
     var stationExpanded by remember { mutableStateOf(false) }
     var rankExpanded by remember { mutableStateOf(false) }
     
+    // 🔹 DYNAMIC SECTIONS STATE (ADMIN)
+    val unitSections by produceState<List<String>>(initialValue = emptyList(), key1 = searchParams.unit) {
+        if (searchParams.unit != "All" && searchParams.unit.isNotBlank()) {
+            value = constantsViewModel.getSectionsForUnit(searchParams.unit)
+        } else {
+            value = emptyList()
+        }
+    }
+    
     // Derived UI-specific lists
     // LOGIC CHANGE: If Unit is KSRP, show KSRP Battalions instead of Districts
     val districtsList = remember(districts, ksrpBattalions, searchParams.unit) {
         if (searchParams.unit == "KSRP") ksrpBattalions else districts
     }
 
-    val stationsForDistrict by viewModel.stationsForSelectedDistrict.collectAsState()
+    val stationsForDistrictBase by viewModel.stationsForSelectedDistrict.collectAsState()
+    
+    val stationsForDistrict = remember(stationsForDistrictBase, unitSections, searchParams.unit) {
+         if (unitSections.isNotEmpty()) {
+             listOf("All") + unitSections
+         } else if (searchParams.unit == "All" || searchParams.unit == "Law & Order") {
+             stationsForDistrictBase
+         } else {
+             // Admin Hybrid Strategy Fallback
+             val expectedKeywords = when(searchParams.unit) {
+                 "Traffic" -> listOf("Traffic")
+                 "Control Room" -> listOf("Control Room") 
+                 "CEN Crime / Cyber" -> listOf("CEN", "Cyber")
+                 "Women Police" -> listOf("Women")
+                 "DPO / Admin" -> listOf("DPO", "Computer", "Admin", "Office")
+                 "DAR" -> listOf("DAR")
+                 "DCRB" -> listOf("DCRB")
+                 "DSB / Intelligence" -> listOf("DSB", "Intelligence", "INT")
+                 "Special Units" -> listOf("FPB", "MCU", "SMMC", "DCRE", "Lokayukta", "ESCOM")
+                 else -> listOf(searchParams.unit)
+             }
+             stationsForDistrictBase.filter { station -> 
+                 station == "All" || expectedKeywords.any { station.contains(it, ignoreCase = true) }
+             }
+         }
+    }
     val allRanks = remember(ranks) { listOf("All") + ranks }
 
 
@@ -395,9 +430,33 @@ private fun EmployeeListContent(
                         )
                     )
                     ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
-                        districtsList.forEach { district ->
+                         // UNIT-TO-DISTRICT MAPPING LOGIC (ADMIN)
+                         val districtsList = remember(districts, ksrpBattalions, searchParams.unit, fullUnits) {
+                            val selected = searchParams.unit
+                            val unitConfig = fullUnits.find { it.name == selected }
+                            
+                            val baseList = when {
+                                selected == "All" -> districts
+                                unitConfig != null -> {
+                                    when (unitConfig.mappingType) {
+                                        "subset", "single", "commissionerate" -> {
+                                             if (unitConfig.mappedDistricts.isNotEmpty()) unitConfig.mappedDistricts.sorted()
+                                             else districts.filter { !ksrpBattalions.contains(it) }
+                                        }
+                                        "none" -> emptyList()
+                                        "state" -> listOf("HQ")
+                                        else -> districts.filter { !ksrpBattalions.contains(it) }
+                                    }
+                                }
+                                selected == "KSRP" -> ksrpBattalions
+                                else -> districts.filter { !ksrpBattalions.contains(it) }
+                            }
+                            listOf("All") + baseList
+                         }
+                        
+                         districtsList.forEach { district ->
                             DropdownMenuItem(text = { Text(district) }, onClick = { districtExpanded = false; viewModel.updateSelectedDistrict(district); viewModel.updateSelectedStation("All") })
-                        }
+                         }
                     }
                 }
             }
@@ -417,20 +476,20 @@ private fun EmployeeListContent(
                 ExposedDropdownMenuBox(
                     expanded = stationExpanded,
                     onExpandedChange = {
-                        if (searchParams.district != "All") stationExpanded = !stationExpanded
+                        if (searchParams.district != "All" || unitSections.isNotEmpty()) stationExpanded = !stationExpanded
                     },
                 ) {
                     OutlinedTextField(
                         value = searchParams.station,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Station") },
+                        label = { Text(if (unitSections.isNotEmpty()) "Section" else "Station") },
                         leadingIcon = null,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(),
-                        enabled = searchParams.district != "All",
+                        enabled = searchParams.district != "All" || unitSections.isNotEmpty(),
                         singleLine = true,
                         maxLines = 1,
                         shape = RoundedCornerShape(15.dp),

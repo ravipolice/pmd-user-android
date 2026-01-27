@@ -166,8 +166,20 @@ fun CommonEmployeeForm(
         station = ""
     }
 
-    val stationsForSelectedDistrict = remember(district, unit, stationsByDistrict) {
-        if (district.isNotBlank()) {
+    // 🔹 DYNAMIC SECTIONS STATE
+    // Fetches sections for the selected unit (e.g. State INT -> Special Branch, etc.)
+    val unitSections by produceState<List<String>>(initialValue = emptyList(), key1 = unit) {
+        if (unit.isNotBlank()) {
+            value = constantsViewModel.getUnitSections(unit)
+        } else {
+            value = emptyList()
+        }
+    }
+
+    val stationsForSelectedDistrict = remember(district, unit, stationsByDistrict, unitSections) {
+        if (unitSections.isNotEmpty()) {
+            unitSections
+        } else if (district.isNotBlank()) {
             // Try exact match first
             val stations = stationsByDistrict[district] 
                 ?: stationsByDistrict.keys.find { it.equals(district, ignoreCase = true) }?.let { stationsByDistrict[it] }
@@ -500,13 +512,17 @@ fun CommonEmployeeForm(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
-                        value = station.ifEmpty { if (district.isNotBlank()) "Select Station" else "Select District First" },
+                        value = station.ifEmpty { 
+                            if (unitSections.isNotEmpty()) "Select Section" 
+                            else if (district.isNotBlank()) "Select Station" 
+                            else "Select District First" 
+                        },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Station*") },
+                        label = { Text(if (unitSections.isNotEmpty()) "Section*" else "Station*") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
-                        enabled = district.isNotBlank() && filteredStations.isNotEmpty(),
+                        enabled = (district.isNotBlank() || unitSections.isNotEmpty()) && (stationsForSelectedDistrict.isNotEmpty() || unitSections.isNotEmpty()),
                         isError = showValidationErrors && station.isBlank()
                     )
                     ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {

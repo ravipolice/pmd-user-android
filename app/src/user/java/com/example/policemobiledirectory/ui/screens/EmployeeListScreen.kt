@@ -266,6 +266,16 @@ private fun EmployeeListContent(
 
     val ksrpBattalions by constantsViewModel.ksrpBattalions.collectAsStateWithLifecycle()
 
+    // 🔹 DYNAMIC SECTIONS STATE
+    // Fetches sections for the selected unit (e.g. State INT -> Special Branch, etc.)
+    val unitSections by produceState<List<String>>(initialValue = emptyList(), key1 = selectedUnit) {
+        if (selectedUnit != "All" && selectedUnit.isNotBlank()) {
+            value = constantsViewModel.getSectionsForUnit(selectedUnit)
+        } else {
+            value = emptyList()
+        }
+    }
+
     var selectedDistrict by remember { mutableStateOf("All") }
     var districtExpanded by remember { mutableStateOf(false) }
 
@@ -292,14 +302,45 @@ private fun EmployeeListContent(
 
     // Show "All" only for admins, regular users see only districts
     // LOGIC CHANGE: If Unit is KSRP, show KSRP Battalions instead of Districts
-    val districtsList = remember(isAdmin, districts, ksrpBattalions, selectedUnit) {
-        val baseList = if (selectedUnit == "KSRP") ksrpBattalions else districts
+    // UNIT-TO-DISTRICT MAPPING LOGIC
+    val districtsList = remember(isAdmin, districts, ksrpBattalions, selectedUnit, fullUnits) {
+        // Find configuration for the selected unit
+        val unitConfig = fullUnits.find { it.name == selectedUnit }
+        
+        val baseList = when {
+            selectedUnit == "All" -> districts // Show all for "All"
+            unitConfig != null -> {
+                when (unitConfig.mappingType) {
+                    "subset", "single", "commissionerate" -> {
+                         // Use mapped districts from configuration
+                         if (unitConfig.mappedDistricts.isNotEmpty()) {
+                             unitConfig.mappedDistricts.sorted()
+                         } else {
+                             // Fallback if empty but should be mapped -> Show Empty or All? 
+                             // Let's fallback to "All" minus KSRP for safety, or empty if strict.
+                             // Default to all districts excluding KSRP if mapping is missing
+                             districts.filter { !ksrpBattalions.contains(it) }
+                         }
+                    }
+                    "none" -> emptyList() // No districts for this unit (e.g. State Level)
+                    "state" -> listOf("HQ") // Example for state level
+                    else -> {
+                        // "all" or unknown -> All districts, but strictly exclude KSRP battalions
+                        districts.filter { !ksrpBattalions.contains(it) }
+                    }
+                }
+            }
+            selectedUnit == "KSRP" -> ksrpBattalions // Hardcoded fallback for KSRP if model missing
+            else -> districts.filter { !ksrpBattalions.contains(it) } // Default for others
+        }
+        
         if (isAdmin) {
             listOf("All") + baseList
         } else {
             baseList
         }
     }
+
 
     var selectedStation by remember { mutableStateOf("All") }
     var stationExpanded by remember { mutableStateOf(false) }
@@ -320,8 +361,11 @@ private fun EmployeeListContent(
             listOf("All") + stations
         }
         
-        // 2. Filter these stations by Unit keyword (Hybrid Strategy in UI)
-        if (selectedUnit == "All" || selectedUnit == "Law & Order") {
+         // 2. Filter these stations by Unit keyword (Hybrid Strategy in UI)
+        if (unitSections.isNotEmpty()) {
+             // If dynamic sections exist for this unit, use them as the "Station" list
+             listOf("All") + unitSections
+        } else if (selectedUnit == "All" || selectedUnit == "Law & Order") {
             // "Law & Order" is the default bucket. Ideally, we'd check if a station falls into ANY other unit.
             // But doing that inverse check in the UI is expensive.
             // For the dropdown, simple containment is usually enough, or we just show all stations in the district.
@@ -516,20 +560,20 @@ private fun EmployeeListContent(
                 ExposedDropdownMenuBox(
                     expanded = stationExpanded,
                     onExpandedChange = {
-                        if (selectedDistrict != "All") stationExpanded = !stationExpanded
+                        if ((selectedDistrict != "All" || unitSections.isNotEmpty())) stationExpanded = !stationExpanded
                     },
                 ) {
                     OutlinedTextField(
                         value = selectedStation,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Station") },
+                        label = { Text(if (unitSections.isNotEmpty()) "Section" else "Station") },
                         leadingIcon = null,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(),
-                        enabled = selectedDistrict != "All",
+                        enabled = selectedDistrict != "All" || unitSections.isNotEmpty(),
                         singleLine = true,
                         maxLines = 1,
                         shape = RoundedCornerShape(15.dp),
