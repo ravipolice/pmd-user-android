@@ -520,33 +520,38 @@ class ConstantsRepository @Inject constructor(
 
     /**
      * Get ranks from local Constants + Firestore + Google Sheets
+     * PRIORITY: Firestore > Sheet > Hardcoded
      */
     fun getRanks(): List<String> {
+        // 1. Firestore
+        val firestoreRanks = getCachedList(RANKS_CACHE_KEY, object : TypeToken<List<String>>() {})
+        if (firestoreRanks.isNotEmpty()) return firestoreRanks
+
+        // 2. Sheets (Legacy)
         val cached = getCachedData()
         val sheetRanks = cached?.ranks ?: emptyList()
-        val hardcodedRanks = Constants.allRanksList
-        
-        // Get Firestore ranks
-        val firestoreRanks = getCachedList(RANKS_CACHE_KEY, object : TypeToken<List<String>>() {})
+        if (sheetRanks.isNotEmpty()) return sheetRanks
 
-        // Merge: Firestore > Sheet > Hardcoded
-        val combined = (firestoreRanks + sheetRanks + hardcodedRanks).distinct()
-        return if (combined.isNotEmpty()) combined else hardcodedRanks
+        // 3. Hardcoded Fallback
+        return Constants.allRanksList
     }
 
     /**
      * Get districts from local Constants + Firestore + Google Sheets
+     * PRIORITY: Firestore > Sheet > Hardcoded
      */
     fun getDistricts(): List<String> {
+        // 1. Firestore
+        val firestoreDistricts = getCachedList(DISTRICTS_CACHE_KEY, object : TypeToken<List<String>>() {})
+        if (firestoreDistricts.isNotEmpty()) return firestoreDistricts.sorted()
+
+        // 2. Sheets (Legacy)
         val cached = getCachedData()
         val sheetDistricts = cached?.districts ?: emptyList()
-        val hardcodedDistricts = Constants.districtsList
-        
-        // Get Firestore districts
-        val firestoreDistricts = getCachedList(DISTRICTS_CACHE_KEY, object : TypeToken<List<String>>() {})
+        if (sheetDistricts.isNotEmpty()) return sheetDistricts.sorted()
 
-        // Merge: Firestore > Sheet > Hardcoded
-        return (firestoreDistricts + sheetDistricts + hardcodedDistricts).distinct().sorted()
+        // 3. Hardcoded Fallback
+        return Constants.districtsList
     }
 
     /**
@@ -574,49 +579,33 @@ class ConstantsRepository @Inject constructor(
 
     /**
      * Get stations by district with robust merging (Hardcoded + API + Firestore)
-     * Strategy: 3-Pass Merge (Gather -> Normalize -> Build)
+     * Strategy: Per-District Override (Firestore > Sheets > Hardcoded)
+     * If a district exists in Firestore, we use ONLY that source for that district.
      */
     fun getStationsByDistrict(): Map<String, List<String>> {
-        // --- PASS 1: GATHER ALL DATA ---
+        val mergedMap = mutableMapOf<String, List<String>>()
+
+        // Sources (Low to High Priority)
         val hardcodedMap = Constants.stationsByDistrictMap
         val sheetsMap = getCachedData()?.stationsbydistrict ?: emptyMap()
         val firestoreMap = getFirestoreStationsMap()
 
-        // --- PASS 2: MERGE INTO A NORMALIZED, CASE-INSENSITIVE MAP ---
-        // Key: Normalized District Name (lowercase, trimmed), Value: Set of Stations
-        val mergedStations = mutableMapOf<String, MutableSet<String>>()
+        // 1. Start with Hardcoded
+        hardcodedMap.forEach { (k, v) -> mergedMap[k] = v }
 
-        val allMaps = listOf(hardcodedMap, sheetsMap, firestoreMap)
-        for (sourceMap in allMaps) {
-            sourceMap.forEach { (district, stations) ->
-                if (district.isNotBlank()) {
-                    val normalizedKey = district.trim().lowercase()
-                    mergedStations.getOrPut(normalizedKey) { mutableSetOf() }.addAll(stations.filter { it.isNotBlank() })
-                }
-            }
+        // 2. Override with Sheets (if key exists)
+        sheetsMap.forEach { (k, v) -> 
+            if (v.isNotEmpty()) mergedMap[k] = v 
         }
 
-        // --- PASS 3: BUILD THE FINAL, CASE-SENSITIVE MAP ---
-        // Use definitive district names from all sources + Constants.districtsList
-        val allDistrictNames = (Constants.districtsList + hardcodedMap.keys + sheetsMap.keys + firestoreMap.keys)
-            .filter { it.isNotBlank() }
-            .distinctBy { it.trim().lowercase() }
-            .sorted()
-
-        val finalMap = mutableMapOf<String, List<String>>()
-
-        allDistrictNames.forEach { districtName ->
-            val normalizedKey = districtName.trim().lowercase()
-            val stations = mergedStations[normalizedKey] ?: emptySet()
-            // Ensure the district name itself is always an option and sort the final list
-            val cleanedStations = (stations + districtName).filter { it.isNotBlank() }.distinct().sorted()
-            
-            finalMap[districtName] = cleanedStations
+        // 3. Override with Firestore (Highest Priority)
+        firestoreMap.forEach { (k, v) -> 
+            if (v.isNotEmpty()) mergedMap[k] = v 
         }
-        
-        Log.d("ConstantsRepository", "📋 Final merged map has ${finalMap.size} districts")
-        return finalMap
+
+        return mergedMap
     }
+
 
     /**
      * Helper to parse Firestore stations from cache
