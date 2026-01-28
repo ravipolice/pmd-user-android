@@ -1,8 +1,9 @@
+﻿To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
 Configuration on demand is an incubating feature.
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preAdminDebugBuild UP-TO-DATE
-> Task :app:mergeAdminDebugNativeDebugMetadata NO-SOURCE
-> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :app:generateAdminDebugBuildConfig UP-TO-DATE
 > Task :app:checkAdminDebugAarMetadata UP-TO-DATE
 > Task :app:processAdminDebugNavigationResources UP-TO-DATE
@@ -20,51 +21,85 @@ Configuration on demand is an incubating feature.
 > Task :app:processAdminDebugManifest UP-TO-DATE
 > Task :app:processAdminDebugManifestForPackage UP-TO-DATE
 > Task :app:processAdminDebugResources UP-TO-DATE
-> Task :app:javaPreCompileAdminDebug UP-TO-DATE
-> Task :app:mergeAdminDebugShaders UP-TO-DATE
-> Task :app:compileAdminDebugShaders NO-SOURCE
-> Task :app:generateAdminDebugAssets UP-TO-DATE
-> Task :app:mergeAdminDebugAssets UP-TO-DATE
-> Task :app:compressAdminDebugAssets UP-TO-DATE
-> Task :app:l8DexDesugarLibAdminDebug UP-TO-DATE
-> Task :app:desugarAdminDebugFileDependencies UP-TO-DATE
-> Task :app:checkAdminDebugDuplicateClasses UP-TO-DATE
-> Task :app:mergeExtDexAdminDebug UP-TO-DATE
-> Task :app:mergeLibDexAdminDebug UP-TO-DATE
-> Task :app:mergeAdminDebugJniLibFolders UP-TO-DATE
-> Task :app:mergeAdminDebugNativeLibs UP-TO-DATE
-> Task :app:stripAdminDebugDebugSymbols UP-TO-DATE
-> Task :app:validateSigningAdminDebug UP-TO-DATE
-> Task :app:writeAdminDebugAppMetadata UP-TO-DATE
-> Task :app:writeAdminDebugSigningConfigVersions UP-TO-DATE
+> Task :app:kspAdminDebugKotlin UP-TO-DATE
 
-> Task :app:kspAdminDebugKotlin
-e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/SearchEngine.kt:201:31 Unexpected tokens (use ';' to separate expressions on the same line)
-e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/SearchEngine.kt:202:31 Unexpected tokens (use ';' to separate expressions on the same line)
-e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/SearchEngine.kt:203:33 Unexpected tokens (use ';' to separate expressions on the same line)
-e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/SearchEngine.kt:207:31 Unexpected tokens (use ';' to separate expressions on the same line)
-e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/SearchEngine.kt:208:34 Unexpected tokens (use ';' to separate expressions on the same line)
-e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/SearchEngine.kt:209:39 Unexpected tokens (use ';' to separate expressions on the same line)
-e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/SearchEngine.kt:210:38 Unexpected tokens (use ';' to separate expressions on the same line)
-e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/SearchEngine.kt:211:30 Unexpected tokens (use ';' to separate expressions on the same line)
-e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/SearchEngine.kt:218:9 Expecting member declaration
-e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/SearchEngine.kt:218:16 Expecting member declaration
-e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/SearchEngine.kt:258:1 Expecting a top level declaration
+> Task :app:compileAdminDebugKotlin FAILED
+./gradlew : e: file:///C:/U
+sers/ravip/AndroidStudioPro
+jects/PoliceMobileDirectory
+/app/src/admin/java/com/exa
+mple/policemobiledirectory/
+ui/components/CommonEmploye
+eForm.kt:1059:53 
+Unresolved reference 
+'CloudUpload'.
+At line:1 char:1
++ ./gradlew :app:compileAdm
+inDebugKotlin 
+--console=plain 
+--no-daemon 2> ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified: (e:   
+  file:///C:/U... 'Cloud   
+ Upload'.:String) [], R    
+emoteException
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+e: file:///C:/Users/ravip/A
+ndroidStudioProjects/Police
+MobileDirectory/app/src/adm
+in/java/com/example/policem
+obiledirectory/ui/component
+s/CommonEmployeeForm.kt:109
+1:44 Unresolved reference 
+'PhotoCamera'.
+e: file:///C:/Users/ravip/A
+ndroidStudioProjects/Police
+MobileDirectory/app/src/adm
+in/java/com/example/policem
+obiledirectory/ui/component
+s/CommonEmployeeForm.kt:109
+9:44 Unresolved reference 
+'PhotoLibrary'.
+e: file:///C:/Users/ravip/A
+ndroidStudioProjects/Police
+MobileDirectory/app/src/adm
+in/java/com/example/policem
+obiledirectory/viewmodel/Em
+ployeeViewModel.kt:643:95 
+No value passed for 
+parameter 'name'.
 
-> Task :app:kspAdminDebugKotlin FAILED
-
-FAILURE: Build failed with an exception.
+FAILURE: Build failed with 
+an exception.
 
 * What went wrong:
-Execution failed for task ':app:kspAdminDebugKotlin'.
-> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
-   > Compilation error. See log for more details
+Execution failed for task '
+:app:compileAdminDebugKotli
+n'.
+> A failure occurred while 
+executing org.jetbrains.kot
+lin.compilerRunner.GradleCo
+mpilerRunnerWithWorkers$Gra
+dleKotlinCompilerWorkAction
+   > Compilation error. 
+See log for more details
 
 * Try:
-> Run with --stacktrace option to get the stack trace.
-> Run with --info or --debug option to get more log output.
-> Run with --scan to get full insights.
-> Get more help at https://help.gradle.org.
+> Run with --stacktrace 
+option to get the stack 
+trace.
+> Run with --info or 
+--debug option to get more 
+log output.
+> Run with --scan to get 
+full insights.
+> Get more help at 
+https://help.gradle.org.
 
-BUILD FAILED in 11s
-33 actionable tasks: 1 executed, 32 up-to-date
+BUILD FAILED in 27s
+19 actionable tasks: 1 executed, 18 up-to-date

@@ -20,12 +20,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.*
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import coil.compose.rememberAsyncImagePainter
+import androidx.compose.ui.graphics.Color
 import com.example.policemobiledirectory.data.local.PendingRegistrationEntity
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.utils.Constants
@@ -62,6 +64,12 @@ import java.util.*
  * - onSubmit(employee, photoUri) for admin/self-edit
  * - onRegisterSubmit(pendingEntity, photoUri) for registration
  */
+
+// Validators
+fun isValidEmail(v: String) = v.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(v).matches()
+fun isValidMobile(v: String) = v.filter { it.isDigit() }.length in 10..13
+fun isKgidValid(v: String) = v.isNotBlank()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommonEmployeeForm(
@@ -71,6 +79,7 @@ fun CommonEmployeeForm(
     initialEmployee: Employee? = null,
     initialKgid: String? = null,
     initialEmail: String = "", // ✅ Add initialEmail parameter for prefilling
+    initialName: String = "",
     onSubmit: (Employee, Uri?) -> Unit,
     onRegisterSubmit: ((PendingRegistrationEntity, Uri?) -> Unit)? = null,
     isLoading: Boolean = false, // ✅ Add loading state parameter
@@ -98,7 +107,7 @@ fun CommonEmployeeForm(
 
     // fields
     var kgid by remember(initialEmployee, initialKgid) { mutableStateOf(initialEmployee?.kgid ?: initialKgid.orEmpty()) }
-    var name by remember(initialEmployee) { mutableStateOf(initialEmployee?.name ?: "") }
+    var name by remember(initialEmployee, initialName) { mutableStateOf(initialEmployee?.name ?: initialName) }
     // ✅ Use initialEmail if provided, otherwise use initialEmployee.email
     var email by remember(initialEmployee, initialEmail) { 
         mutableStateOf(initialEmployee?.email ?: initialEmail) 
@@ -193,32 +202,43 @@ fun CommonEmployeeForm(
         station = ""
     }
 
-    val stationsForSelectedDistrict = remember(district, unit, stationsByDistrict) {
-        if (district.isNotBlank()) {
-            // Try exact match first
-            val stations = stationsByDistrict[district] 
-                ?: stationsByDistrict.keys.find { it.equals(district, ignoreCase = true) }?.let { stationsByDistrict[it] }
-                ?: emptyList()
+    // Optimization: Create a normalized, case-insensitive map for fast lookups
+    val normalizedStationsMap = remember(stationsByDistrict) {
+        stationsByDistrict.entries.associate { (key, value) ->
+            key.trim().lowercase() to value
+        }
+    }
 
+    // Refactored for readability as per review
+    val stationsForSelectedDistrict = remember(district, unit, normalizedStationsMap) {
+        if (district.isBlank()) {
+            emptyList()
+        } else {
+            // Fast O(1) lookup
+            val stations = normalizedStationsMap[district.trim().lowercase()] ?: emptyList()
+
+            // 2. Apply unit-specific filtering
             when (unit) {
                 "DCRB" -> stations.filter { it.contains("DCRB", ignoreCase = true) }
                 "ESCOM" -> stations.filter { it.contains("ESCOM", ignoreCase = true) }
                 else -> stations
             }
-        } else {
-            emptyList()
         }
     }
 
     // UCrop launcher
     val uCropResultLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            UCrop.getOutput(result.data!!)?.let { croppedPhotoUri = it }
-        } else if (result.resultCode == UCrop.RESULT_ERROR) {
-            val err = UCrop.getError(result.data!!)
-            Toast.makeText(context, "Crop error: ${err?.message}", Toast.LENGTH_SHORT).show()
-        } else {
-            Unit
+        when (result.resultCode) {
+            android.app.Activity.RESULT_OK -> {
+                UCrop.getOutput(result.data!!)?.let { croppedPhotoUri = it }
+            }
+            UCrop.RESULT_ERROR -> {
+                val err = UCrop.getError(result.data!!)
+                Toast.makeText(context, "Crop error: ${err?.message}", Toast.LENGTH_SHORT).show()
+            }
+            android.app.Activity.RESULT_CANCELED -> {
+                Toast.makeText(context, "Image selection cancelled", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -236,10 +256,7 @@ fun CommonEmployeeForm(
         uri?.let { launchUCrop(context, it, uCropResultLauncher) }
     }
 
-    // validators
-    fun isValidEmail(v: String) = v.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(v).matches()
-    fun isValidMobile(v: String) = v.filter { it.isDigit() }.length in 10..13
-    fun isKgidValid(v: String) = v.isNotBlank()
+    // validators moved to top level
 
     val fieldSpacing = 6.dp
     val sectionSpacing = 10.dp
@@ -263,39 +280,62 @@ fun CommonEmployeeForm(
                 contentAlignment = Alignment.Center
             ) {
                 when {
-                    croppedPhotoUri != null -> Image(
-                        painter = rememberAsyncImagePainter(croppedPhotoUri),
-                        contentDescription = "Selected",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
+                    croppedPhotoUri != null -> {
+                        Image(
+                            painter = rememberAsyncImagePainter(croppedPhotoUri),
+                            contentDescription = "Selected Photo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                            // Edit icon overlay
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Change Photo",
+                                tint = Color.White,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                                    .padding(8.dp)
+                            )
+                        }
 
-                    !currentPhotoUrl.isNullOrBlank() -> Image(
-                        painter = rememberAsyncImagePainter(currentPhotoUrl),
-                        contentDescription = "Existing",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
+                    !currentPhotoUrl.isNullOrBlank() -> {
+                        Image(
+                            painter = rememberAsyncImagePainter(currentPhotoUrl),
+                            contentDescription = "Existing Photo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                          // Edit icon overlay for existing photo too
+                         Icon(
+                             imageVector = Icons.Default.Edit,
+                             contentDescription = "Change Photo",
+                             tint = Color.White,
+                             modifier = Modifier
+                                 .align(Alignment.Center)
+                                 .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                                 .padding(8.dp)
+                         )
+                    }
 
-                    else -> Text("Tap to select")
+                    else -> {
+                        // Empty State
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.AddAPhoto,
+                                contentDescription = "Select Photo",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(40.dp)
+                            )
+                            Text(
+                                "Add Photo",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
                 }
-            }
-
-            // Camera Icon Badge
-            Box(
-                modifier = Modifier
-                    .offset(x = 0.dp, y = 0.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-                    .clickable { showSourceDialog = true }
-                    .padding(10.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PhotoCamera,
-                    contentDescription = "Change Photo",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
             }
         }
 
@@ -366,8 +406,15 @@ fun CommonEmployeeForm(
                 // KGID / ID
                 OutlinedTextField(
                     value = kgid,
-                    onValueChange = { 
-                        if (isOfficer || isHighRankingOfficer) kgid = it else if (it.all { ch -> ch.isDigit() }) kgid = it
+                    onValueChange = { newValue ->
+                        kgid = when {
+                            // Allow anything for high-ranking officers
+                            isOfficer || isHighRankingOfficer -> newValue
+                            // Otherwise, only allow digits
+                            newValue.all { it.isDigit() } -> newValue
+                            // If new input contains non-digits, keep the old value
+                            else -> kgid
+                        }
                     },
                     label = { Text(if(isOfficer || isHighRankingOfficer) "Officer ID (AGID)*" else "KGID*") },
                     modifier = Modifier.weight(1f),
@@ -383,10 +430,11 @@ fun CommonEmployeeForm(
                     modifier = Modifier.weight(1f)
                 ) {
                     OutlinedTextField(
-                        value = rank.ifEmpty { "Rank*" },
+                        value = rank,
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Rank*") },
+                        placeholder = { Text("Select Rank") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
                         isError = showValidationErrors && rank.isBlank()
@@ -401,10 +449,22 @@ fun CommonEmployeeForm(
                                 if (ministerialRanks.any { it.equals(selection, ignoreCase = true) }) {
                                     station = ""
                                 }
+                                if (highRankingOfficers.contains(selection)) {
+                                    district = ""
+                                    station = ""
+                                }
                                 rankExpanded = false
                             })
                         }
                     }
+                }
+                if (showValidationErrors && rank.isBlank()) {
+                    Text(
+                        "Rank is required",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp).weight(1f)
+                    )
                 }
 
                 // Metal Number (conditional - only show when required AND NOT OFFICER)
@@ -453,7 +513,8 @@ fun CommonEmployeeForm(
                         readOnly = true,
                         label = { Text("Unit") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) }
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
+                        isError = showValidationErrors && unit.isBlank()
                     )
                     ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
                         units.forEach { selection ->
@@ -464,12 +525,16 @@ fun CommonEmployeeForm(
                         }
                     }
                 }
+                if (showValidationErrors && unit.isBlank()) {
+                     Text("Unit is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
 
                 if (!isHighRankingOfficer) {
+                    val isDistrictLocked = availableDistricts.size == 1 && district.isNotBlank()
                     ExposedDropdownMenuBox(
-                        expanded = districtExpanded,
+                        expanded = districtExpanded && !isDistrictLocked,
                         onExpandedChange = {
-                            if (!isSelfEdit) districtExpanded = !districtExpanded
+                            if (!isSelfEdit && !isDistrictLocked) districtExpanded = !districtExpanded
                         },
                         modifier = Modifier.weight(1f)
                     ) {
@@ -479,10 +544,16 @@ fun CommonEmployeeForm(
                             readOnly = true,
                             label = { Text("District*") },
                             modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
-                            isError = showValidationErrors && district.isBlank()
+                            // Disable if locked or self edit (logic preserved)
+                            enabled = !isDistrictLocked, 
+                            trailingIcon = {
+                                if (!isDistrictLocked) {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded)
+                                }
+                            },
+                            isError = showValidationErrors && district.isBlank() && !isHighRankingOfficer
                         )
-                        if (!isSelfEdit) {
+                        if (!isSelfEdit && !isDistrictLocked) {
                             ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
                                 availableDistricts.forEach { selection ->
                                     DropdownMenuItem(text = { Text(selection) }, onClick = {
@@ -630,13 +701,15 @@ fun CommonEmployeeForm(
             // KGID (admin & registration only)
             if (!isSelfEdit) {
                 OutlinedTextField(
-                    value = kgid,
-                    onValueChange = {
-                         // Allow mostly digits but maybe letters for Officer ID (AGID) if needed?
-                         // Current KGID is digits only. AGID is usually string.
-                         // Let's allow alphanumeric for officers, digits only for employees.
-                         if (isOfficer) kgid = it else if (it.all { ch -> ch.isDigit() }) kgid = it
-                    },
+                     value = kgid,
+                     onValueChange = { newValue ->
+                          // For Officers, allow any characters (AGID). Otherwise, only allow digits (KGID).
+                          kgid = when {
+                                isOfficer -> newValue
+                                newValue.all { ch -> ch.isDigit() } -> newValue
+                                else -> kgid
+                          }
+                     },
                     label = { Text(if (isOfficer) "Officer ID*" else "KGID*") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -735,8 +808,10 @@ fun CommonEmployeeForm(
             }
 
             // District (admin & registration editable; self-edit disabled)
-            ExposedDropdownMenuBox(expanded = districtExpanded, onExpandedChange = {
-                if (!isSelfEdit) districtExpanded = !districtExpanded
+            // District (admin & registration editable; self-edit disabled)
+            val isDistrictLocked = availableDistricts.size == 1 && district.isNotBlank()
+            ExposedDropdownMenuBox(expanded = districtExpanded && !isDistrictLocked, onExpandedChange = {
+                if (!isSelfEdit && !isDistrictLocked) districtExpanded = !districtExpanded
             }) {
                 OutlinedTextField(
                     value = district.ifEmpty { if (isSelfEdit) district else "Select District" },
@@ -744,10 +819,15 @@ fun CommonEmployeeForm(
                     readOnly = true,
                     label = { Text("District*") },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
+                    enabled = !isDistrictLocked,
+                    trailingIcon = { 
+                        if (!isDistrictLocked) {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded)
+                        }
+                    },
                     isError = showValidationErrors && district.isBlank()
                 )
-                if (!isSelfEdit) {
+                if (!isSelfEdit && !isDistrictLocked) {
                     ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
                         availableDistricts.forEach { selection ->
                             DropdownMenuItem(text = { Text(selection) }, onClick = {

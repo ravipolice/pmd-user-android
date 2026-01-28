@@ -48,7 +48,7 @@ import com.example.policemobiledirectory.ui.screens.*
 fun LoginScreen(
     viewModel: EmployeeViewModel,
     onLoginSuccess: (Boolean) -> Unit,
-    onRegisterNewUser: (String?) -> Unit,
+    onRegisterNewUser: (String?, String?) -> Unit,
     onForgotPinClicked: () -> Unit,
     onGoogleSignInClicked: () -> Unit,
     onThemeToggle: () -> Unit = {}
@@ -63,6 +63,7 @@ fun LoginScreen(
     var isLoading by remember { mutableStateOf(false) }
     var showRegisterDialog by remember { mutableStateOf(false) }
     var emailToRegister by remember { mutableStateOf<String?>(null) }
+    var nameToRegister by remember { mutableStateOf<String?>(null) }
     val authStatus by viewModel.authStatus.collectAsState()
     val googleSignInEvent by viewModel.googleSignInUiEvent.collectAsState()
 
@@ -106,6 +107,7 @@ fun LoginScreen(
             is GoogleSignInUiEvent.RegistrationRequired -> {
                 isLoading = false
                 emailToRegister = event.email
+                nameToRegister = event.name
                 showRegisterDialog = true   // ✅ trigger dialog declaratively
             }
 
@@ -146,7 +148,7 @@ fun LoginScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showRegisterDialog = false
-                    onRegisterNewUser(emailToRegister!!)
+                    onRegisterNewUser(emailToRegister!!, nameToRegister)
                 }) {
                     Text("Register")
                 }

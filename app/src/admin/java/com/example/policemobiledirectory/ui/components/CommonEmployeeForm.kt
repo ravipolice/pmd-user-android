@@ -20,12 +20,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import coil.compose.rememberAsyncImagePainter
+import androidx.compose.ui.graphics.Color
 import com.example.policemobiledirectory.data.local.PendingRegistrationEntity
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.utils.Constants
@@ -62,6 +64,12 @@ import java.util.*
  * - onSubmit(employee, photoUri) for admin/self-edit
  * - onRegisterSubmit(pendingEntity, photoUri) for registration
  */
+
+// Validators
+fun isValidEmail(v: String) = v.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(v).matches()
+fun isValidMobile(v: String) = v.filter { it.isDigit() }.length in 10..13
+fun isKgidValid(v: String) = v.isNotBlank()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommonEmployeeForm(
@@ -71,6 +79,7 @@ fun CommonEmployeeForm(
     initialEmployee: Employee? = null,
     initialKgid: String? = null,
     initialEmail: String = "", // ✅ Add initialEmail parameter for prefilling
+    initialName: String = "",
     onSubmit: (Employee, Uri?) -> Unit,
     onRegisterSubmit: ((PendingRegistrationEntity, Uri?) -> Unit)? = null,
     isLoading: Boolean = false, // ✅ Add loading state parameter
@@ -102,7 +111,7 @@ fun CommonEmployeeForm(
 
     // fields
     var kgid by remember(initialEmployee, initialKgid) { mutableStateOf(initialEmployee?.kgid ?: initialKgid.orEmpty()) }
-    var name by remember(initialEmployee) { mutableStateOf(initialEmployee?.name ?: "") }
+    var name by remember(initialEmployee, initialName) { mutableStateOf(initialEmployee?.name ?: initialName) }
     // ✅ Use initialEmail if provided, otherwise use initialEmployee.email
     var email by remember(initialEmployee, initialEmail) { 
         mutableStateOf(initialEmployee?.email ?: initialEmail) 
@@ -181,22 +190,23 @@ fun CommonEmployeeForm(
         value = constantsViewModel.isDistrictLevelUnit(unit)
     }
 
+    // Refactored for readability as per review
     val stationsForSelectedDistrict = remember(district, unit, stationsByDistrict, unitSections) {
         if (unitSections.isNotEmpty()) {
             unitSections
-        } else if (district.isNotBlank()) {
-            // Try exact match first
-            val stations = stationsByDistrict[district] 
-                ?: stationsByDistrict.keys.find { it.equals(district, ignoreCase = true) }?.let { stationsByDistrict[it] }
-                ?: emptyList()
+        } else if (district.isBlank()) {
+            emptyList()
+        } else {
+            // 1. Find the key case-insensitively using map keys
+            val matchedKey = stationsByDistrict.keys.find { it.equals(district, ignoreCase = true) }
+            val stations = if (matchedKey != null) stationsByDistrict[matchedKey] ?: emptyList() else emptyList()
 
+            // 2. Apply unit-specific filtering
             when (unit) {
                 "DCRB" -> stations.filter { it.contains("DCRB", ignoreCase = true) }
                 "ESCOM" -> stations.filter { it.contains("ESCOM", ignoreCase = true) }
                 else -> stations
             }
-        } else {
-            emptyList()
         }
     }
 
@@ -226,10 +236,7 @@ fun CommonEmployeeForm(
         uri?.let { launchUCrop(context, it, uCropResultLauncher) }
     }
 
-    // validators
-    fun isValidEmail(v: String) = v.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(v).matches()
-    fun isValidMobile(v: String) = v.filter { it.isDigit() }.length in 10..13
-    fun isKgidValid(v: String) = v.isNotBlank()
+    // validators moved to top level
 
     val fieldSpacing = 6.dp
     val sectionSpacing = 10.dp
@@ -253,39 +260,62 @@ fun CommonEmployeeForm(
                 contentAlignment = Alignment.Center
             ) {
                 when {
-                    croppedPhotoUri != null -> Image(
-                        painter = rememberAsyncImagePainter(croppedPhotoUri),
-                        contentDescription = "Selected",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
+                    croppedPhotoUri != null -> {
+                        Image(
+                            painter = rememberAsyncImagePainter(croppedPhotoUri),
+                            contentDescription = "Selected Photo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        // Edit icon overlay
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Change Photo",
+                            tint = androidx.compose.ui.graphics.Color.White,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.4f), CircleShape)
+                                .padding(8.dp)
+                        )
+                    }
 
-                    !currentPhotoUrl.isNullOrBlank() -> Image(
-                        painter = rememberAsyncImagePainter(currentPhotoUrl),
-                        contentDescription = "Existing",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
+                    !currentPhotoUrl.isNullOrBlank() -> {
+                        Image(
+                            painter = rememberAsyncImagePainter(currentPhotoUrl),
+                            contentDescription = "Existing Photo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                         // Edit icon overlay for existing photo too
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Change Photo",
+                            tint = androidx.compose.ui.graphics.Color.White,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.4f), CircleShape)
+                                .padding(8.dp)
+                        )
+                    }
 
-                    else -> Text("Tap to select")
+                    else -> {
+                        // Empty State
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.AddAPhoto,
+                                contentDescription = "Select Photo",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(40.dp)
+                            )
+                            Text(
+                                "Add Photo",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
                 }
-            }
-
-            // Camera Icon Badge
-            Box(
-                modifier = Modifier
-                    .offset(x = 0.dp, y = 0.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-                    .clickable { showSourceDialog = true }
-                    .padding(10.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PhotoCamera,
-                    contentDescription = "Change Photo",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
             }
         }
 
@@ -357,6 +387,7 @@ fun CommonEmployeeForm(
                 OutlinedTextField(
                     value = kgid,
                     onValueChange = { 
+                        // For Officers, allow any characters (AGID). Otherwise, only allow digits (KGID).
                         if (isOfficer || isHighRankingOfficer) kgid = it else if (it.all { ch -> ch.isDigit() }) kgid = it
                     },
                     label = { Text(if(isOfficer || isHighRankingOfficer) "Officer ID (AGID)*" else "KGID*") },
@@ -373,10 +404,11 @@ fun CommonEmployeeForm(
                     modifier = Modifier.weight(1f)
                 ) {
                     OutlinedTextField(
-                        value = rank.ifEmpty { "Rank*" },
+                        value = rank,
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Rank*") },
+                        placeholder = { Text("Select Rank") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
                         isError = showValidationErrors && rank.isBlank()
@@ -387,6 +419,7 @@ fun CommonEmployeeForm(
                                 rank = selection
                                 if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
                                 // If rank is ministerial, verify if we need to clear station or just let UI hide it
+                                // Clearing it ensures validation passes if we accidentally had one selected
                                 if (ministerialRanks.any { it.equals(selection, ignoreCase = true) }) {
                                     station = ""
                                 }
@@ -398,9 +431,8 @@ fun CommonEmployeeForm(
                             })
                         }
                     }
-                }
-
-                // Metal Number (conditional - only show when required AND NOT OFFICER)
+                
+                // Metal Number (Dynamic)
                 if (showMetalNumberField && !isOfficer) {
                     OutlinedTextField(
                         value = metalNumber,
@@ -411,6 +443,8 @@ fun CommonEmployeeForm(
                         isError = showValidationErrors && metalNumber.isBlank()
                     )
                 }
+                }
+
             }
             // Error messages below the row
             if (showValidationErrors) {
@@ -449,8 +483,12 @@ fun CommonEmployeeForm(
                         readOnly = true,
                         label = { Text("Unit") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) }
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
+                        isError = showValidationErrors && unit.isBlank()
                     )
+                    if (showValidationErrors && unit.isBlank()) {
+                        Text("Unit required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
                     ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
                         units.forEach { selection ->
                             DropdownMenuItem(text = { Text(selection) }, onClick = {
@@ -642,15 +680,16 @@ fun CommonEmployeeForm(
             if (!isSelfEdit) {
                 OutlinedTextField(
                     value = kgid,
-                    onValueChange = {
-                         // Allow mostly digits but maybe letters for Officer ID (AGID) if needed?
-                         // Current KGID is digits only. AGID is usually string.
-                         // Let's allow alphanumeric for officers, digits only for employees.
-                         if (isOfficer) kgid = it else if (it.all { ch -> ch.isDigit() }) kgid = it
+                    onValueChange = { newValue ->
+                        kgid = when {
+                            isOfficer -> newValue
+                            newValue.all { it.isDigit() } -> newValue
+                            else -> kgid
+                        }
                     },
                     label = { Text(if (isOfficer) "Officer ID*" else "KGID*") },
                     modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer) KeyboardType.Text else KeyboardType.Number),
                     isError = showValidationErrors && !isKgidValid(kgid),
                     enabled = (isAdmin || isRegistration) && !isEdit
                 )
@@ -753,8 +792,12 @@ fun CommonEmployeeForm(
                     readOnly = true,
                     label = { Text("Unit") },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) }
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
+                    isError = showValidationErrors && unit.isBlank()
                 )
+                if (showValidationErrors && unit.isBlank()) {
+                    Text("Unit required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
                 ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
                     units.forEach { selection ->
                         DropdownMenuItem(text = { Text(selection) }, onClick = {
@@ -777,7 +820,7 @@ fun CommonEmployeeForm(
                     label = { Text("District*") },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
-                    isError = showValidationErrors && district.isBlank()
+                    isError = showValidationErrors && district.isBlank() && !isHighRankingOfficer
                 )
                 if (!isSelfEdit) {
                     ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {

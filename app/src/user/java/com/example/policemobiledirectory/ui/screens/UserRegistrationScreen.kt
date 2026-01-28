@@ -26,7 +26,8 @@ import kotlinx.coroutines.launch
 fun UserRegistrationScreen(
     navController: NavController,
     viewModel: EmployeeViewModel = hiltViewModel(),
-    initialEmail: String = ""
+    initialEmail: String = "",
+    initialName: String = ""
 ) {
     val context = LocalContext.current
     val currentUser by viewModel.currentUser.collectAsState()
@@ -87,6 +88,7 @@ fun UserRegistrationScreen(
             initialEmployee = null,
             initialKgid = null,
             initialEmail = initialEmail, // ✅ Prefill email from Google Sign-In
+            initialName = initialName,   // ✅ Prefill name from Google Sign-In
             onSubmit = { _, _ -> /* not used */ },
             onNavigateToTerms = {
                 navController.navigate(Routes.TERMS_AND_CONDITIONS)

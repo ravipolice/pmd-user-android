@@ -209,7 +209,7 @@ class AuthViewModel @Inject constructor(
                         _isLoggedIn.value = true
                         _googleSignInUiEvent.value = GoogleSignInUiEvent.SignInSuccess(user)
                     } else {
-                        _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email)
+                        _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, authResult.user?.displayName)
                     }
                 } else {
                     _googleSignInUiEvent.value = GoogleSignInUiEvent.Error("Sign-in failed: Firebase user is null.")

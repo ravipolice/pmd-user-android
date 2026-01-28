@@ -43,6 +43,7 @@ import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.navigation.Routes
 import com.example.policemobiledirectory.ui.theme.*
 import com.example.policemobiledirectory.ui.components.ContactCard
+import com.example.policemobiledirectory.ui.components.SearchFilterBar
 import com.example.policemobiledirectory.ui.theme.components.EmployeeCardAdmin
 import com.example.policemobiledirectory.utils.Constants
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
@@ -295,10 +296,7 @@ private fun EmployeeListContent(
     val ksrpBattalions by constantsViewModel.ksrpBattalions.collectAsState()
     
     // State for dropdown expansion
-    var unitExpanded by remember { mutableStateOf(false) }
-    var districtExpanded by remember { mutableStateOf(false) }
-    var stationExpanded by remember { mutableStateOf(false) }
-    var rankExpanded by remember { mutableStateOf(false) }
+    // var unitExpanded/districtExpanded/stationExpanded/rankExpanded removed
     
     // 🔹 DYNAMIC SECTIONS STATE (ADMIN)
     val unitSections by produceState<List<String>>(initialValue = emptyList(), key1 = searchParams.unit) {
@@ -315,9 +313,28 @@ private fun EmployeeListContent(
     }
     
     // Derived UI-specific lists
-    // LOGIC CHANGE: If Unit is KSRP, show KSRP Battalions instead of Districts
-    val districtsList = remember(districts, ksrpBattalions, searchParams.unit) {
-        if (searchParams.unit == "KSRP") ksrpBattalions else districts
+    // UNIT-TO-DISTRICT MAPPING LOGIC (Consolidated)
+    val districtsList = remember(districts, ksrpBattalions, searchParams.unit, fullUnits) {
+        val selected = searchParams.unit
+        val unitConfig = fullUnits.find { it.name == selected }
+        
+        val baseList = when {
+            selected == "All" -> districts
+            unitConfig != null -> {
+                when (unitConfig.mappingType) {
+                    "subset", "single", "commissionerate" -> {
+                         if (unitConfig.mappedDistricts.isNotEmpty()) unitConfig.mappedDistricts.sorted()
+                         else districts.filter { !ksrpBattalions.contains(it) }
+                    }
+                    "none" -> emptyList()
+                    "state" -> listOf("HQ")
+                    else -> districts.filter { !ksrpBattalions.contains(it) }
+                }
+            }
+            selected == "KSRP" -> ksrpBattalions
+            else -> districts.filter { !ksrpBattalions.contains(it) }
+        }
+        listOf("All") + baseList
     }
 
     val stationsForDistrictBase by viewModel.stationsForSelectedDistrict.collectAsState()
@@ -349,7 +366,7 @@ private fun EmployeeListContent(
     val allRanks = remember(ranks) { listOf("All") + ranks }
 
 
-    val searchFields = SearchFilter.values().toList()
+    // val searchFields removed
     val listState = rememberLazyListState()
 
     Column(
@@ -360,300 +377,31 @@ private fun EmployeeListContent(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
 
-        // 🔹 ROW 1: UNIT & DISTRICT (Primary Filters)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            // UNIT Dropdown
-            Box(
-                modifier = Modifier
-                    .weight(0.4f)
-                    .zIndex(10f)
-            ) {
-                ExposedDropdownMenuBox(
-                    expanded = unitExpanded,
-                    onExpandedChange = { unitExpanded = !unitExpanded },
-                ) {
-                    OutlinedTextField(
-                        value = searchParams.unit,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Unit") },
-                        leadingIcon = null,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        singleLine = true,
-                        maxLines = 1,
-                        shape = RoundedCornerShape(15.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryTeal,
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedLabelColor = PrimaryTeal,
-                            unfocusedLabelColor = PrimaryTeal
-                        )
-                    )
-                    ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
-                        units.forEach { unit ->
-                            DropdownMenuItem(text = { Text(unit) }, onClick = { unitExpanded = false; viewModel.updateSelectedUnit(unit) })
-                        }
-                    }
-                }
-            }
-
-            // DISTRICT Dropdown
-            Box(
-                modifier = Modifier
-                    .weight(0.6f)
-                    .zIndex(10f)
-            ) {
-                ExposedDropdownMenuBox(
-                    expanded = districtExpanded,
-                    onExpandedChange = { districtExpanded = !districtExpanded },
-                ) {
-                    OutlinedTextField(
-                        value = searchParams.district,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("District") },
-                        leadingIcon = null,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        singleLine = true,
-                        maxLines = 1,
-                        shape = RoundedCornerShape(15.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryTeal,
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedLabelColor = PrimaryTeal,
-                            unfocusedLabelColor = PrimaryTeal
-                        )
-                    )
-                    ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
-                         // UNIT-TO-DISTRICT MAPPING LOGIC (ADMIN)
-                         val districtsList = remember(districts, ksrpBattalions, searchParams.unit, fullUnits) {
-                            val selected = searchParams.unit
-                            val unitConfig = fullUnits.find { it.name == selected }
-                            
-                            val baseList = when {
-                                selected == "All" -> districts
-                                unitConfig != null -> {
-                                    when (unitConfig.mappingType) {
-                                        "subset", "single", "commissionerate" -> {
-                                             if (unitConfig.mappedDistricts.isNotEmpty()) unitConfig.mappedDistricts.sorted()
-                                             else districts.filter { !ksrpBattalions.contains(it) }
-                                        }
-                                        "none" -> emptyList()
-                                        "state" -> listOf("HQ")
-                                        else -> districts.filter { !ksrpBattalions.contains(it) }
-                                    }
-                                }
-                                selected == "KSRP" -> ksrpBattalions
-                                else -> districts.filter { !ksrpBattalions.contains(it) }
-                            }
-                            listOf("All") + baseList
-                         }
-                        
-                         districtsList.forEach { district ->
-                            DropdownMenuItem(text = { Text(district) }, onClick = { districtExpanded = false; viewModel.updateSelectedDistrict(district); viewModel.updateSelectedStation("All") })
-                         }
-                    }
-                }
-            }
-        }
-
-        // 🔹 ROW 2: STATION & RANK (Secondary Filters)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            // STATION Dropdown (Hidden for District Level Units)
-            if (!isDistrictLevelUnit) {
-                Box(
-                    modifier = Modifier
-                        .weight(0.6f)
-                        .zIndex(9f)
-                ) {
-                ExposedDropdownMenuBox(
-                    expanded = stationExpanded,
-                    onExpandedChange = {
-                        if (searchParams.district != "All" || unitSections.isNotEmpty()) stationExpanded = !stationExpanded
-                    },
-                ) {
-                    OutlinedTextField(
-                        value = searchParams.station,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(if (unitSections.isNotEmpty()) "Section" else "Station") },
-                        leadingIcon = null,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        enabled = searchParams.district != "All" || unitSections.isNotEmpty(),
-                        singleLine = true,
-                        maxLines = 1,
-                        shape = RoundedCornerShape(15.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryTeal,
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedLabelColor = PrimaryTeal,
-                            unfocusedLabelColor = PrimaryTeal
-                        )
-                    )
-                    ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
-                        stationsForDistrict.forEach { station ->
-                            DropdownMenuItem(text = { Text(station) }, onClick = { stationExpanded = false; viewModel.updateSelectedStation(station) })
-                        }
-                    }
-                }
-            }
-            }
-            
-            // RANK Dropdown
-            Box(
-                modifier = Modifier
-                    .weight(if (isDistrictLevelUnit) 1f else 0.4f)
-                    .zIndex(9f)
-            ) {
-                ExposedDropdownMenuBox(
-                    expanded = rankExpanded,
-                    onExpandedChange = { rankExpanded = !rankExpanded },
-                ) {
-                    OutlinedTextField(
-                        value = searchParams.rank,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Rank") },
-                        leadingIcon = null,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        singleLine = true,
-                        maxLines = 1,
-                        shape = RoundedCornerShape(15.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryTeal,
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedLabelColor = PrimaryTeal,
-                            unfocusedLabelColor = PrimaryTeal
-                        )
-                    )
-                    ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
-                        allRanks.forEach { rank ->
-                            DropdownMenuItem(text = { Text(rank) }, onClick = { rankExpanded = false; viewModel.updateSelectedRank(rank) })
-                        }
-                    }
-                }
-            }
-        }
-
-        // 🔹 ROW 3: SEARCH BAR
-
-        val searchLabel = when (searchParams.filter) {
-            SearchFilter.METAL_NUMBER -> "Metal"
-            SearchFilter.KGID -> "KGID"
-            SearchFilter.MOBILE -> "Mobile"
-            SearchFilter.STATION -> "Station"
-            SearchFilter.RANK -> "Rank"
-            SearchFilter.NAME -> "Name"
-            SearchFilter.BLOOD_GROUP -> "Blood"
-            SearchFilter.ALL -> "All"
-        }
-
-        // Determine keyboard type based on selected filter
-        val keyboardType = when (searchParams.filter) {
-            SearchFilter.MOBILE, SearchFilter.METAL_NUMBER -> KeyboardType.Number
-            else -> KeyboardType.Text
-        }
-        
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, Color.LightGray, RoundedCornerShape(15.dp))
-                .shadow(elevation = 2.dp, shape = RoundedCornerShape(15.dp))
-        ) {
-            OutlinedTextField(
-                value = searchParams.query,
-                onValueChange = {
-                    viewModel.updateSearchQuery(it)
-                },
-                placeholder = { Text("Search by $searchLabel") },
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = "Search", tint = PrimaryTeal)
-                },
-                trailingIcon = {
-                    if (searchParams.query.isNotEmpty()) {
-                        IconButton(onClick = {
-                            viewModel.updateSearchQuery("")
-                        }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = PrimaryTeal)
-                        }
-                    }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(15.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedLabelColor = PrimaryTeal,
-                    unfocusedLabelColor = PrimaryTeal
-                )
-            )
-        }
-
-        // 🔹 FILTER CHIPS
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            contentPadding = PaddingValues(horizontal = 2.dp),
-            modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)
-        ) {
-            items(SearchFilter.values().toList()) { filter ->
-                if (filter == SearchFilter.KGID && !isAdmin) return@items
-                if (filter == SearchFilter.RANK) return@items
-
-                val selected = searchParams.filter == filter
-                val labelText = when (filter) {
-                    SearchFilter.METAL_NUMBER -> "Metal"
-                    SearchFilter.KGID -> "KGID"
-                    SearchFilter.BLOOD_GROUP -> "Blood"
-                    else -> filter.name.lowercase().replaceFirstChar { it.uppercase() }
-                }
-
-                Box(modifier = Modifier.shadow(elevation = if (selected) 4.dp else 0.dp, shape = RoundedCornerShape(20.dp))) {
-                    FilterChip(
-                        selected = selected,
-                        onClick = { viewModel.updateSearchFilter(filter) },
-                        enabled = true,
-                        label = { Text(labelText, fontSize = 13.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal) },
-                        shape = RoundedCornerShape(20.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = if (selected) Color.Transparent else ChipUnselected,
-                            selectedLabelColor = Color.White,
-                            containerColor = ChipUnselected,
-                            labelColor = if (selected) Color.White else PrimaryTeal
-                        ),
-                        modifier = if (selected) {
-                            Modifier.background(
-                                brush = Brush.linearGradient(
-                                    listOf(ChipSelectedStart, ChipSelectedEnd)
-                                ),
-                                shape = RoundedCornerShape(20.dp)
-                            )
-                        } else {
-                            Modifier
-                        }
-                    )
-                }
-            }
-        }
+        // 🔹 SEARCH & FILTER BAR
+        SearchFilterBar(
+            units = units,
+            districts = districtsList,
+            stations = stationsForDistrict,
+            ranks = allRanks,
+            selectedUnit = searchParams.unit,
+            selectedDistrict = searchParams.district,
+            selectedStation = searchParams.station,
+            selectedRank = searchParams.rank,
+            onUnitChange = { viewModel.updateSelectedUnit(it) },
+            onDistrictChange = { 
+                viewModel.updateSelectedDistrict(it)
+                viewModel.updateSelectedStation("All")
+            },
+            onStationChange = { viewModel.updateSelectedStation(it) },
+            onRankChange = { viewModel.updateSelectedRank(it) },
+            searchQuery = searchParams.query,
+            onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+            searchFilter = searchParams.filter,
+            onSearchFilterChange = { viewModel.updateSearchFilter(it) },
+            isDistrictLevelUnit = isDistrictLevelUnit,
+            isAdmin = isAdmin,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
 
         // 🔹 UNIFIED CONTACTS LIST
         Box(modifier = Modifier.weight(1f)) {

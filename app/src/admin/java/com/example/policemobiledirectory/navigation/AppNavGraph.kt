@@ -16,6 +16,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.policemobiledirectory.ui.screens.*
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import kotlinx.coroutines.launch
+import android.net.Uri
 import com.example.policemobiledirectory.viewmodel.AddEditEmployeeViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.policemobiledirectory.ui.screens.AddEditEmployeeScreen
@@ -122,8 +123,9 @@ private fun AppNavHostContent(
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 },
-                onRegisterNewUser = { email ->
-                    navController.navigate("${Routes.USER_REGISTRATION}?email=$email")
+                onRegisterNewUser = { email, name ->
+                    val encodedName = if (name != null) Uri.encode(name) else ""
+                    navController.navigate("${Routes.USER_REGISTRATION}?email=$email&name=$encodedName")
                 },
                 onForgotPinClicked = {
                     navController.navigate(Routes.FORGOT_PIN)
@@ -135,19 +137,26 @@ private fun AppNavHostContent(
 
         // --- USER REGISTRATION ---
         composable(
-            route = "${Routes.USER_REGISTRATION}?email={email}",
+            route = "${Routes.USER_REGISTRATION}?email={email}&name={name}",
             arguments = listOf(
                 androidx.navigation.navArgument("email") {
+                    type = androidx.navigation.NavType.StringType
+                    defaultValue = ""
+                },
+                androidx.navigation.navArgument("name") {
                     type = androidx.navigation.NavType.StringType
                     defaultValue = ""
                 }
             )
         ) { backStackEntry ->
             val email = backStackEntry.arguments?.getString("email") ?: ""
+            val nameArg = backStackEntry.arguments?.getString("name") ?: ""
+            val initialName = if (nameArg.isNotEmpty()) Uri.decode(nameArg) else ""
             UserRegistrationScreen(
                 navController = navController,
                 viewModel = employeeViewModel,
-                initialEmail = email
+                initialEmail = email,
+                initialName = initialName
             )
         }
 

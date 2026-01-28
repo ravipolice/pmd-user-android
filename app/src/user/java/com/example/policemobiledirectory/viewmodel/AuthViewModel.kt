@@ -200,16 +200,37 @@ class AuthViewModel @Inject constructor(
             try {
                 val credential = GoogleAuthProvider.getCredential(googleIdToken, null)
                 val authResult = auth.signInWithCredential(credential).await()
+                
                 if (authResult.user != null) {
-                    val existingUser = employeeRepo.getEmployeeByEmail(email)
-                    if (existingUser != null) {
-                        val user = existingUser.toEmployee()
-                        sessionManager.saveLogin(user.email, user.isAdmin)
-                        _currentUser.value = user
-                        _isLoggedIn.value = true
-                        _googleSignInUiEvent.value = GoogleSignInUiEvent.SignInSuccess(user)
-                    } else {
-                        _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email)
+                    // Check if user exists in our database
+                    when (val result = employeeRepo.getUserByEmail(email)) {
+                        is RepoResult.Success -> {
+                            val user = result.data
+                            if (user != null) {
+                                // User exists -> Login
+                                sessionManager.saveLogin(user.email, user.isAdmin)
+                                _currentUser.value = user
+                                _isLoggedIn.value = true
+                                _googleSignInUiEvent.value = GoogleSignInUiEvent.SignInSuccess(user)
+                            } else {
+                                // User fetch success but null -> Registration Required
+                                val name = authResult.user?.displayName
+                                _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, name)
+                            }
+                        }
+                        is RepoResult.Error -> {
+                            // If error is "User not found" or similar, go to registration
+                            // Otherwise, might be network error. 
+                            // For user experience, if we can't find them, we usually prompt reg 
+                            // OR show check connection. 
+                            // Let's assume registration required if not found, but log error.
+                            Log.w("GoogleSignIn", "User lookup failed or not found: ${result.message}")
+                            val name = authResult.user?.displayName
+                            _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, name)
+                        }
+                        else -> {
+                            _googleSignInUiEvent.value = GoogleSignInUiEvent.Error("Unknown state during user lookup")
+                        }
                     }
                 } else {
                     _googleSignInUiEvent.value = GoogleSignInUiEvent.Error("Sign-in failed: Firebase user is null.")

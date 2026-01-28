@@ -14,7 +14,9 @@ import androidx.navigation.navArgument
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.Modifier // Explicit import if needed, though used via FQN in content
 import com.example.policemobiledirectory.ui.screens.*
+import android.net.Uri
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import kotlinx.coroutines.launch
 import com.example.policemobiledirectory.ui.viewmodel.DocumentsViewModel
@@ -119,8 +121,9 @@ private fun AppNavHostContent(
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 },
-                onRegisterNewUser = { email ->
-                    navController.navigate("${Routes.USER_REGISTRATION}?email=$email")
+                onRegisterNewUser = { email, name ->
+                    val encodedName = Uri.encode(name ?: "")
+                    navController.navigate("${Routes.USER_REGISTRATION}?email=$email&name=$encodedName")
                 },
                 onForgotPinClicked = {
                     navController.navigate(Routes.FORGOT_PIN)
@@ -132,19 +135,25 @@ private fun AppNavHostContent(
 
         // --- USER REGISTRATION ---
         composable(
-            route = "${Routes.USER_REGISTRATION}?email={email}",
+            route = "${Routes.USER_REGISTRATION}?email={email}&name={name}",
             arguments = listOf(
                 androidx.navigation.navArgument("email") {
+                    type = androidx.navigation.NavType.StringType
+                    defaultValue = ""
+                },
+                androidx.navigation.navArgument("name") {
                     type = androidx.navigation.NavType.StringType
                     defaultValue = ""
                 }
             )
         ) { backStackEntry ->
             val email = backStackEntry.arguments?.getString("email") ?: ""
+            val name = backStackEntry.arguments?.getString("name") ?: ""
             UserRegistrationScreen(
                 navController = navController,
                 viewModel = employeeViewModel,
-                initialEmail = email
+                initialEmail = email,
+                initialName = name
             )
         }
 

@@ -975,12 +975,26 @@ open class EmployeeRepository @Inject constructor(
 
     suspend fun getEmployeeByEmail(email: String): EmployeeEntity? = withContext(ioDispatcher) {
         val normalizedEmail = email.trim().lowercase()
-        // Primary: local Room
-        val local = employeeDao.getEmployeeByEmail(normalizedEmail)
+        val rawEmail = email.trim()
+
+        // Primary: local Room (try normalized first)
+        var local = employeeDao.getEmployeeByEmail(normalizedEmail)
+        
+        // If not found locally, try raw email (for legacy case-sensitive data)
+        if (local == null && normalizedEmail != rawEmail) {
+            local = employeeDao.getEmployeeByEmail(rawEmail)
+        }
+        
         if (local != null) return@withContext local
 
-        // Fallback: Firestore
-        val snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
+        // Fallback: Firestore (try normalized first)
+        var snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
+        
+        // If not found in Firestore with lowercase, try raw email (legacy data support)
+        if (snapshot.isEmpty && normalizedEmail != rawEmail) {
+            Log.d(TAG, "getEmployeeByEmail: User not found with lowercase '$normalizedEmail', trying raw '$rawEmail'")
+            snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, rawEmail).limit(1).get().await()
+        }
         val doc = snapshot.documents.firstOrNull()
         // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
         val docKgid = doc?.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc?.id ?: ""
@@ -1322,11 +1336,24 @@ open class EmployeeRepository @Inject constructor(
                 }
                 !email.isNullOrBlank() -> {
                     val normalizedEmail = email.trim().lowercase()
-                    val snapshot = employeesCollection
+                    val rawEmail = email.trim()
+
+                    // Try lowercase first
+                    var snapshot = employeesCollection
                         .whereEqualTo(FIELD_EMAIL, normalizedEmail)
                         .limit(1)
                         .get()
                         .await()
+                    
+                    // If not found, try raw email (legacy/case-sensitive fallback)
+                    if (snapshot.isEmpty && normalizedEmail != rawEmail) {
+                        Log.d(TAG, "checkEmployeeExists: User not found with lowercase, trying raw '$rawEmail'")
+                        snapshot = employeesCollection
+                            .whereEqualTo(FIELD_EMAIL, rawEmail)
+                            .limit(1)
+                            .get()
+                            .await()
+                    }
                     snapshot.documents.isNotEmpty()
                 }
                 else -> false

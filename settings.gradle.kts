@@ -18,4 +18,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "PoliceMobileDirectory"
 include(":app")
-include(":nudi")
