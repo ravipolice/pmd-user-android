@@ -43,10 +43,10 @@ object Constants {
         "Bagalkot", "Ballari", "Belagavi City", "Belagavi Dist", "Bengaluru City", "Bengaluru Dist", "Bidar",
         "Chamarajanagar", "Chikkaballapura", "Chikkamagaluru", "Chitradurga",
         "Dakshina Kannada", "Davanagere", "Dharwad", "Gadag", "Hassan", "Haveri",
-        "Hubballi Dharwad City", "K.G.F", "Kalaburagi", "Kalaburagi City", "Kodagu", "Kolar", "Koppal", "Mandya",
+        "Hubballi Dharwad City", "Kalaburagi", "Kalaburagi City", "Kodagu", "Kolar", "Koppal", "Mandya",
         "Mangaluru City", "Mysuru City", "Mysuru Dist",
         "Raichur", "Ramanagara", "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada",
-        "Vijayanagara", "Vijayapur", "Yadgir"
+        "Vijayanagara", "Yadgir"
     ).sorted()
 
     // Functional Units for filtering
@@ -473,7 +473,7 @@ object Constants {
                 "FPB Vijayanagara", "MCU Vijayanagara", "DCRB Vijayanagara", "DSB Vijayanagara", "SMMC Vijayanagara",
                 "State INT Vijayanagara", "DCRE Vijayanagara", "Lokayukta Vijayanagara", "ESCOM Vijayanagara"
             )
-            "Vijayapur" -> listOf(
+            "Vijayapura" -> listOf(
                 "Adarsh Nagar PS", "Alamatti PS", "Almel PS", "APMC PS", "Babaleshwar PS",
                 "Basavan Bagewadi PS", "Chadachan PS", "Devara Hipparagi PS", "Gandhi Chowk PS",
                 "Golgumbaz PS", "Hortti PS", "Indi PS", "Indi Rural PS", "Jalanagar PS", "Kalkeri PS",
