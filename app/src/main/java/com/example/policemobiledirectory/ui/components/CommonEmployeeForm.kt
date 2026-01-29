@@ -91,6 +91,7 @@ fun CommonEmployeeForm(
 
     val ranksRequiringMetalNumber by constantsViewModel.ranksRequiringMetalNumber.collectAsStateWithLifecycle()
     val units by constantsViewModel.units.collectAsStateWithLifecycle()
+    val unitSections by constantsViewModel.unitSections.collectAsStateWithLifecycle()
 
     // fields
     var kgid by remember(initialEmployee, initialKgid) { mutableStateOf(initialEmployee?.kgid ?: initialKgid.orEmpty()) }
@@ -126,17 +127,63 @@ fun CommonEmployeeForm(
     var showValidationErrors by remember { mutableStateOf(false) }
     var unitExpanded by remember { mutableStateOf(false) }
 
-    val showMetalNumberField = remember(rank, ranksRequiringMetalNumber) { ranksRequiringMetalNumber.contains(rank) }
-    val stationsForSelectedDistrict = remember(district, stationsByDistrict) {
-        if (district.isNotBlank()) {
-            // Try exact match first
-            stationsByDistrict[district] 
-                ?: stationsByDistrict.keys.find { it.equals(district, ignoreCase = true) }?.let { stationsByDistrict[it] }
-                ?: emptyList()
+    // Compute filtered ranks based on selected unit logic
+    val filteredRanks = remember(rank, units, unit, ranks) {
+        val selectedUnitObj = units.find { it.name == unit }
+        val applicableRanks = selectedUnitObj?.applicableRanks ?: emptyList()
+        
+        if (applicableRanks.isNotEmpty()) {
+             // If unit has restrictions, filter ranks. Also include current rank if set to avoid invalid state.
+             ranks.filter { r -> applicableRanks.contains(r) || (rank.isNotBlank() && r == rank) }
         } else {
-            emptyList()
+             ranks
         }
     }
+
+    // Fetch unit sections when unit changes
+    LaunchedEffect(unit) {
+        if (unit.isNotBlank()) {
+            constantsViewModel.fetchUnitSections(unit)
+        } else {
+            constantsViewModel.clearUnitSections()
+        }
+    }
+
+    // Determine if we should show HQ in district list and if sections should replace stations
+    val selectedUnitObj = remember(unit, units) { units.find { it.name == unit } }
+    val isHqUnit = selectedUnitObj?.isHqLevel == true
+    
+    // Dynamic district list: Add "Unit HQ" if applicable
+    val availableDistricts = remember(districts, isHqUnit, unitSections) {
+        if (isHqUnit || unitSections.isNotEmpty()) {
+            listOf("Unit HQ") + districts
+        } else {
+            districts
+        }
+    }
+    
+    // Determine if "Station" label should be "Section"
+    val showSections = remember(district, unitSections) { 
+        district == "Unit HQ" && unitSections.isNotEmpty() 
+    }
+    
+    // Determine available "stations" (could be actual stations OR unit sections)
+    val availableStationsOrSections = remember(district, stationsByDistrict, unitSections, showSections) {
+        if (showSections) {
+            unitSections
+        } else {
+            if (district.isNotBlank() && district != "Unit HQ") {
+               stationsByDistrict[district] 
+                    ?: stationsByDistrict.keys.find { it.equals(district, ignoreCase = true) }?.let { stationsByDistrict[it] }
+                    ?: emptyList()
+            } else {
+                emptyList()
+            }
+        }
+    }
+
+    val showMetalNumberField = remember(rank, ranksRequiringMetalNumber) { ranksRequiringMetalNumber.contains(rank) }
+    // Removed old stationsForSelectedDistrict as it is replaced by availableStationsOrSections
 
     // UCrop launcher
     val uCropResultLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
@@ -327,7 +374,7 @@ fun CommonEmployeeForm(
                         isError = showValidationErrors && rank.isBlank()
                     )
                     ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
-                        ranks.forEach { selection ->
+                        filteredRanks.forEach { selection ->
                             DropdownMenuItem(text = { Text(selection) }, onClick = {
                                 rank = selection
                                 if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
@@ -380,7 +427,7 @@ fun CommonEmployeeForm(
                 )
                 if (!isSelfEdit) {
                     ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
-                        districts.forEach { selection ->
+                        availableDistricts.forEach { selection ->
                             DropdownMenuItem(text = { Text(selection) }, onClick = {
                                 if (district != selection) station = ""
                                 district = selection
@@ -401,26 +448,31 @@ fun CommonEmployeeForm(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Station
+                // Station / Section
                 ExposedDropdownMenuBox(
                     expanded = stationExpanded,
                     onExpandedChange = {
-                        if (district.isNotBlank() && stationsForSelectedDistrict.isNotEmpty()) stationExpanded = !stationExpanded
+                        if (availableStationsOrSections.isNotEmpty()) stationExpanded = !stationExpanded
                     },
                     modifier = Modifier.weight(1f)
                 ) {
                     OutlinedTextField(
-                        value = station.ifEmpty { if (district.isNotBlank()) "Select Station" else "Select District First" },
+                        value = station.ifEmpty { 
+                            if (showSections) "Select Section"
+                            else if (district.isNotBlank() && district != "Unit HQ") "Select Station" 
+                            else if (district == "Unit HQ") "Select Section" // Fallback if sections empty but HQ selected
+                            else "Select District First" 
+                        },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Station*") },
+                        label = { Text(if (showSections) "Section*" else "Station*") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
-                        enabled = district.isNotBlank() && stationsForSelectedDistrict.isNotEmpty(),
+                        enabled = availableStationsOrSections.isNotEmpty(),
                         isError = showValidationErrors && station.isBlank()
                     )
                     ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
-                        stationsForSelectedDistrict.forEach { selection ->
+                        availableStationsOrSections.forEach { selection ->
                             DropdownMenuItem(text = { Text(selection) }, onClick = {
                                 station = selection
                                 stationExpanded = false
@@ -445,9 +497,11 @@ fun CommonEmployeeForm(
                     )
                     ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
                         units.forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                unit = selection
+                            DropdownMenuItem(text = { Text(selection.name) }, onClick = {
+                                unit = selection.name
                                 unitExpanded = false
+                                // Clear rank if new unit doesn't support it (optional, but good for consistency)
+                                // For now, we keep it but the dropdown list will filter out non-matching ones.
                             })
                         }
                     }
@@ -621,7 +675,7 @@ fun CommonEmployeeForm(
                     isError = showValidationErrors && rank.isBlank()
                 )
                 ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
-                    ranks.forEach { selection ->
+                    filteredRanks.forEach { selection ->
                         DropdownMenuItem(text = { Text(selection) }, onClick = {
                             rank = selection
                             if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
@@ -662,7 +716,7 @@ fun CommonEmployeeForm(
                 )
                 if (!isSelfEdit) {
                     ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
-                        districts.forEach { selection ->
+                        availableDistricts.forEach { selection ->
                             DropdownMenuItem(text = { Text(selection) }, onClick = {
                                 if (district != selection) station = ""
                                 district = selection
@@ -713,8 +767,8 @@ fun CommonEmployeeForm(
                 )
                 ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
                     units.forEach { selection ->
-                        DropdownMenuItem(text = { Text(selection) }, onClick = {
-                            unit = selection
+                        DropdownMenuItem(text = { Text(selection.name) }, onClick = {
+                            unit = selection.name
                             unitExpanded = false
                         })
                     }

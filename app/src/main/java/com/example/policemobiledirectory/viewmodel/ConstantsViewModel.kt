@@ -31,8 +31,8 @@ class ConstantsViewModel @Inject constructor(
     private val _districts = MutableStateFlow<List<String>>(emptyList())
     val districts: StateFlow<List<String>> = _districts.asStateFlow()
 
-    private val _units = MutableStateFlow<List<String>>(emptyList())
-    val units: StateFlow<List<String>> = _units.asStateFlow()
+    private val _units = MutableStateFlow<List<com.example.policemobiledirectory.model.Unit>>(emptyList())
+    val units: StateFlow<List<com.example.policemobiledirectory.model.Unit>> = _units.asStateFlow()
 
     private val _stationsByDistrict = MutableStateFlow<Map<String, List<String>>>(emptyMap())
     val stationsByDistrict: StateFlow<Map<String, List<String>>> = _stationsByDistrict.asStateFlow()
@@ -42,6 +42,19 @@ class ConstantsViewModel @Inject constructor(
 
     private val _ranksRequiringMetalNumber = MutableStateFlow(constantsRepository.getRanksRequiringMetalNumber())
     val ranksRequiringMetalNumber: StateFlow<List<String>> = _ranksRequiringMetalNumber.asStateFlow()
+
+    private val _unitSections = MutableStateFlow<List<String>>(emptyList())
+    val unitSections: StateFlow<List<String>> = _unitSections.asStateFlow()
+
+    fun fetchUnitSections(unitName: String) {
+        viewModelScope.launch {
+            _unitSections.value = constantsRepository.getUnitSections(unitName)
+        }
+    }
+
+    fun clearUnitSections() {
+        _unitSections.value = emptyList()
+    }
 
     // Loading and error states for refresh operation
     private val _refreshStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)

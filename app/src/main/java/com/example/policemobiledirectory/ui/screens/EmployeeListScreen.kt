@@ -258,7 +258,8 @@ private fun EmployeeListContent(
     // 🔹 UNIT SELECTION STATE
     var selectedUnit by remember { mutableStateOf("All") }
     var unitExpanded by remember { mutableStateOf(false) }
-    val unitsList = remember(units) { units } // Units are already "All" + list in ViewModel/Repo or just list
+    // units is now List<Unit>, so map to names for display, but keep objects for logic
+    val unitsList = remember(units) { listOf("All") + units.map { it.name } } 
     val selectedUnitState by viewModel.selectedUnit.collectAsStateWithLifecycle()
     
     // Sync selectedUnit with ViewModel
@@ -326,7 +327,22 @@ private fun EmployeeListContent(
 
     var selectedRank by remember { mutableStateOf("All") }
     var rankExpanded by remember { mutableStateOf(false) }
-    val allRanks = remember(ranks) { listOf("All") + ranks }
+    
+    // Compute filtered ranks based on selected unit
+    val filteredRanks = remember(selectedUnit, units, ranks) {
+        if (selectedUnit == "All") {
+            listOf("All") + ranks
+        } else {
+            val selectedUnitObj = units.find { it.name == selectedUnit }
+            val applicableRanks = selectedUnitObj?.applicableRanks ?: emptyList()
+            if (applicableRanks.isNotEmpty()) {
+                listOf("All") + ranks.filter { applicableRanks.contains(it) }
+            } else {
+                listOf("All") + ranks
+            }
+        }
+    }
+    
     val selectedRankState by viewModel.selectedRank.collectAsStateWithLifecycle()
     
     // Sync selectedRank with ViewModel
@@ -589,11 +605,12 @@ private fun EmployeeListContent(
                         unfocusedLabelColor = PrimaryTeal
                     )
                 )
+
                 ExposedDropdownMenu(
                     expanded = rankExpanded,
                     onDismissRequest = { rankExpanded = false }
                 ) {
-                    allRanks.forEach { rank ->
+                    filteredRanks.forEach { rank ->
                         DropdownMenuItem(
                             text = { Text(rank) },
                             onClick = {

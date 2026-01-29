@@ -214,12 +214,16 @@ class ConstantsRepository @Inject constructor(
      * Get units with fallback to hardcoded constants
      * Now attempts to load from Firestore cache first
      */
-    fun getUnits(): List<String> {
+    /**
+     * Get units with fallback to hardcoded constants
+     * Now attempts to load from Firestore cache first
+     */
+    fun getUnits(): List<com.example.policemobiledirectory.model.Unit> {
         val json = prefs.getString(UNITS_CACHE_KEY, null)
         if (!json.isNullOrEmpty()) {
             try {
-                val type = object : TypeToken<List<String>>() {}.type
-                val cachedUnits: List<String> = Gson().fromJson(json, type)
+                val type = object : TypeToken<List<com.example.policemobiledirectory.model.Unit>>() {}.type
+                val cachedUnits: List<com.example.policemobiledirectory.model.Unit> = Gson().fromJson(json, type)
                 if (cachedUnits.isNotEmpty()) {
                     return cachedUnits
                 }
@@ -227,7 +231,58 @@ class ConstantsRepository @Inject constructor(
                 Log.e("ConstantsRepository", "Failed to parse cached units", e)
             }
         }
-        return Constants.defaultUnitsList
+        return Constants.defaultUnitsList.map { com.example.policemobiledirectory.model.Unit(name = it) }
+    }
+
+    /**
+     * Fetch units from Firestore "units" collection
+     */
+    private suspend fun fetchUnitsFromFirestore() {
+        try {
+            Log.d("ConstantsRepository", "🔄 Fetching units from Firestore...")
+            val snapshot = firestore.collection("units")
+                .whereEqualTo("isActive", true)
+                .get()
+                .await()
+
+            val units = snapshot.documents
+                .mapNotNull { doc ->
+                    val name = doc.getString("name") ?: return@mapNotNull null
+                    val isActive = doc.getBoolean("isActive") ?: true
+                    val applicableRanks = doc.get("applicableRanks") as? List<String> ?: emptyList()
+                    val isHqLevel = doc.getBoolean("isHqLevel") ?: false
+                    com.example.policemobiledirectory.model.Unit(name, isActive, applicableRanks, isHqLevel)
+                }
+                .sortedBy { it.name }
+
+            if (units.isNotEmpty()) {
+                val json = Gson().toJson(units)
+                prefs.edit().putString(UNITS_CACHE_KEY, json).apply()
+                Log.d("ConstantsRepository", "✅ Fetched ${units.size} units from Firestore")
+            } else {
+                Log.w("ConstantsRepository", "⚠️ No active units found in Firestore")
+            }
+        } catch (e: Exception) {
+            Log.e("ConstantsRepository", "❌ Failed to fetch units from Firestore", e)
+        }
+    }
+
+    /**
+     * Fetch sections for a specific unit from "unit_sections" collection
+     */
+    suspend fun getUnitSections(unitName: String): List<String> = withContext(Dispatchers.IO) {
+        try {
+            val doc = firestore.collection("unit_sections").document(unitName).get().await()
+            if (doc.exists()) {
+                val sections = doc.get("sections") as? List<String>
+                sections ?: emptyList()
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Log.e("ConstantsRepository", "❌ Failed to fetch sections for unit: $unitName", e)
+            emptyList()
+        }
     }
 
     /**
