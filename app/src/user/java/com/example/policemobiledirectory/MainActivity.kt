@@ -83,8 +83,8 @@ class MainActivity : ComponentActivity() {
         val credentialManager = CredentialManager.create(this)
         val googleIdOption = GetGoogleIdOption.Builder()
             .setServerClientId(getString(R.string.default_web_client_id))
-            .setFilterByAuthorizedAccounts(!wasLoggedOut)
-            .setAutoSelectEnabled(!wasLoggedOut)
+            .setFilterByAuthorizedAccounts(false)
+            .setAutoSelectEnabled(false)
             .build()
 
         val request = GetCredentialRequest.Builder()
@@ -138,6 +138,7 @@ class MainActivity : ComponentActivity() {
                             ).show()
 
                             // ✅ Navigate to login only after clearing session
+                            wasLoggedOut = true
                             navController.navigate(Routes.LOGIN) {
                                 popUpTo(0) { inclusive = true }
                                 launchSingleTop = true

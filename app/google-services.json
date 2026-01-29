@@ -52,14 +52,6 @@
       },
       "oauth_client": [
         {
-          "client_id": "603972083927-8col23gr7qq5e551hdsqlo45nfh8u80e.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.pmd.userapp",
-            "certificate_hash": "47d8adcd535c94c69c2d0259dee44c4e06d06dea"
-          }
-        },
-        {
           "client_id": "603972083927-9a121s1a0jpfo51tttgdmb7hcu1qvh0u.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
