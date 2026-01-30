@@ -35,6 +35,9 @@ interface EmployeeDao {
     @Query("SELECT * FROM employees WHERE email = :email LIMIT 1")
     suspend fun getEmployeeByEmail(email: String): EmployeeEntity?
 
+    @Query("SELECT * FROM employees WHERE searchBlob LIKE :query ORDER BY name ASC LIMIT 100")
+    fun searchByBlob(query: String): Flow<List<EmployeeEntity>>
+
 
     // ---------- FALLBACK SEARCH ----------
     @Query("""

@@ -35,4 +35,9 @@ object DatabaseModule {
     @Singleton
     fun provideNotificationDao(database: AppDatabase): NotificationDao =
         database.notificationDao()
+
+    @Provides
+    @Singleton
+    fun provideOfficerDao(database: AppDatabase): com.example.policemobiledirectory.data.local.OfficerDao =
+        database.officerDao()
 }

@@ -1,94 +1,138 @@
 package com.example.policemobiledirectory.repository
 
 import android.util.Log
+import com.example.policemobiledirectory.data.local.OfficerDao
+import com.example.policemobiledirectory.data.local.OfficerEntity
 import com.example.policemobiledirectory.model.Officer
+import com.example.policemobiledirectory.utils.SearchUtils
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class OfficerRepository @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val officerDao: OfficerDao
 ) {
     private val TAG = "OfficerRepository"
     private val officersCollection = firestore.collection("officers")
+    private val ioDispatcher = Dispatchers.IO
 
     /**
-     * Get all officers from Firestore
+     * Get all officers (prioritizes local Room data)
      */
-    fun getOfficers(): Flow<RepoResult<List<Officer>>> = flow {
-        emit(RepoResult.Loading)
+    fun getOfficers(): Flow<RepoResult<List<Officer>>> = officerDao.getAllOfficers()
+        .map { entities -> 
+            RepoResult.Success(entities.map { it.toOfficer() })
+        }
+        .flowOn(ioDispatcher)
+
+    /**
+     * Sync all officers from Firestore to Room
+     */
+    suspend fun syncAllOfficers(): RepoResult<Unit> = withContext(ioDispatcher) {
         try {
+            Log.d(TAG, "🔄 Syncing Officers from Firestore to Room...")
             val snapshot = officersCollection.get().await()
-            val officers = snapshot.documents.mapNotNull { doc ->
+            val entities = snapshot.documents.mapNotNull { doc ->
                 try {
                     val off = doc.toObject(Officer::class.java)?.copy(agid = doc.id)
-                    // Filter hidden officers
-                    if (off?.isHidden == true) null else off
+                    if (off != null && off.isHidden != true) {
+                        off.toEntity()
+                    } else null
                 } catch (e: Exception) {
                     Log.e(TAG, "Error parsing officer ${doc.id}: ${e.message}")
                     null
                 }
             }
-            emit(RepoResult.Success(officers))
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching officers: ${e.message}", e)
-            emit(RepoResult.Error(e, "Failed to fetch officers: ${e.message}"))
-        }
-    }.flowOn(Dispatchers.IO)
-
-    /**
-     * Search officers by query and filter
-     */
-    /**
-     * Search officers by query and filter
-     */
-    fun searchOfficers(query: String, filter: String): Flow<RepoResult<List<Officer>>> = flow {
-        emit(RepoResult.Loading)
-        try {
-            val snapshot = officersCollection.get().await()
-            val allOfficers = snapshot.documents.mapNotNull { doc ->
-                try {
-                    val off = doc.toObject(Officer::class.java)?.copy(agid = doc.id)
-                    if (off?.isHidden == true) null else off
-                } catch (e: Exception) {
-                    null
-                }
-            }
             
-            val filtered = allOfficers.filter { it.matches(query, filter) }
-            emit(RepoResult.Success(filtered))
+            officerDao.clearOfficers()
+            if (entities.isNotEmpty()) {
+                officerDao.insertOfficers(entities)
+                Log.d(TAG, "✅ Synced ${entities.size} officers to Room")
+            }
+            RepoResult.Success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Error searching officers: ${e.message}", e)
-            emit(RepoResult.Error(e, "Failed to search officers: ${e.message}"))
+            Log.e(TAG, "Error syncing officers: ${e.message}", e)
+            RepoResult.Error(e, "Failed to sync officers")
         }
-    }.flowOn(Dispatchers.IO)
+    }
+
+    fun searchByBlob(query: String): Flow<RepoResult<List<Officer>>> {
+        val normalizedQuery = "%${query.trim().lowercase().replace(Regex("[^a-z0-9\\s]"), "")}%"
+        return officerDao.searchByBlob(normalizedQuery)
+            .map { entities -> RepoResult.Success(entities.map { it.toOfficer() }) }
+            .flowOn(ioDispatcher)
+    }
 
     /**
-     * Add or Update Officer
-     * - Uses set(..., SetOptions.merge()) to create or update
+     * Legacy Search: Search officers by query and filter (Hits Room via searchBlob fallback or just stay Room-based)
+     * For now, we redirect text search to Room.
      */
+    fun searchOfficers(query: String, filter: String): Flow<RepoResult<List<Officer>>> = searchByBlob(query)
+
     suspend fun addOrUpdateOfficer(officer: Officer): Flow<RepoResult<Boolean>> = flow {
         emit(RepoResult.Loading)
         try {
-            // Use existing agid or generate a new one (though typically AGID comes from external source, 
-            // for app-created/edited ones we can use existing ID or a temp one if creating new)
             val docId = officer.agid.takeIf { it.isNotBlank() } ?: officersCollection.document().id
-            
-            // Ensure the officer object has the ID set
             val officerToSave = officer.copy(agid = docId)
 
             officersCollection.document(docId).set(officerToSave).await()
+            
+            // Immediately update local cache
+            officerDao.insertOfficer(officerToSave.toEntity())
+            
             emit(RepoResult.Success(true))
         } catch (e: Exception) {
             Log.e(TAG, "Error saving officer: ${e.message}", e)
             emit(RepoResult.Error(e, "Failed to save officer: ${e.message}"))
         }
-    }.flowOn(Dispatchers.IO)
+    }.flowOn(ioDispatcher)
+
+    // -------------------------------------------------------------------
+    // MAPPERS
+    // -------------------------------------------------------------------
+
+    private fun Officer.toEntity(): OfficerEntity {
+        val blob = SearchUtils.generateSearchBlob(
+            agid, name, mobile, rank, unit, district, station, email, bloodGroup
+        )
+        return OfficerEntity(
+            agid = agid,
+            name = name,
+            email = email,
+            rank = rank,
+            mobile = mobile,
+            landline = landline,
+            station = station,
+            district = district,
+            unit = unit,
+            photoUrl = photoUrl,
+            bloodGroup = bloodGroup,
+            isHidden = isHidden ?: false,
+            searchBlob = blob
+        )
+    }
+
+    private fun OfficerEntity.toOfficer(): Officer {
+        return Officer(
+            agid = agid,
+            name = name,
+            email = email,
+            rank = rank,
+            mobile = mobile,
+            landline = landline,
+            station = station,
+            district = district,
+            unit = unit,
+            photoUrl = photoUrl,
+            bloodGroup = bloodGroup,
+            isHidden = isHidden
+        )
+    }
 }
 

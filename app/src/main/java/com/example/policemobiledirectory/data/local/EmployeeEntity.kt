@@ -15,7 +15,8 @@ import java.util.Date
         Index(value = ["rank"]),
         Index(value = ["mobile1"]),
         Index(value = ["mobile2"]),
-        Index(value = ["metalNumber"])
+        Index(value = ["metalNumber"]),
+        Index(value = ["searchBlob"])
     ]
 )
 data class EmployeeEntity(
@@ -39,5 +40,6 @@ data class EmployeeEntity(
     val firebaseUid: String? = null,
     val photoUrlFromGoogle: String? = null,
     val isApproved: Boolean = true,
-    val unit: String? = null
+    val unit: String? = null,
+    val searchBlob: String = ""
 )

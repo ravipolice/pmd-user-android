@@ -273,10 +273,17 @@ fun SearchFilterBar(
 
         // 🔹 ROW 3: SEARCH BAR
         val searchLabel = when (searchFilter) {
+            SearchFilter.ALL -> "Power Search"
             SearchFilter.RANK -> "Rank"
             SearchFilter.NAME -> "Name"
             SearchFilter.BLOOD_GROUP -> "Blood"
             else -> searchFilter.name.lowercase().replaceFirstChar { it.uppercase() }
+        }
+
+        val placeholderText = if (searchFilter == SearchFilter.ALL) {
+            "Search name, ID, rank, station..."
+        } else {
+            "Search by $searchLabel"
         }
 
         val keyboardType = when (searchFilter) {
@@ -287,7 +294,7 @@ fun SearchFilterBar(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
-            placeholder = { Text("Search by $searchLabel") },
+            placeholder = { Text(placeholderText) },
             leadingIcon = { Icon(Icons.Default.Search, null, tint = PrimaryTeal) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {

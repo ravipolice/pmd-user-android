@@ -11,17 +11,19 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [
         EmployeeEntity::class,
+        OfficerEntity::class,
         PendingRegistrationEntity::class,
         AppIconEntity::class,
         NotificationEntity::class // ✅ Added NotificationEntity
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun employeeDao(): EmployeeDao
+    abstract fun officerDao(): OfficerDao
     abstract fun pendingRegistrationDao(): PendingRegistrationDao
     abstract fun appIconDao(): AppIconDao
     abstract fun notificationDao(): NotificationDao
@@ -135,6 +137,46 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // ✅ Migration 8 → 9: Power Search (add searchBlob and officers table)
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // 1. Add searchBlob to employees
+                try {
+                    database.execSQL("ALTER TABLE employees ADD COLUMN searchBlob TEXT NOT NULL DEFAULT ''")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS index_employees_searchBlob ON employees(searchBlob)")
+                } catch (e: Exception) {
+                }
+
+                // 2. Create officers table
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS officers (
+                        agid TEXT PRIMARY KEY NOT NULL,
+                        name TEXT NOT NULL,
+                        email TEXT,
+                        rank TEXT,
+                        mobile TEXT,
+                        landline TEXT,
+                        station TEXT,
+                        district TEXT,
+                        unit TEXT,
+                        photoUrl TEXT,
+                        bloodGroup TEXT,
+                        isHidden INTEGER NOT NULL DEFAULT 0,
+                        searchBlob TEXT NOT NULL DEFAULT ''
+                    )
+                    """.trimIndent()
+                )
+                
+                // 3. Add indexes for officers
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_officers_name ON officers(name)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_officers_district ON officers(district)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_officers_rank ON officers(rank)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_officers_unit ON officers(unit)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_officers_searchBlob ON officers(searchBlob)")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -142,7 +184,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "employee_directory_db"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8) // ✅ Keep user data on update
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9) // ✅ Keep user data on update
                     .fallbackToDestructiveMigration() // ✅ Wipe data if migration fails
                     .build()
                 INSTANCE = instance
