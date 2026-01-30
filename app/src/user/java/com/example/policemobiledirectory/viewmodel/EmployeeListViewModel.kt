@@ -61,7 +61,7 @@ class EmployeeListViewModel @Inject constructor(
     // Search and Filter State
     private val _searchQuery = MutableStateFlow("")
     private val _debouncedSearchQuery = MutableStateFlow("")
-    private val _searchFilter = MutableStateFlow(SearchFilter.NAME)
+    private val _searchFilter = MutableStateFlow(SearchFilter.ALL)
     val searchFilter: StateFlow<SearchFilter> = _searchFilter.asStateFlow()
 
     private val _selectedDistrict = MutableStateFlow("All")
@@ -93,157 +93,99 @@ class EmployeeListViewModel @Inject constructor(
         _isAdmin.value = isAdmin
     }
 
+    // Unified Power Search (Room-based)
+    private val _powerSearchResults = MutableStateFlow<List<Contact>>(emptyList())
+
     // Combined contacts with admin-aware filtering
     val allContacts: StateFlow<List<Contact>> = combine(_employees, _officers, _isAdmin) { employees, officers, isAdmin ->
-        // Filter employees: show only approved ones for regular users, all for admins
-        val filteredEmployees = if (isAdmin) {
-            employees // Admins see all employees
-        } else {
-            employees.filter { it.isApproved } // Regular users see only approved employees
-        }
-
+        val filteredEmployees = if (isAdmin) employees else employees.filter { it.isApproved }
         val employeeContacts = filteredEmployees.map { Contact(employee = it) }
         val officerContacts = officers.map { Contact(officer = it) }
-        val allContactsList = employeeContacts + officerContacts
-
-        Log.d("ContactsFilter", "isAdmin: $isAdmin, Total employees: ${employees.size}, Approved: ${filteredEmployees.size}, Officers: ${officers.size}, Total contacts: ${allContactsList.size}")
-
-        allContactsList
+        employeeContacts + officerContacts
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    // Enhanced search with relevance scoring and performance tracking
+    /**
+     * ✅ Unified Power Search Strategy:
+     * 1. If query is blank: Use allContacts + dropdown filters.
+     * 2. If query present: Search Room (both tables), combine, then apply dropdown filters.
+     */
     val filteredContacts: StateFlow<List<Contact>> = combine(
         allContacts,
-        searchFiltersFlow
-    ) { contacts, filters ->
-        // Early exit if no contacts
-        if (contacts.isEmpty()) return@combine emptyList<Contact>()
+        _powerSearchResults,
+        searchFiltersFlow,
+        _isAdmin
+    ) { contacts, powerResults, filters, isAdmin ->
+        val query = filters.query
+        val district = filters.district
+        val station = filters.station
+        val rank = filters.rank
+        
+        val sourceList = if (query.isNotBlank()) {
+            powerResults
+        } else {
+            contacts
+        }
 
-        // Step 1: Fast pre-filtering by district/station/rank
-        val preFiltered = contacts.filter { contact ->
-            val districtMatch = filters.district == "All" ||
-                (contact.district?.equals(filters.district, ignoreCase = true) == true)
-            // Station Filtering Logic
-            val stationFilter = filters.station
-            val stationMatch = if (stationFilter == "All") {
+        if (sourceList.isEmpty() && query.isNotBlank()) {
+            // Fallback while Power Search is loading or if it returned nothing
+        }
+
+        sourceList.filter { contact ->
+            val districtMatch = district == "All" || contact.district?.equals(district, ignoreCase = true) == true
+            
+            val stationMatch = if (station == "All") {
                 true
             } else {
-                val isPS = stationFilter.endsWith(" PS", ignoreCase = true)
-                val stripped = if (isPS) stationFilter.dropLast(3).trim() else stationFilter
+                val isPS = station.endsWith(" PS", ignoreCase = true)
+                val stripped = if (isPS) station.dropLast(3).trim() else station
                 val circleVariant = "$stripped Circle"
-
-                // 1. Direct Match
-                (contact.station?.equals(stationFilter, ignoreCase = true) == true) ||
-                // 2. PS/Circle/Stripped Variants (only if filter is PS)
-                (isPS && (
-                    contact.station?.equals(circleVariant, ignoreCase = true) == true ||
-                    contact.station?.equals(stripped, ignoreCase = true) == true
-                )) ||
-                // 3. Fallback: If station is empty, check if Name contains the Place Name
+                (contact.station?.equals(station, ignoreCase = true) == true) ||
+                (isPS && (contact.station?.equals(circleVariant, ignoreCase = true) == true || 
+                         contact.station?.equals(stripped, ignoreCase = true) == true)) ||
                 (contact.station.isNullOrBlank() && contact.name.contains(stripped, ignoreCase = true))
             }
 
-            val rankMatch = filters.rank == "All" ||
-                (contact.rank?.equals(filters.rank, ignoreCase = true) == true)
-
+            val rankMatch = rank == "All" || contact.rank?.equals(rank, ignoreCase = true) == true
+            
             districtMatch && stationMatch && rankMatch
         }
-
-        // Early exit if no matches after pre-filtering
-        if (preFiltered.isEmpty()) return@combine emptyList<Contact>()
-
-        // Step 2: Enhanced text search with relevance scoring
-        if (filters.query.isBlank()) {
-            return@combine preFiltered
-        }
-
-        val queryLower = filters.query.lowercase().trim()
-        if (queryLower.isEmpty()) return@combine preFiltered
-
-        // Use enhanced search engine with performance tracking
-        val startTime = System.currentTimeMillis()
-        
-        // Use enhanced search engine for employees
-        val employeeContacts = preFiltered.filter { it.employee != null }
-        val officerContacts = preFiltered.filter { it.officer != null }
-
-        val employeeResults = if (employeeContacts.isNotEmpty()) {
-            val employees = employeeContacts.mapNotNull { it.employee }
-            SearchEngine.searchEmployees(employees, queryLower, filters.filter)
-                .map { SearchEngine.SearchResult(Contact(employee = it.item), it.score, it.matchedFields) }
-        } else emptyList()
-
-        val officerResults = if (officerContacts.isNotEmpty()) {
-            val officers = officerContacts.mapNotNull { it.officer }
-            val filterString = when (filters.filter) {
-                SearchFilter.ALL -> "all"
-                SearchFilter.NAME -> "name"
-                SearchFilter.KGID -> "agid"
-                SearchFilter.MOBILE -> "mobile"
-                SearchFilter.STATION -> "station"
-                SearchFilter.RANK -> "rank"
-                SearchFilter.METAL_NUMBER -> "" // Officers don't have metal numbers
-                SearchFilter.BLOOD_GROUP -> "blood"
-            }
-            if (filterString.isNotBlank()) {
-                SearchEngine.searchOfficers(officers, queryLower, filterString)
-                    .map { SearchEngine.SearchResult(Contact(officer = it.item), it.score, it.matchedFields) }
-            } else emptyList()
-        } else emptyList()
-
-        // Log performance
-        val duration = System.currentTimeMillis() - startTime
-        if (duration > 100) { // Only log if search takes > 100ms
-            Log.d("SearchPerformance", "Search took ${duration}ms for query: $queryLower, results: ${employeeResults.size + officerResults.size}")
-        }
-
-        // Combine and sort by relevance score
-        (employeeResults + officerResults)
-            .sortedByDescending { it.score }
-            .map { it.item }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    // Filtered employees (admin-aware)
-    val filteredEmployees: StateFlow<List<Employee>> = combine(_employees, searchFiltersFlow, _isAdmin) { employees, filters, isAdmin ->
-        // Early exit if no employees
-        if (employees.isEmpty()) return@combine emptyList<Employee>()
-
-        // Filter by approval status first
-        val approvedEmployees = if (isAdmin) {
-            employees // Admins see all employees
-        } else {
-            employees.filter { it.isApproved } // Regular users see only approved employees
-        }
-
-        // Step 1: Fast pre-filtering by district/station/rank
-        val preFiltered = approvedEmployees.filter { emp ->
-            val stationMatch = filters.station == "All" || 
-                emp.station.equals(filters.station, ignoreCase = true) ||
-                (filters.station.endsWith(" PS", ignoreCase = true) && 
-                 emp.station?.equals(filters.station.replace(" PS", " Circle", ignoreCase = true), ignoreCase = true) == true)
-            
-            (filters.district == "All" || emp.district == filters.district) &&
-            stationMatch &&
-            (filters.rank == "All" || emp.rank == filters.rank)
-        }
-
-        // Early exit if no matches after pre-filtering
-        if (preFiltered.isEmpty()) return@combine emptyList<Employee>()
-
-        // Step 2: Text search only on pre-filtered results
-        if (filters.query.isBlank()) {
-            return@combine preFiltered
-        }
-
-        val queryLower = filters.query.lowercase().trim()
-        if (queryLower.isEmpty()) return@combine preFiltered
-
-        preFiltered.filter { emp ->
-            emp.matchesOptimized(queryLower, filters.filter)
-        }
+    // Legacy support for filteredEmployees if still used elsewhere
+    val filteredEmployees: StateFlow<List<Employee>> = filteredContacts.map { contacts ->
+        contacts.mapNotNull { it.employee }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     init {
+        // Power Search Logic
+        viewModelScope.launch {
+            _debouncedSearchQuery.collect { query ->
+                if (query.isBlank()) {
+                    _powerSearchResults.value = emptyList()
+                    return@collect
+                }
+                
+                // Unified Room Search
+                combine(
+                    employeeRepo.searchByBlob(query),
+                    officerRepo.searchByBlob(query)
+                ) { empResult, offResult ->
+                    val emps = (empResult as? RepoResult.Success)?.data ?: emptyList()
+                    val offs = (offResult as? RepoResult.Success)?.data ?: emptyList()
+                    
+                    val isAdmin = _isAdmin.value
+                    val filteredEmps = if (isAdmin) emps else emps.filter { it.isApproved }
+                    
+                    val employeeContacts = filteredEmps.map { Contact(employee = it) }
+                    val officerContacts = offs.map { Contact(officer = it) }
+                    
+                    employeeContacts + officerContacts
+                }.collect { combined ->
+                    _powerSearchResults.value = combined
+                }
+            }
+        }
+
         // Debounce search query (300ms) to avoid searching on every keystroke
         viewModelScope.launch {
             _searchQuery
@@ -252,6 +194,10 @@ class EmployeeListViewModel @Inject constructor(
                     _debouncedSearchQuery.value = query
                 }
         }
+        
+        // Initial setup
+        refreshEmployees()
+        refreshOfficers()
     }
 
     // =========================================================
@@ -301,6 +247,10 @@ class EmployeeListViewModel @Inject constructor(
     fun refreshOfficers() = viewModelScope.launch {
         _officerStatus.value = OperationStatus.Loading
         try {
+            // First sync from Firebase to Room
+            officerRepo.syncAllOfficers()
+            
+            // Then observe Room via Repo
             officerRepo.getOfficers().collect { result ->
                 when (result) {
                     is RepoResult.Success -> {

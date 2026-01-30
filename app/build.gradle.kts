@@ -12,6 +12,10 @@ plugins {
 import java.util.Properties
 import java.io.FileInputStream
 
+kotlin {
+    jvmToolchain(17)
+}
+
 android {
     namespace = "com.example.policemobiledirectory"
     compileSdk = 35
