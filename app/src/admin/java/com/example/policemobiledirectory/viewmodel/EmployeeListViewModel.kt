@@ -139,8 +139,9 @@ class EmployeeListViewModel @Inject constructor(
                     contact.station?.equals(circleVariant, ignoreCase = true) == true ||
                     contact.station?.equals(stripped, ignoreCase = true) == true
                 )) ||
-                // 3. Fallback: If station is empty, check if Name contains the Place Name
-                (contact.station.isNullOrBlank() && contact.name.contains(stripped, ignoreCase = true))
+                // 3. Fallback: If station is empty or "Others", check if Name contains the Place Name
+                ((contact.station.isNullOrBlank() || contact.station.equals("Others", ignoreCase = true)) && 
+                 contact.name.contains(stripped, ignoreCase = true))
             }
             val rankMatch = filters.rank == "All" ||
                 (contact.rank?.equals(filters.rank, ignoreCase = true) == true)
@@ -217,9 +218,11 @@ class EmployeeListViewModel @Inject constructor(
         // Step 1: Fast pre-filtering by district/station/rank
         val preFiltered = approvedEmployees.filter { emp ->
             val stationMatch = filters.station == "All" || 
-                emp.station.equals(filters.station, ignoreCase = true) ||
+                emp.station?.equals(filters.station, ignoreCase = true) == true ||
                 (filters.station.endsWith(" PS", ignoreCase = true) && 
-                 emp.station?.equals(filters.station.replace(" PS", " Circle", ignoreCase = true), ignoreCase = true) == true)
+                 emp.station?.equals(filters.station.replace(" PS", " Circle", ignoreCase = true), ignoreCase = true) == true) ||
+                 ((emp.station.isNullOrBlank() || emp.station.equals("Others", ignoreCase = true)) && 
+                 emp.name.contains(if(filters.station.endsWith(" PS", ignoreCase = true)) filters.station.dropLast(3).trim() else filters.station, ignoreCase = true))
 
             (filters.district == "All" || emp.district == filters.district) &&
             stationMatch &&

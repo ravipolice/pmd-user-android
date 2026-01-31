@@ -301,4 +301,11 @@ class ConstantsViewModel @Inject constructor(
     suspend fun getSectionsForUnit(unitName: String): List<String> {
         return constantsRepository.getSectionsForUnit(unitName)
     }
+
+    /**
+     * Get applicable ranks for a unit
+     */
+    fun getApplicableRanksForUnit(unitName: String): List<String> {
+        return constantsRepository.getApplicableRanksForUnit(unitName)
+    }
 }

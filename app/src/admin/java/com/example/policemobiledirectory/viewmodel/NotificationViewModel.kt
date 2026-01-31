@@ -137,7 +137,6 @@ class NotificationViewModel @Inject constructor(
 
         return when (notification.targetType) {
             NotificationTarget.ALL -> true
-            NotificationTarget.ALL -> true
             NotificationTarget.INDIVIDUAL -> matches(notification.targetKgid, user.kgid)
             NotificationTarget.DISTRICT -> matches(notification.targetDistrict, user.district)
             NotificationTarget.STATION -> matches(notification.targetDistrict, user.district) &&

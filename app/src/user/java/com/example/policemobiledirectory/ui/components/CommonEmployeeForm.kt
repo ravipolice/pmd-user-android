@@ -32,6 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
@@ -121,7 +123,7 @@ fun CommonEmployeeForm(
     var rank by remember(initialEmployee) { mutableStateOf(initialEmployee?.rank ?: "") }
     var metalNumber by remember(initialEmployee) { mutableStateOf(initialEmployee?.metalNumber ?: "") }
     var district by remember(initialEmployee) { mutableStateOf(initialEmployee?.district ?: "") }
-    var station by remember(initialEmployee) { mutableStateOf(initialEmployee?.station ?: "") }
+    var station by remember(initialEmployee) { mutableStateOf(if (initialEmployee?.isManualStation == true) "Others" else initialEmployee?.station ?: "") }
     var unit by remember(initialEmployee) { mutableStateOf(initialEmployee?.unit ?: "") }
     var bloodGroup by remember(initialEmployee) { mutableStateOf(initialEmployee?.bloodGroup ?: "") }
     var currentPhotoUrl by remember(initialEmployee) { mutableStateOf(initialEmployee?.photoUrl) }
@@ -136,6 +138,7 @@ fun CommonEmployeeForm(
     var rankExpanded by remember { mutableStateOf(false) }
     var districtExpanded by remember { mutableStateOf(false) }
     var stationExpanded by remember { mutableStateOf(false) }
+    var manualSection by remember(initialEmployee) { mutableStateOf(if (initialEmployee?.isManualStation == true) initialEmployee.station.orEmpty() else "") }
     var bloodGroupExpanded by remember { mutableStateOf(false) }
     var showSourceDialog by remember { mutableStateOf(false) }
     var showValidationErrors by remember { mutableStateOf(false) }
@@ -175,33 +178,81 @@ fun CommonEmployeeForm(
         value = constantsViewModel.isDistrictLevelUnit(unit)
     }
 
-    // Auto-select if only one district is available (or "No District Required")
+    // Dynamic Rank List Logic (Filters based on Unit if configured)
+    val applicableRanks by produceState<List<String>>(initialValue = emptyList(), key1 = unit) {
+        if (unit.isNotBlank()) {
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                constantsViewModel.getApplicableRanksForUnit(unit)
+            }
+        } else {
+            value = emptyList()
+        }
+    }
+
+    val filteredRanks = remember(ranks, applicableRanks) {
+        if (applicableRanks.isNotEmpty()) {
+            ranks.filter { rankName -> 
+                applicableRanks.any { it.equals(rankName, ignoreCase = true) }
+            }
+        } else {
+            ranks
+        }
+    }
+
+    // Auto-select if only one district is available, or validate current selection
     LaunchedEffect(availableDistricts) {
         if (availableDistricts.size == 1) {
-            district = availableDistricts.first()
-            if (district == "No District Required") {
-               // Optional: maybe clear it for the actual DB save/logic, but strictly for UI 
-               // we might want to keep it or handle it. 
-               // Assuming logic elsewhere handles "No District Required" string or we pass it as is.
+            val autoSelected = availableDistricts.first()
+            if (district != autoSelected) {
+                district = autoSelected
             }
+        } else {
+             // If the currently selected district is not in the new allowed list, reset it
+             if (district.isNotBlank() && !availableDistricts.contains(district)) {
+                 district = ""
+                 station = ""
+             }
         }
     }
 
-    // Reset district/station if Unit changes to/from KSRP to avoid invalid selections
-    // We only reset if the current district is NOT in the new list (to avoid clearing valid selections if we just re-compose)
-    LaunchedEffect(unit) {
-        if (unit == "SCRB") {
-            district = "Bengaluru City"
-            station = ""
-        } else if (district.isNotBlank() && !availableDistricts.contains(district)) {
-            district = ""
-            station = ""
+    // Get Full Unit Model for dynamic configuration
+    val selectedUnitModel by produceState<com.example.policemobiledirectory.model.UnitModel?>(initialValue = null, key1 = unit) {
+        if (unit.isNotBlank()) {
+            val models = constantsViewModel.fullUnits.value
+            value = models.find { it.name == unit }
+        } else {
+            value = null
         }
     }
 
-    // Reset station when district changes
+    // Validate Station Selection when options change (e.g. Unit change filters stations)
+    // We can't rely solely on district change because Unit A and Unit B might share a district
+    // but have different station subsets (e.g. Traffic vs Civil).
+
+
+    // Reset station when district changes (Manual override or cascade)
     LaunchedEffect(district) {
-        station = ""
+        if (district.isNotBlank() && station.isNotBlank()) {
+             // Only reset if strict validation fails? 
+             // Actually, usually district change implies station reset.
+             // But we have the validation above. 
+             // Let's keep strict reset on district change to be safe and predictable.
+             station = ""
+        }
+    }
+
+    // Reset rank if unit changes and the currently selected rank is no longer applicable
+    LaunchedEffect(filteredRanks) {
+        if (rank.isNotBlank() && filteredRanks.isNotEmpty() && !filteredRanks.contains(rank)) {
+            rank = ""
+        }
+    }
+
+    // Reset manual section if station selection changes away from "Others"
+    LaunchedEffect(station) {
+        if (station != "Others") {
+            manualSection = ""
+        }
     }
 
     // Optimization: Create a normalized, case-insensitive map for fast lookups
@@ -212,19 +263,34 @@ fun CommonEmployeeForm(
     }
 
     // Refactored for readability as per review
-    val stationsForSelectedDistrict = remember(district, unit, normalizedStationsMap) {
+    val stationsForSelectedDistrict = remember(district, unit, normalizedStationsMap, selectedUnitModel) {
         if (district.isBlank()) {
             emptyList()
         } else {
             // Fast O(1) lookup
             val stations = normalizedStationsMap[district.trim().lowercase()] ?: emptyList()
 
-            // 2. Apply unit-specific filtering
-            when (unit) {
-                "DCRB" -> stations.filter { it.contains("DCRB", ignoreCase = true) }
-                "ESCOM" -> stations.filter { it.contains("ESCOM", ignoreCase = true) }
-                else -> stations
+            // 2. Apply unit-specific dynamic filtering
+            val currentUnitModel = selectedUnitModel
+            val filtered = if (currentUnitModel?.stationKeyword?.isNotBlank() == true) {
+                stations.filter { it.contains(currentUnitModel.stationKeyword, ignoreCase = true) }
+            } else {
+                stations
             }
+
+            // 3. Add "Others" option if unit has sections or if it's a generic district
+            if (filtered.isNotEmpty() || unitSections.isNotEmpty()) {
+                filtered + "Others"
+            } else {
+                filtered
+            }
+        }
+    }
+
+    // Validate Station Selection when options change (e.g. Unit change filters stations)
+    LaunchedEffect(stationsForSelectedDistrict) {
+        if (station.isNotBlank() && station != "Others" && !stationsForSelectedDistrict.contains(station)) {
+             station = ""
         }
     }
 
@@ -486,51 +552,100 @@ fun CommonEmployeeForm(
             }
             Spacer(Modifier.height(fieldSpacing))
 
-            // Row 8: Station (Full Width)
-            if (!isHighRankingOfficer && !isDistrictLevelUnit) {
+            // Row 8: Station/Section (Full Width)
+            val hasSections = remember(unitSections, unit, district) {
+                unitSections.isNotEmpty() || unit == "State INT" || district == "HQ"
+            }
+            if (!isHighRankingOfficer && (!isDistrictLevelUnit || hasSections)) {
                 val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks, unit, unitSections) {
                     if (unitSections.isNotEmpty()) {
-                        unitSections
+                        unitSections + listOf("Others")
                     } else if (unit == "State INT") {
-                         Constants.stateIntSections
+                         Constants.stateIntSections + listOf("Others")
                     } else {
                         val isPoliceStationRank = policeStationRanks.contains(rank)
-                        if (isPoliceStationRank) {
+                        val baseStations = if (isPoliceStationRank) {
                             stationsForSelectedDistrict
                         } else {
                             stationsForSelectedDistrict.filter { !it.endsWith(" PS", ignoreCase = true) }
                         }
-                    }
-                }
-
-                ExposedDropdownMenuBox(
-                    expanded = stationExpanded,
-                    onExpandedChange = {
-                        if ((district.isNotBlank() || unit == "State INT" || unitSections.isNotEmpty()) && filteredStations.isNotEmpty()) stationExpanded = !stationExpanded
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = station.ifEmpty { if (district.isNotBlank() || unit == "State INT" || unitSections.isNotEmpty()) "Select ${if(unit == "State INT" || unitSections.isNotEmpty()) "Section" else "Station"}" else "Select District First" },
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(if (unit == "State INT" || unitSections.isNotEmpty()) "Section *" else "Station *") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
-                        enabled = (district.isNotBlank() || unit == "State INT" || unitSections.isNotEmpty()) && filteredStations.isNotEmpty(),
-                        isError = showValidationErrors && station.isBlank()
-                    )
-                    ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
-                        filteredStations.forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                station = selection
-                                stationExpanded = false
-                            })
+                        
+                        // Also add "Others" if it's an HQ-level unit (where we might need manual names)
+                        if (hasSections || district == "HQ") {
+                            baseStations + listOf("Others")
+                        } else {
+                            baseStations
                         }
                     }
                 }
-                if (showValidationErrors && station.isBlank() && !isDistrictLevelUnit) {
-                    Text(if(unit == "State INT" || unitSections.isNotEmpty()) "Section required" else "Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ExposedDropdownMenuBox(
+                        expanded = stationExpanded,
+                        onExpandedChange = {
+                            if ((district.isNotBlank() || hasSections) && filteredStations.isNotEmpty()) stationExpanded = !stationExpanded
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = station.ifEmpty { if (district.isNotBlank() || hasSections) "Select ${if(hasSections) "Section" else "Station"}" else "Select District First" },
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(if (hasSections) "Section *" else "Station *") },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
+                            enabled = (district.isNotBlank() || hasSections) && filteredStations.isNotEmpty(),
+                            isError = showValidationErrors && station.isBlank()
+                        )
+                        ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
+                            filteredStations.forEach { selection ->
+                                DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                    station = selection
+                                    stationExpanded = false
+                                })
+                            }
+                        }
+                    }
+
+                    // Manual Section Entry
+                    if (station == "Others") {
+                        OutlinedTextField(
+                            value = manualSection,
+                            onValueChange = { manualSection = it },
+                            label = { Text("Specify Name*") },
+                            placeholder = { Text("Section Name") },
+                            modifier = Modifier.weight(1f),
+                            isError = showValidationErrors && manualSection.isBlank(),
+                            singleLine = true
+                        )
+                    }
+                }
+                
+                if (showValidationErrors) {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        if (station.isBlank() && (!isDistrictLevelUnit || hasSections)) {
+                            Text(
+                                if (hasSections) "Section required" else "Station required", 
+                                color = MaterialTheme.colorScheme.error, 
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f)
+                            )
+                        } else {
+                           Spacer(modifier = Modifier.weight(1f))
+                        }
+                        
+                         if (station == "Others" && manualSection.isBlank()) {
+                            Text(
+                                "Name required", 
+                                color = MaterialTheme.colorScheme.error, 
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f).padding(start = 8.dp)
+                            )
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(fieldSpacing))
@@ -579,7 +694,7 @@ fun CommonEmployeeForm(
                         isError = showValidationErrors && rank.isBlank()
                     )
                     ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
-                        ranks.forEach { selection ->
+                        filteredRanks.forEach { selection ->
                             DropdownMenuItem(text = { Text(selection) }, onClick = {
                                 rank = selection
                                 if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
@@ -881,7 +996,6 @@ fun CommonEmployeeForm(
             Spacer(Modifier.height(fieldSpacing))
 
             // Station (editable for admin and self-edit; uses district)
-            // Station (editable for admin and self-edit; uses district)
             ExposedDropdownMenuBox(expanded = stationExpanded, onExpandedChange = {
                 if (district.isNotBlank() && stationsForSelectedDistrict.isNotEmpty()) stationExpanded = !stationExpanded
             }) {
@@ -906,6 +1020,21 @@ fun CommonEmployeeForm(
             }
             if (showValidationErrors && station.isBlank()) Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(fieldSpacing))
+
+            // Manual Section (if "Others" is selected)
+            if (station == "Others") {
+                OutlinedTextField(
+                    value = manualSection,
+                    onValueChange = { manualSection = it },
+                    label = { Text("Specify Section Name*") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = showValidationErrors && manualSection.isBlank()
+                )
+                if (showValidationErrors && manualSection.isBlank()) {
+                    Text("Please specify section name", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                Spacer(Modifier.height(fieldSpacing))
+            }
 
 
 
@@ -1013,9 +1142,15 @@ fun CommonEmployeeForm(
                         Toast.makeText(context, "District is required", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    // Validate station
-                    if (station.isBlank() && !isMinisterial && !isHighRankingOfficer && !isDistrictLevelUnit) {
-                        Toast.makeText(context, "Station is required", Toast.LENGTH_SHORT).show()
+                    // Validate Station/Section
+                    if (station.isBlank() && !isHighRankingOfficer && !isDistrictLevelUnit && !isMinisterial) {
+                        Toast.makeText(context, "${if(unit == "State INT" || unitSections.isNotEmpty()) "Section" else "Station"} is required", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    
+                    // Validate Manual Section
+                    if (station == "Others" && manualSection.isBlank()) {
+                        Toast.makeText(context, "Please specify your section name", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
                     // Validate blood group (except for Officers)
@@ -1046,6 +1181,8 @@ fun CommonEmployeeForm(
                 val finalKgid = if (kgid.isBlank()) "TEMP-${System.currentTimeMillis()}" else kgid
                 android.util.Log.d("CommonEmployeeForm", "📝 Final KGID: $finalKgid")
 
+                val isManual = station == "Others" // Determine if manual station
+
                 val emp = Employee(
                     kgid = finalKgid,
                     name = name.trim(),
@@ -1056,12 +1193,13 @@ fun CommonEmployeeForm(
                     landline2 = landline2.trim().takeIf { it.isNotBlank() },
                     rank = rank.trim(),
                     district = district.trim(),
-                    station = station.trim(),
+                    station = if (isManual) manualSection.trim() else station.trim(),
                     unit = unit.trim().takeIf { it.isNotBlank() },
                     bloodGroup = bloodGroup.ifBlank { null },
                     metalNumber = metalNumber.trim().takeIf { it.isNotBlank() },
                     isAdmin = initialEmployee?.isAdmin ?: false,
-                    photoUrl = croppedPhotoUri?.toString() ?: currentPhotoUrl
+                    photoUrl = croppedPhotoUri?.toString() ?: currentPhotoUrl,
+                    isManualStation = isManual
                 )
 
                 // ✅ Submit in coroutine scope
@@ -1084,11 +1222,12 @@ fun CommonEmployeeForm(
                                 rank = emp.rank ?: "",
                                 metalNumber = emp.metalNumber,
                                 district = emp.district.orEmpty(),
-                                station = emp.station.orEmpty(),
+                                station = if (station == "Others") manualSection.trim() else emp.station.orEmpty(),
                                 unit = emp.unit,
                                 bloodGroup = emp.bloodGroup.orEmpty(),
                                 firebaseUid = firebaseUid,
-                                photoUrl = emp.photoUrl
+                                photoUrl = emp.photoUrl,
+                                isManualStation = emp.isManualStation
                             )
                             onRegisterSubmit?.invoke(pending, croppedPhotoUri)
                         } else {

@@ -86,11 +86,6 @@ class MainActivity : ComponentActivity() {
             .setAutoSelectEnabled(false) // Disable auto-select for explicit button clicks
             .build()
 
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.default_web_client_id))
-            .requestEmail()
-            .build()
-
         val request = GetCredentialRequest.Builder()
             .addCredentialOption(googleIdOption)
             .build()
@@ -98,21 +93,28 @@ class MainActivity : ComponentActivity() {
         try {
             val result: GetCredentialResponse = credentialManager.getCredential(this, request)
             val credential = result.credential
-            val googleIdToken =
-                credential.data.getString("com.google.android.libraries.identity.googleid.BUNDLE_KEY_ID_TOKEN")
-            val email =
-                credential.data.getString("com.google.android.libraries.identity.googleid.BUNDLE_KEY_ID") ?: ""
+            
+            // Extract Google ID Token using library helper
+            val googleIdTokenCredential = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(credential.data)
+            val googleIdToken = googleIdTokenCredential.idToken
+            val email = googleIdTokenCredential.id
+            
+            Log.d("Auth", "✅ Google Sign-In success for email: $email")
+            Log.v("Auth", "Token: ${googleIdToken.take(10)}...")
 
-            if (googleIdToken != null) {
+            if (googleIdToken.isNotEmpty()) {
                 viewModel.handleGoogleSignIn(email, googleIdToken)
                 wasLoggedOut = false
             } else {
+                Log.e("Auth", "❌ No ID token found in credential data")
                 Toast.makeText(this, "No ID token found.", Toast.LENGTH_SHORT).show()
             }
+        } catch (e: androidx.credentials.exceptions.GetCredentialException) {
+            Log.e("Auth", "❌ Google Sign-In failed (Credential Manager): ${e.type} - ${e.message}", e)
+            Toast.makeText(this, "Sign-In Failed: Use a valid Google Account", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(this, "Google Sign-In failed: ${e.localizedMessage}", Toast.LENGTH_LONG)
-                .show()
+            Log.e("Auth", "❌ Google Sign-In unexpected error", e)
+            Toast.makeText(this, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
         }
     }
 

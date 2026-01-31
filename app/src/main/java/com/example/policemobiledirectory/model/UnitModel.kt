@@ -12,5 +12,8 @@ data class UnitModel(
     val mappingType: String = "all", // "all", "state", "single", "subset", "commissionerate", "none"
     val mappedDistricts: List<String> = emptyList(),
     val isDistrictLevel: Boolean = false,
-    val scopes: List<String> = emptyList() // Legacy support
+    val isHqLevel: Boolean = false,
+    val scopes: List<String> = emptyList(), // Legacy support
+    val applicableRanks: List<String> = emptyList(),
+    val stationKeyword: String = "" // For dynamic filtering (e.g. "DCRB", "ESCOM")
 )

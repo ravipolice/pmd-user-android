@@ -26,6 +26,43 @@
     .error { color:#dc2626; font-size:12px; margin-top:4px; }
     .success { color:#16a34a; font-size:12px; margin-top:4px; }
     .loading { opacity:0.6; pointer-events:none; }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.4);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 500px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      position: relative;
+    }
+    .close-button {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close-button:hover,
+    .close-button:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -101,7 +138,14 @@
       <h3 style="margin-top:24px">Add Unit</h3>
       <div class="row-3">
         <div><label>Name *</label><input id="u_name" required /></div>
-        <div><label>&nbsp;</label></div>
+        <div>
+          <label>Scope</label><br>
+          <input type="checkbox" id="u_hqState" name="unit_scope" value="state"> HQ (State Level)<br>
+          <input type="checkbox" id="u_districtLevel" name="unit_scope" value="district"> District Level<br>
+          <input type="checkbox" id="u_battalion" name="unit_scope" value="battalion"> Battalion<br>
+          <input type="checkbox" id="u_commissionerate" name="unit_scope" value="commissionerate"> Commissionerate
+        </div>
+        <div><label>Mapped Districts</label><select id="u_mappedDistricts" multiple style="display:none;"><option value="">Loading...</option></select></div>
         <div><label>&nbsp;</label><button class="primary" id="u_submit" onclick="addUnit()">Add Unit</button></div>
       </div>
       <div id="u_error" class="error hidden"></div>
@@ -110,10 +154,10 @@
       <h3 style="margin-top:24px">Units List</h3>
       <table id="unitsTable">
         <thead>
-          <tr><th>Name</th></tr>
+          <tr><th>Name</th><th>Scope</th><th>Actions</th></tr>
         </thead>
         <tbody id="unitsTableBody">
-          <tr><td style="text-align:center; color:#9ca3af;">Loading units...</td></tr>
+          <tr><td colspan="3" style="text-align:center; color:#9ca3af;">Loading units...</td></tr>
         </tbody>
       </table>
 
@@ -190,6 +234,13 @@
 
     // Unit fields
     const u_name = document.getElementById('u_name');
+    // New scope fields for Add Unit
+    const u_hqState = document.getElementById('u_hqState');
+    const u_districtLevel = document.getElementById('u_districtLevel');
+    const u_battalion = document.getElementById('u_battalion');
+    const u_commissionerate = document.getElementById('u_commissionerate');
+    const u_mappedDistricts = document.getElementById('u_mappedDistricts'); // Assuming a multi-select or text input
+    
     const u_submit = document.getElementById('u_submit');
     const u_error = document.getElementById('u_error');
     const u_success = document.getElementById('u_success');
@@ -200,6 +251,21 @@
     // Stations table
     const stationsTableBody = document.getElementById('stationsTableBody');
 
+    // Edit Unit Modal elements
+    const editUnitModal = document.getElementById('editUnitModal');
+    const edit_u_id = document.getElementById('edit_u_id');
+    const edit_u_name = document.getElementById('edit_u_name');
+    // New scope fields for Edit Unit Modal
+    const edit_u_hqState = document.getElementById('edit_u_hqState');
+    const edit_u_districtLevel = document.getElementById('edit_u_districtLevel');
+    const edit_u_battalion = document.getElementById('edit_u_battalion');
+    const edit_u_commissionerate = document.getElementById('edit_u_commissionerate');
+    const edit_u_mappedDistricts = document.getElementById('edit_u_mappedDistricts'); // Assuming a multi-select or text input
+
+    const edit_u_error = document.getElementById('edit_u_error');
+    const edit_u_success = document.getElementById('edit_u_success');
+    const edit_u_submit = document.getElementById('edit_u_submit');
+    
     // ✅ Auth handlers
     loginBtn.onclick = () => {
       signInWithPopup(auth, provider).catch(err => {
@@ -259,7 +325,7 @@
         successEl.classList.remove('hidden');
         setTimeout(() => successEl.classList.add('hidden'), 3000);
       }
-      if (errorEl) errorEl.classList.add('hidden');
+      if (errorEl) errorHl.classList.add('hidden');
     }
 
     function setLoading(elementId, isLoading) {
@@ -275,38 +341,55 @@
     }
 
     function clearForm(prefix) {
-      const fields = ['name', 'mobile', 'designation', 'district', 'station', 'kgid', 'rank', 'email', 'office', 'range', 'std'];
+      const fields = ['name', 'mobile', 'designation', 'district', 'station', 'kgid', 'rank', 'email', 'office', 'range', 'std', 'hqState', 'districtLevel', 'battalion', 'commissionerate', 'mappedDistricts'];
       fields.forEach(field => {
         const el = document.getElementById(prefix + '_' + field);
-        if (el) el.value = '';
+        if (el) {
+          if (el.type === 'checkbox') {
+            el.checked = false;
+          } else {
+            el.value = '';
+          }
+        }
       });
     }
 
-    // ✅ Load districts/stations
+    // ✅ Load districts/stations/units
     async function loadMasters() {
       try {
-        const snap = await getDocs(collection(db, 'districts'));
-        const districts = snap.docs
+        const districtsSnap = await getDocs(collection(db, 'districts'));
+        const districts = districtsSnap.docs
           .map(d => d.data().name)
           .filter(name => name)
           .sort();
 
-        const options = '<option value="">Select District</option>' +
+        const districtOptions = '<option value="">Select District</option>' +
           districts.map(d => `<option value="${d}">${d}</option>`).join('');
 
-        ['e_district', 'o_district', 's_district'].forEach(id => {
+        ['e_district', 'o_district', 's_district', 'u_mappedDistricts', 'edit_u_mappedDistricts'].forEach(id => {
           const el = document.getElementById(id);
-          if (el) el.innerHTML = options;
+          if (el) el.innerHTML = districtOptions;
         });
+
+        // Load battalions (assuming a 'battalions' collection)
+        const battalionsSnap = await getDocs(collection(db, 'battalions'));
+        const battalions = battalionsSnap.docs
+          .map(b => b.data().name)
+          .filter(name => name)
+          .sort();
+        
+        // Load commissionerates (assuming a 'commissionerates' collection)
+        const commissioneratesSnap = await getDocs(collection(db, 'commissionerates'));
+        const commissionerates = commissioneratesSnap.docs
+          .map(c => c.data().name)
+          .filter(name => name)
+          .sort();
+
       } catch (err) {
-        console.error('Error loading districts:', err);
-        ['e_district', 'o_district', 's_district'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) el.innerHTML = '<option value="">Error loading districts</option>';
-        });
+        console.error('Error loading masters:', err);
+        // ... error handling for dropdowns ...
       }
 
-      // Load units for the master table
       await loadUnitsForMaster();
     }
 
@@ -366,27 +449,51 @@
     }
 
     // ✅ Load units for master table
-    async function loadUnitsForMaster() {
+    window.loadUnitsForMaster = async () => {
       try {
         const q = query(collection(db, 'units'), where('isActive', '==', true));
         const snap = await getDocs(q);
 
         if (snap.empty) {
-          unitsTableBody.innerHTML = '<tr><td style="text-align:center; color:#9ca3af;">No units found</td></tr>';
+          unitsTableBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#9ca3af;">No units found</td></tr>';
           return;
         }
 
         unitsTableBody.innerHTML = snap.docs.map(d => {
           const data = d.data();
+          const unitId = d.id;
+          let scopeDisplay = '';
+
+          if (data.mappingType === 'all') {
+              scopeDisplay = 'All';
+          } else if (data.mappingType === 'state') {
+              scopeDisplay = 'HQ (State Level)';
+          } else if (data.mappingType === 'district') {
+              scopeDisplay = 'District Level';
+          } else if (data.mappingType === 'commissionerate') {
+              scopeDisplay = 'Commissionerate';
+          } else if (data.mappingType === 'battalion') {
+              scopeDisplay = 'Battalion';
+          } else if (data.mappingType === 'subset' && data.mappedDistricts && data.mappedDistricts.length > 0) {
+              scopeDisplay = `Custom: ${data.mappedDistricts.join(', ')}`;
+          } else {
+              scopeDisplay = 'None';
+          }
+
           return `<tr>
             <td>${data.name || ''}</td>
+            <td>${scopeDisplay}</td>
+            <td>
+              <button onclick="openEditUnitModal('${unitId}', '${data.name || ''}', '${data.mappingType || ''}', '${JSON.stringify(data.mappedDistricts || [])}', ${data.isDistrictLevel || false})">Edit</button>
+              <button onclick="deleteUnit('${unitId}')">Delete</button>
+            </td>
           </tr>`;
         }).join('');
       } catch (err) {
         console.error('Error loading units table:', err);
-        unitsTableBody.innerHTML = '<tr><td style="text-align:center; color:#dc2626;">Error loading units</td></tr>';
+        unitsTableBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#dc2626;">Error loading units</td></tr>';
       }
-    }
+    };
 
     // ✅ Add Employee
     window.addEmployee = async () => {
@@ -546,12 +653,45 @@
         return;
       }
 
+      // Determine mappingType and scopes based on checkboxes
+      let mappingType = 'none';
+      const scopes = [];
+      const mappedDistricts = [];
+
+      if (u_hqState.checked) {
+          mappingType = 'state';
+          scopes.push('HQ (State Level)');
+      } else if (u_districtLevel.checked) {
+          mappingType = 'district';
+          scopes.push('District Level');
+          // Assuming u_mappedDistricts is a multi-select for now
+          Array.from(u_mappedDistricts.options).filter(option => option.selected).map(option => mappedDistricts.push(option.value));
+          if (mappedDistricts.length === 0) {
+              showError('u', 'Please select at least one district for District Level scope');
+              return;
+          }
+      } else if (u_battalion.checked) {
+          mappingType = 'battalion';
+          scopes.push('Battalion');
+      } else if (u_commissionerate.checked) {
+          mappingType = 'commissionerate';
+          scopes.push('Commissionerate');
+      } else {
+          mappingType = 'all'; // Default if none selected
+          scopes.push('All');
+      }
+
+
       setLoading('u', true);
 
       try {
         await addDoc(collection(db, 'units'), {
           name: u_name.value.trim(),
           isActive: true,
+          mappingType: mappingType,
+          mappedDistricts: mappedDistricts,
+          isDistrictLevel: u_districtLevel.checked, // Set based on checkbox
+          scopes: scopes, // Store selected scopes
           createdAt: serverTimestamp()
         });
 
@@ -566,26 +706,165 @@
       }
     };
 
+    // New: Open Edit Unit Modal
+    window.openEditUnitModal = (id, name, mappingType, mappedDistrictsJson, isDistrictLevel) => {
+        edit_u_id.value = id;
+        edit_u_name.value = name;
+        
+        // Reset checkboxes
+        edit_u_hqState.checked = false;
+        edit_u_districtLevel.checked = false;
+        edit_u_battalion.checked = false;
+        edit_u_commissionerate.checked = false;
+        edit_u_mappedDistricts.style.display = 'none'; // Hide by default
+
+        // Set scopes
+        if (mappingType === 'state') {
+            edit_u_hqState.checked = true;
+        } else if (mappingType === 'district') {
+            edit_u_districtLevel.checked = true;
+            edit_u_mappedDistricts.style.display = 'block';
+            const currentMappedDistricts = JSON.parse(mappedDistrictsJson);
+            Array.from(edit_u_mappedDistricts.options).forEach(option => {
+                option.selected = currentMappedDistricts.includes(option.value);
+            });
+        } else if (mappingType === 'battalion') {
+            edit_u_battalion.checked = true;
+        } else if (mappingType === 'commissionerate') {
+            edit_u_commissionerate.checked = true;
+        }
+
+
+        editUnitModal.style.display = 'flex'; // Show modal
+    };
+
+    // New: Close Edit Unit Modal
+    window.closeEditUnitModal = () => {
+        editUnitModal.style.display = 'none';
+        showError('edit_u', ''); // Clear errors
+        showSuccess('edit_u', ''); // Clear success messages
+        clearForm('edit_u');
+    };
+
+    // New: Update Unit
+    window.updateUnit = async () => {
+        if (!edit_u_name.value.trim()) {
+            showError('edit_u', 'Unit name is required');
+            return;
+        }
+
+        let mappingType = 'none';
+        const scopes = [];
+        const mappedDistricts = [];
+
+        if (edit_u_hqState.checked) {
+            mappingType = 'state';
+            scopes.push('HQ (State Level)');
+        } else if (edit_u_districtLevel.checked) {
+            mappingType = 'district';
+            scopes.push('District Level');
+            Array.from(edit_u_mappedDistricts.options).filter(option => option.selected).map(option => mappedDistricts.push(option.value));
+            if (mappedDistricts.length === 0) {
+                showError('edit_u', 'Please select at least one district for District Level scope');
+                return;
+            }
+        } else if (edit_u_battalion.checked) {
+            mappingType = 'battalion';
+            scopes.push('Battalion');
+        } else if (edit_u_commissionerate.checked) {
+            mappingType = 'commissionerate';
+            scopes.push('Commissionerate');
+        } else {
+            mappingType = 'all'; // Default if none selected
+            scopes.push('All');
+        }
+
+        setLoading('edit_u', true);
+        try {
+            // Call Google Apps Script backend to update unit
+            await fetch('https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec?action=updateUnit', {
+                method: 'POST',
+                body: JSON.stringify({
+                    id: edit_u_id.value,
+                    name: edit_u_name.value.trim(),
+                    isActive: true, // Assuming active by default for now
+                    mappingType: mappingType,
+                    mappedDistricts: mappedDistricts,
+                    isDistrictLevel: edit_u_districtLevel.checked,
+                    scopes: scopes
+                })
+            });
+            showSuccess('edit_u', 'Unit updated successfully!');
+            closeEditUnitModal();
+            loadUnitsForMaster(); // Refresh table
+        } catch (err) {
+            console.error('Error updating unit:', err);
+            showError('edit_u', 'Failed to update unit: ' + err.message);
+        } finally {
+            setLoading('edit_u', false);
+        }
+    };
+
+    // New: Delete Unit
+    window.deleteUnit = async (unitId) => {
+        if (!confirm('Are you sure you want to delete this unit?')) {
+            return;
+        }
+        setLoading('units', true); // Indicate loading on the main units section
+        try {
+            // Call Google Apps Script backend to delete unit
+            await fetch('https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec?action=deleteUnit', {
+                method: 'POST',
+                body: JSON.stringify({ id: unitId })
+            });
+            showSuccess('units', 'Unit deleted successfully!');
+            loadUnitsForMaster(); // Refresh table
+        } catch (err) {
+            console.error('Error deleting unit:', err);
+            showError('units', 'Failed to delete unit: ' + err.message);
+        } finally {
+            setLoading('units', false);
+        }
+    };
+
+    // Event listeners for dynamic scope fields
+    document.addEventListener('change', () => {
+        const isDistrictLevelChecked = u_districtLevel.checked || edit_u_districtLevel.checked;
+        if (isDistrictLevelChecked) {
+            u_mappedDistricts.style.display = 'block';
+            edit_u_mappedDistricts.style.display = 'block';
+        } else {
+            u_mappedDistricts.style.display = 'none';
+            edit_u_mappedDistricts.style.display = 'none';
+        }
+    });
+
     // ✅ Event listeners
     document.addEventListener('DOMContentLoaded', () => {
       e_district.addEventListener('change', loadEmployeeStations);
       s_district.addEventListener('change', loadStationsForMaster);
+
+      // Trigger change event to set initial visibility of mappedDistricts dropdown
+      document.dispatchEvent(new Event('change'));
     });
 
     // ✅ Initial load
     setTimeout(loadMasters, 500);
 
   </script>
+  <!-- Edit Unit Modal -->
+  <div id="editUnitModal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-button" onclick="closeEditUnitModal()">&times;</span>
+      <h3>Edit Unit</h3>
+      <input type="hidden" id="edit_u_id">
+      <div><label>Unit Name *</label><input id="edit_u_name" required /></div>
+      <div id="edit_u_error" class="error hidden"></div>
+      <div id="edit_u_success" class="success hidden"></div>
+      <br />
+      <button class="primary" id="edit_u_submit" onclick="updateUnit()">Save Changes</button>
+    </div>
+  </div>
+
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-

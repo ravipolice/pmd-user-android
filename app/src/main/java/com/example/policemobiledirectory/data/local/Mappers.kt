@@ -28,6 +28,7 @@ fun PendingRegistrationEntity.toEmployee(overridePhotoUrl: String? = null): Empl
         createdAt = Date(this.submittedAt), // Convert Long to Date
         updatedAt = Date(), // Current time as updated
         landline = null, // Not present in registration
-        landline2 = null
+        landline2 = null,
+        isManualStation = this.isManualStation
     )
 }

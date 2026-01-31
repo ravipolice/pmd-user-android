@@ -41,5 +41,6 @@ data class EmployeeEntity(
     val photoUrlFromGoogle: String? = null,
     val isApproved: Boolean = true,
     val unit: String? = null,
-    val searchBlob: String = ""
+    val searchBlob: String = "",
+    val isManualStation: Boolean = false
 )

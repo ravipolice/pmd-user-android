@@ -314,6 +314,7 @@ private fun EmployeeListContent(
     
     // Derived UI-specific lists
     // UNIT-TO-DISTRICT MAPPING LOGIC (Consolidated)
+    // UNIT-TO-DISTRICT MAPPING LOGIC (Consolidated)
     val districtsList = remember(districts, ksrpBattalions, searchParams.unit, fullUnits) {
         val selected = searchParams.unit
         val unitConfig = fullUnits.find { it.name == selected }
@@ -331,7 +332,7 @@ private fun EmployeeListContent(
                     else -> districts.filter { !ksrpBattalions.contains(it) }
                 }
             }
-            selected == "KSRP" -> ksrpBattalions
+            // Fallback: If no config found, strictly exclude KSRP battalions
             else -> districts.filter { !ksrpBattalions.contains(it) }
         }
         listOf("All") + baseList
@@ -339,27 +340,23 @@ private fun EmployeeListContent(
 
     val stationsForDistrictBase by viewModel.stationsForSelectedDistrict.collectAsState()
     
-    val stationsForDistrict = remember(stationsForDistrictBase, unitSections, searchParams.unit) {
+    val stationsForDistrict = remember(stationsForDistrictBase, unitSections, searchParams.unit, fullUnits) {
+         val unitConfig = fullUnits.find { it.name == searchParams.unit }
+         
          if (unitSections.isNotEmpty()) {
              listOf("All") + unitSections
          } else if (searchParams.unit == "All" || searchParams.unit == "Law & Order") {
              stationsForDistrictBase
          } else {
-             // Admin Hybrid Strategy Fallback
-             val expectedKeywords = when(searchParams.unit) {
-                 "Traffic" -> listOf("Traffic")
-                 "Control Room" -> listOf("Control Room") 
-                 "CEN Crime / Cyber" -> listOf("CEN", "Cyber")
-                 "Women Police" -> listOf("Women")
-                 "DPO / Admin" -> listOf("DPO", "Computer", "Admin", "Office")
-                 "DAR" -> listOf("DAR")
-                 "DCRB" -> listOf("DCRB")
-                 "DSB / Intelligence" -> listOf("DSB", "Intelligence", "INT")
-                 "Special Units" -> listOf("FPB", "MCU", "SMMC", "DCRE", "Lokayukta", "ESCOM")
-                 else -> listOf(searchParams.unit)
-             }
+             // Dynamic Filtering using stationKeyword from DB
+             val keywords = unitConfig?.stationKeyword
+                 ?.split(",")
+                 ?.map { it.trim() }
+                 ?.filter { it.isNotEmpty() }
+                 ?: listOf(searchParams.unit)
+
              stationsForDistrictBase.filter { station -> 
-                 station == "All" || expectedKeywords.any { station.contains(it, ignoreCase = true) }
+                 station == "All" || keywords.any { station.contains(it, ignoreCase = true) }
              }
          }
     }

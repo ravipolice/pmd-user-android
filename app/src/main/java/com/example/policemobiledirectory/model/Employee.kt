@@ -35,7 +35,9 @@ data class Employee(
     val landline: String? = null,
     val landline2: String? = null,
     @get:PropertyName("isHidden")
-    val isHidden: Boolean = false       // Added for Hide/Unhide feature
+    val isHidden: Boolean = false,       // Added for Hide/Unhide feature
+    @get:PropertyName("isManualStation")
+    val isManualStation: Boolean = false // Added for manual section tracking
 ) {
     // Computed property for display
     val displayRank: String

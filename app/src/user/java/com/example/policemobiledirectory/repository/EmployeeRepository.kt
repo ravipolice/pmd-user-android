@@ -893,7 +893,8 @@ open class EmployeeRepository @Inject constructor(
                     bloodGroup = it.bloodGroup ?: "",
                     photoUrl = it.photoUrl ?: "",
                     firebaseUid = it.firebaseUid ?: "",
-                    createdAt = it.createdAt ?: Date()
+                    createdAt = it.createdAt ?: Date(),
+                    isManualStation = it.isManualStation
                 )
             }
         }
@@ -1057,7 +1058,8 @@ open class EmployeeRepository @Inject constructor(
             isAdmin = isAdmin,
             isApproved = isApproved,
             createdAt = createdAt,
-            updatedAt = updatedAt
+            updatedAt = updatedAt,
+            isManualStation = isManualStation
         )
     }
 
@@ -1098,7 +1100,8 @@ open class EmployeeRepository @Inject constructor(
             createdAt = createdAt,
             updatedAt = updatedAt,
             unit = unitVal,
-            searchBlob = blob
+            searchBlob = blob,
+            isManualStation = isManualStation
         )
     }
 
@@ -1137,7 +1140,8 @@ open class EmployeeRepository @Inject constructor(
                 updatedAt = emp.updatedAt ?: Date(),
                 pin = pinHash,
                 unit = emp.unit,
-                searchBlob = blob
+                searchBlob = blob,
+                isManualStation = emp.isManualStation
             )
         } else {
             // If doc couldn't be mapped to Employee, build from fields directly
@@ -1180,7 +1184,8 @@ open class EmployeeRepository @Inject constructor(
                 updatedAt = doc.getDate("updatedAt") ?: Date(),
                 pin = pinHash,
                 unit = unit,
-                searchBlob = blob
+                searchBlob = blob,
+                isManualStation = doc.getBoolean("isManualStation") ?: false
             )
         }
     }
@@ -1241,7 +1246,8 @@ open class EmployeeRepository @Inject constructor(
             updatedAt = emp.updatedAt ?: Date(),
             pin = pinHash,
             unit = emp.unit,
-            searchBlob = blob
+            searchBlob = blob,
+            isManualStation = emp.isManualStation
         )
     }
 

@@ -322,8 +322,6 @@ private fun EmployeeListContent(
                          if (unitConfig.mappedDistricts.isNotEmpty()) {
                              unitConfig.mappedDistricts.sorted()
                          } else {
-                             // Fallback if empty but should be mapped -> Show Empty or All? 
-                             // Let's fallback to "All" minus KSRP for safety, or empty if strict.
                              // Default to all districts excluding KSRP if mapping is missing
                              districts.filter { !ksrpBattalions.contains(it) }
                          }
@@ -336,8 +334,9 @@ private fun EmployeeListContent(
                     }
                 }
             }
-            selectedUnit == "KSRP" -> ksrpBattalions // Hardcoded fallback for KSRP if model missing
-            else -> districts.filter { !ksrpBattalions.contains(it) } // Default for others
+            // Fallback: If no config found, strictly exclude KSRP battalions (default behavior)
+            // Removed hardcoded "KSRP" check; it must be configured in DB now.
+            else -> districts.filter { !ksrpBattalions.contains(it) } 
         }
         
         if (isAdmin) {
@@ -347,18 +346,16 @@ private fun EmployeeListContent(
         }
     }
 
-
     var selectedStation by remember { mutableStateOf("All") }
     // var stationExpanded removed
     
     // 🔹 FILTER STATIONS BY DISTRICT AND UNIT
-    val stationsForDistrict = remember(selectedDistrict, selectedUnit, stationsByDistrict) {
+    val stationsForDistrict = remember(selectedDistrict, selectedUnit, stationsByDistrict, fullUnits, unitSections) {
+        // Find configuration for the selected unit to get stationKeyword
+        val unitConfig = fullUnits.find { it.name == selectedUnit }
+
         // 1. Get stations for the selected district (or all districts if "All")
         val districtStations = if (selectedDistrict == "All") {
-             // If "All" districts, we effectively don't filter by district yet, OR we rely on ViewModel filtering.
-             // But for the dropdown, showing *all* stations from *all* districts is too much.
-             // Strategy: If District is All, show Empty or All? 
-             // Current app showed "All". Let's stick to that, but maybe limit distinct names?
              listOf("All") 
         } else {
             val stations = stationsByDistrict[selectedDistrict]
@@ -367,33 +364,23 @@ private fun EmployeeListContent(
             listOf("All") + stations
         }
         
-         // 2. Filter these stations by Unit keyword (Hybrid Strategy in UI)
+         // 2. Apply unit-specific dynamic filtering
         if (unitSections.isNotEmpty()) {
              // If dynamic sections exist for this unit, use them as the "Station" list
              listOf("All") + unitSections
         } else if (selectedUnit == "All" || selectedUnit == "Law & Order") {
-            // "Law & Order" is the default bucket. Ideally, we'd check if a station falls into ANY other unit.
-            // But doing that inverse check in the UI is expensive.
-            // For the dropdown, simple containment is usually enough, or we just show all stations in the district.
-            // Let's stick to: "Law & Order" shows everything in the district for now, or we can make it stricter later.
+            // "Law & Order" / "All" shows everything in the district
             districtStations
         } else {
-             // For specific units, filter by station name keywords as per the Hybrid Strategy fallback
-             val expectedKeywords = when(selectedUnit) {
-                 "Traffic" -> listOf("Traffic")
-                 "Control Room" -> listOf("Control Room") 
-                 "CEN Crime / Cyber" -> listOf("CEN", "Cyber")
-                 "Women Police" -> listOf("Women")
-                 "DPO / Admin" -> listOf("DPO", "Computer", "Admin", "Office")
-                 "DAR" -> listOf("DAR")
-                 "DCRB" -> listOf("DCRB")
-                 "DSB / Intelligence" -> listOf("DSB", "Intelligence", "INT")
-                 "Special Units" -> listOf("FPB", "MCU", "SMMC", "DCRE", "Lokayukta", "ESCOM")
-                 else -> listOf(selectedUnit)
-             }
-             
+             // Dynamic Filtering using stationKeyword from DB
+             val keywords = unitConfig?.stationKeyword
+                 ?.split(",")
+                 ?.map { it.trim() }
+                 ?.filter { it.isNotEmpty() }
+                 ?: listOf(selectedUnit) // Fallback to Unit Name if no keyword configured
+
              districtStations.filter { station -> 
-                 station == "All" || expectedKeywords.any { station.contains(it, ignoreCase = true) }
+                 station == "All" || keywords.any { station.contains(it, ignoreCase = true) }
              }
         }
     }

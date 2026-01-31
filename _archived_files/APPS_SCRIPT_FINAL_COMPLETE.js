@@ -292,7 +292,8 @@ function uploadProfileImage(e) {
         debug.push("METHOD 1 ERROR: " + err.toString());
         blob = null;
       }
-    } else {
+    }
+    else {
       debug.push("METHOD 1 SKIPPED: No postData.bytes");
     }
     
@@ -330,7 +331,8 @@ function uploadProfileImage(e) {
       } catch (err) {
         debug.push("METHOD 2 (ROBUST) ERROR: " + err.toString());
       }
-    } else {
+    }
+    else {
       debug.push("METHOD 2 SKIPPED: No rawBody or already have blob");
     }
     
@@ -479,7 +481,8 @@ function uploadProfileImage(e) {
         debug.push("Stack: " + (err.stack || "no stack"));
         return jsonResponse({ success: false, error: err.toString(), debug: debug }, 500);
       }
-    } else {
+    }
+    else {
       if (!hasContents) {
         debug.push("METHOD 3 SKIPPED: No rawBody");
       } else {
@@ -541,7 +544,8 @@ function handleBlobSave(e, blob, kgid, debug) {
       
       const firestoreStatus = updateFirebaseProfileImage(kgid, driveUrl);
       debug.push("Firestore update: " + firestoreStatus);
-    } else {
+    }
+    else {
       debug.push("WARNING: No kgid, skipping sheet/Firestore update");
     }
     

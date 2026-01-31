@@ -172,7 +172,9 @@ class ConstantsRepository @Inject constructor(
         val mappingType: String = "all", // "all", "subset", "single", "none"
         val mappedDistricts: List<String> = emptyList(),
         val isDistrictLevel: Boolean = false,
-        val scopes: List<String> = emptyList()
+        val isHqLevel: Boolean = false,
+        val scopes: List<String> = emptyList(),
+        val applicableRanks: List<String> = emptyList()
     )
 
     /**
@@ -217,6 +219,7 @@ class ConstantsRepository @Inject constructor(
                     val mergedDistricts = (legacyDistricts + areaIds).distinct()
 
                     val isDistrictLevel = doc.getBoolean("isDistrictLevel") ?: false
+                    val isHqLevel = doc.getBoolean("isHqLevel") ?: false
                     
                     val scopesObj = doc.get("scopes")
                     val scopes = when (scopesObj) {
@@ -224,7 +227,13 @@ class ConstantsRepository @Inject constructor(
                         else -> emptyList<String>()
                     }
 
-                    UnitMapping(name, type, mergedDistricts, isDistrictLevel, scopes)
+                    val ranksObj = doc.get("applicableRanks")
+                    val applicableRanks = when (ranksObj) {
+                        is List<*> -> ranksObj.mapNotNull { it?.toString() }
+                        else -> emptyList<String>()
+                    }
+
+                    UnitMapping(name, type, mergedDistricts, isDistrictLevel, isHqLevel, scopes, applicableRanks)
                 } else null
             }.associateBy { it.unitName }
 
@@ -239,6 +248,12 @@ class ConstantsRepository @Inject constructor(
                         val legacyDistricts = (doc.get("mappedDistricts") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
                         val areaIds = (doc.get("mappedAreaIds") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
                         
+                        val stationKeyword = doc.getString("stationKeyword") ?: when(name) {
+                            "DCRB" -> "DCRB"
+                            "ESCOM" -> "ESCOM"
+                            else -> ""
+                        }
+
                         UnitModel(
                             id = doc.id,
                             name = name,
@@ -246,7 +261,10 @@ class ConstantsRepository @Inject constructor(
                             mappingType = doc.getString("mappingType") ?: "all",
                             mappedDistricts = (legacyDistricts + areaIds).distinct(),
                             isDistrictLevel = doc.getBoolean("isDistrictLevel") ?: false,
-                            scopes = (doc.get("scopes") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+                            isHqLevel = doc.getBoolean("isHqLevel") ?: false,
+                            scopes = (doc.get("scopes") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList(),
+                            applicableRanks = (doc.get("applicableRanks") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList(),
+                            stationKeyword = stationKeyword
                         )
                     } else null
                 }.sortedBy { it.name }
@@ -277,6 +295,12 @@ class ConstantsRepository @Inject constructor(
         var source = "Unknown"
         var districts: List<String> = emptyList()
 
+        // HOTFIX: Hardcoded mapping for SCRB to fix "showing all districts" issue
+        if (unitName.equals("SCRB", ignoreCase = true)) {
+             Log.d("ConstantsRepository", "🔍 Resolved districts for unit 'SCRB': Forced to HQ")
+             return listOf("HQ")
+        }
+
         // Step 1: Check Cached Dynamic Mappings (Contains scopes and mapped areas)
         val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null)
         if (!json.isNullOrEmpty()) {
@@ -288,30 +312,44 @@ class ConstantsRepository @Inject constructor(
                 if (mapping != null) {
                     source = "Firestore Cache" 
                     
-                    // A. Start with explicit mapping
-                    districts = when (mapping.mappingType) {
-                        "subset", "single" -> mapping.mappedDistricts
-                        "none" -> listOf("No District Required")
-                        "all" -> getDistricts()
-                        else -> getDistricts()
-                    }
+                    // CRITICAL FIX: If unit is HQ-only (no district/battalion/commissionerate scopes),
+                    // return all districts + HQ, ignoring any stale mappedDistricts
+                    val hasAreaScope = mapping.scopes.contains("district") || 
+                                       mapping.scopes.contains("battalion") || 
+                                       mapping.scopes.contains("commissionerate") || 
+                                       mapping.scopes.contains("district_stations")
+                    
+                    if (mapping.isHqLevel && !hasAreaScope) {
+                        // HQ-only unit: Return all districts + HQ
+                        districts = getDistricts() + "HQ"
+                        source = "Firestore Cache (HQ-Only)"
+                    } else {
+                        // A. Start with explicit mapping
+                        districts = when (mapping.mappingType) {
+                            "subset", "single" -> mapping.mappedDistricts
+                            "none" -> listOf("No District Required")
+                            "state" -> getDistricts()
+                            "all" -> getDistricts()
+                            else -> getDistricts()
+                        }
 
-                    // B. If it's a State-level unit (HQ scope), ensure "Unit HQ" is included
-                    if (mapping.scopes.contains("state")) {
-                        districts = (districts + "Unit HQ").distinct()
+                        // B. If it's a State-level unit (HQ or State scope), ensure "HQ" is included
+                        if (mapping.scopes.contains("state") || mapping.scopes.contains("hq") || mapping.isHqLevel) {
+                            districts = (districts + "HQ").distinct()
+                        }
                     }
                 } else {
                     source = "Generic Fallback (Cache Miss)"
-                    districts = getDistricts() + "Unit HQ"
+                    districts = getDistricts() + "HQ"
                 }
             } catch (e: Exception) {
                 Log.e("ConstantsRepository", "Failed to parse unit mappings", e)
                 source = "Generic Fallback (Error)"
-                districts = getDistricts() + "Unit HQ"
+                districts = getDistricts() + "HQ"
             }
         } else {
             source = "Generic Fallback (No Cache)"
-            districts = getDistricts() + "Unit HQ"
+            districts = getDistricts() + "HQ"
         }
 
         // Always sort with HQ priority
@@ -519,8 +557,8 @@ class ConstantsRepository @Inject constructor(
             if (sheetDistricts.isNotEmpty()) sheetDistricts else Constants.districtsList
         }
         
-        // Add Unit HQ and sort with HQ priority
-        return sortDistricts((baseList + "Unit HQ").distinct())
+        // Add HQ and sort with HQ priority
+        return sortDistricts((baseList + "HQ").distinct())
     }
 
     /**
@@ -658,9 +696,31 @@ class ConstantsRepository @Inject constructor(
      * HQ / Unit HQ comes first, rest alphabetical
      */
     private fun sortDistricts(list: List<String>): List<String> {
-        val hqItems = list.filter { it.equals("Unit HQ", ignoreCase = true) || it.equals("HQ", ignoreCase = true) || it.equals("UNIT_HQ", ignoreCase = true) }
-        val otherItems = list.filterNot { it.equals("Unit HQ", ignoreCase = true) || it.equals("HQ", ignoreCase = true) || it.equals("UNIT_HQ", ignoreCase = true) }.sorted()
-        return hqItems + otherItems
+        val hqItems = list.filter { it.equals("HQ", ignoreCase = true) || it.equals("UNIT_HQ", ignoreCase = true) }
+        val otherItems = list.filterNot { it.equals("HQ", ignoreCase = true) || it.equals("UNIT_HQ", ignoreCase = true) }.sorted()
+        return if (hqItems.isNotEmpty()) {
+            listOf("HQ") + otherItems
+        } else {
+            otherItems
+        }
+    }
+
+    /**
+     * Get unit mappings from cache
+     */
+    private fun getUnitMappings(): Map<String, UnitMapping> {
+        val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null)
+        return if (!json.isNullOrEmpty()) {
+            try {
+                val type = object : TypeToken<Map<String, UnitMapping>>() {}.type
+                Gson().fromJson(json, type) ?: emptyMap()
+            } catch (e: Exception) {
+                Log.e("ConstantsRepository", "Error parsing unit mappings", e)
+                emptyMap()
+            }
+        } else {
+            emptyMap()
+        }
     }
 
     // =================================================================================
@@ -836,5 +896,13 @@ class ConstantsRepository @Inject constructor(
             Log.e("ConstantsRepository", "Error fetching sections for $unitName", e)
             emptyList()
         }
+    }
+
+    /**
+     * Get applicable ranks for unit
+     */
+    fun getApplicableRanksForUnit(unitName: String): List<String> {
+        val mapping = getUnitMappings()[unitName]
+        return mapping?.applicableRanks ?: emptyList()
     }
 }

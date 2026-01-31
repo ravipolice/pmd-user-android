@@ -29,5 +29,6 @@ data class PendingRegistrationEntity(
     val photoUrlFromGoogle: String? = null,
     val landline: String? = null,
     val landline2: String? = null,
-    val createdAt: java.util.Date? = null
+    val createdAt: java.util.Date? = null,
+    val isManualStation: Boolean = false
 )

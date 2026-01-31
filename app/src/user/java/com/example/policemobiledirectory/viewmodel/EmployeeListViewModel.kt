@@ -139,10 +139,12 @@ class EmployeeListViewModel @Inject constructor(
                 val isPS = station.endsWith(" PS", ignoreCase = true)
                 val stripped = if (isPS) station.dropLast(3).trim() else station
                 val circleVariant = "$stripped Circle"
-                (contact.station?.equals(station, ignoreCase = true) == true) ||
-                (isPS && (contact.station?.equals(circleVariant, ignoreCase = true) == true || 
-                         contact.station?.equals(stripped, ignoreCase = true) == true)) ||
-                (contact.station.isNullOrBlank() && contact.name.contains(stripped, ignoreCase = true))
+                val contactStation = contact.station?.trim()
+                (contactStation?.equals(station, ignoreCase = true) == true) ||
+                (isPS && (contactStation?.equals(circleVariant, ignoreCase = true) == true || 
+                         contactStation?.equals(stripped, ignoreCase = true) == true)) ||
+                ((contactStation.isNullOrBlank() || contactStation.equals("Others", ignoreCase = true)) && 
+                 contact.name.contains(stripped, ignoreCase = true))
             }
 
             val rankMatch = rank == "All" || contact.rank?.equals(rank, ignoreCase = true) == true

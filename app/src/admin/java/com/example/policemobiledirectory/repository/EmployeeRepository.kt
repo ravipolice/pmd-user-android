@@ -22,6 +22,7 @@ import com.example.policemobiledirectory.data.local.SearchFilter
 import com.example.policemobiledirectory.utils.PinHasher
 import com.example.policemobiledirectory.api.EmployeeApiService
 import com.example.policemobiledirectory.utils.SecurityConfig
+import com.example.policemobiledirectory.utils.SearchUtils
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -893,7 +894,8 @@ open class EmployeeRepository @Inject constructor(
                     bloodGroup = it.bloodGroup ?: "",
                     photoUrl = it.photoUrl ?: "",
                     firebaseUid = it.firebaseUid ?: "",
-                    submittedAt = it.createdAt?.time ?: System.currentTimeMillis()
+                    submittedAt = it.createdAt?.time ?: System.currentTimeMillis(),
+                    isManualStation = it.isManualStation
                 )
             }
         }
@@ -1062,26 +1064,33 @@ open class EmployeeRepository @Inject constructor(
 
     // convert domain Employee -> entity (pin not available from domain POJO usually)
     private fun Employee.toEntity(): EmployeeEntity {
+        val blob = SearchUtils.generateSearchBlob(
+            kgid, name ?: "", mobile1 ?: "", mobile2 ?: "", rank ?: "", metalNumber ?: "",
+            district ?: "", station ?: "", unit ?: "", bloodGroup ?: ""
+        )
         return EmployeeEntity(
             kgid = kgid,
-            name = name,
+            name = name ?: "",
             email = email,
             pin = pin,
-            mobile1 = mobile1,
-            mobile2 = mobile2,
-            rank = rank,
-            metalNumber = metalNumber,
-            district = district,
-            station = station,
-            bloodGroup = bloodGroup,
-            photoUrl = photoUrl,
-            photoUrlFromGoogle = photoUrlFromGoogle,
-            fcmToken = fcmToken,
-            firebaseUid = firebaseUid,
+            mobile1 = mobile1 ?: "",
+            mobile2 = mobile2 ?: "",
+            rank = rank ?: "",
+            metalNumber = metalNumber ?: "",
+            district = district ?: "",
+            station = station ?: "",
+            bloodGroup = bloodGroup ?: "",
+            photoUrl = photoUrl ?: "",
+            photoUrlFromGoogle = photoUrlFromGoogle ?: "",
+            fcmToken = fcmToken ?: "",
+            firebaseUid = firebaseUid ?: "",
             isAdmin = isAdmin,
             isApproved = isApproved,
             createdAt = createdAt,
-            updatedAt = updatedAt
+            updatedAt = updatedAt,
+            unit = unit,
+            searchBlob = blob,
+            isManualStation = isManualStation
         )
     }
 
@@ -1094,6 +1103,11 @@ open class EmployeeRepository @Inject constructor(
         return if (emp != null) {
             // Ensure kgid is set - use document ID if field is missing/empty
             val finalKgid = if (emp.kgid.isNotBlank()) emp.kgid else docKgid
+            val blob = SearchUtils.generateSearchBlob(
+                finalKgid, emp.name, emp.mobile1, emp.mobile2, emp.rank, emp.metalNumber, 
+                emp.district, emp.station, emp.unit, emp.bloodGroup
+            )
+
             EmployeeEntity(
                 kgid = finalKgid, // ✅ Always has a value (either from field or document ID)
                 name = emp.name ?: "",
@@ -1114,24 +1128,41 @@ open class EmployeeRepository @Inject constructor(
                 createdAt = emp.createdAt ?: Date(),
                 updatedAt = emp.updatedAt ?: Date(),
                 pin = pinHash,
-                unit = emp.unit
+                unit = emp.unit,
+                searchBlob = blob,
+                isManualStation = emp.isManualStation
             )
         } else {
             // If doc couldn't be mapped to Employee, build from fields directly
             // ✅ CRITICAL FIX: Use document ID as kgid if field is missing
             val fieldKgid = doc.getString("kgid")
             val finalKgid = if (!fieldKgid.isNullOrBlank()) fieldKgid else docKgid
+            val name = doc.getString("name") ?: ""
+            val email = doc.getString("email") ?: ""
+            val m1 = doc.getString("mobile1") ?: ""
+            val m2 = doc.getString("mobile2") ?: ""
+            val rank = doc.getString("rank") ?: ""
+            val metal = doc.getString("metalNumber") ?: doc.getString("metal") ?: ""
+            val dist = doc.getString("district") ?: ""
+            val station = doc.getString("station") ?: ""
+            val blood = doc.getString("bloodGroup") ?: ""
+            val unit = doc.getString("unit") ?: ""
+
+             val blob = SearchUtils.generateSearchBlob(
+                finalKgid, name, m1, m2, rank, metal, dist, station, unit, blood
+            )
+
             EmployeeEntity(
                 kgid = finalKgid, // ✅ Always has a value (either from field or document ID)
-                name = doc.getString("name") ?: "",
-                email = doc.getString("email") ?: "",
-                mobile1 = doc.getString("mobile1") ?: "",
-                mobile2 = doc.getString("mobile2") ?: "",
-                rank = doc.getString("rank") ?: "",
-                metalNumber = doc.getString("metalNumber") ?: doc.getString("metal") ?: "", // Firestore field: "metalNumber" (fallback to "metal" for old data)
-                district = doc.getString("district") ?: "",
-                station = doc.getString("station") ?: "",
-                bloodGroup = doc.getString("bloodGroup") ?: "",
+                name = name,
+                email = email,
+                mobile1 = m1,
+                mobile2 = m2,
+                rank = rank,
+                metalNumber = metal,
+                district = dist,
+                station = station,
+                bloodGroup = blood,
                 photoUrl = doc.getString("photoUrl") ?: "",
                 photoUrlFromGoogle = doc.getString("photoUrlFromGoogle") ?: "",
                 fcmToken = doc.getString("fcmToken") ?: "",
@@ -1141,7 +1172,9 @@ open class EmployeeRepository @Inject constructor(
                 createdAt = doc.getDate("createdAt") ?: Date(),
                 updatedAt = doc.getDate("updatedAt") ?: Date(),
                 pin = pinHash,
-                unit = doc.getString("unit")
+                unit = unit,
+                searchBlob = blob,
+                isManualStation = doc.getBoolean("isManualStation") ?: false
             )
         }
     }
@@ -1177,6 +1210,10 @@ open class EmployeeRepository @Inject constructor(
 
     // build EmployeeEntity from POJO (no pin)
     private fun buildEmployeeEntityFromPojo(emp: Employee, pinHash: String = ""): EmployeeEntity {
+        val blob = SearchUtils.generateSearchBlob(
+            emp.kgid, emp.name, emp.mobile1, emp.mobile2, emp.rank, emp.metalNumber,
+            emp.district, emp.station, emp.unit, emp.bloodGroup
+        )
         return EmployeeEntity(
             kgid = emp.kgid,
             name = emp.name ?: "",
@@ -1197,7 +1234,9 @@ open class EmployeeRepository @Inject constructor(
             createdAt = emp.createdAt ?: Date(),
             updatedAt = emp.updatedAt ?: Date(),
             pin = pinHash,
-            unit = emp.unit
+            unit = emp.unit,
+            searchBlob = blob,
+            isManualStation = emp.isManualStation
         )
     }
 
