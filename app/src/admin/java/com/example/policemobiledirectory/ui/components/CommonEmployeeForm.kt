@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import coil.compose.rememberAsyncImagePainter
 import androidx.compose.ui.graphics.Color
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 import com.example.policemobiledirectory.data.local.PendingRegistrationEntity
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.utils.Constants
@@ -111,7 +113,7 @@ fun CommonEmployeeForm(
 
     // fields
     var kgid by remember(initialEmployee, initialKgid) { mutableStateOf(initialEmployee?.kgid ?: initialKgid.orEmpty()) }
-    var name by remember(initialEmployee, initialName) { mutableStateOf(initialEmployee?.name ?: initialName) }
+    var name by remember(initialEmployee) { mutableStateOf(initialEmployee?.name ?: "") }
     // ✅ Use initialEmail if provided, otherwise use initialEmployee.email
     var email by remember(initialEmployee, initialEmail) { 
         mutableStateOf(initialEmployee?.email ?: initialEmail) 
@@ -155,8 +157,9 @@ fun CommonEmployeeForm(
     }
 
     // Dynamic District List Logic
-    val availableDistricts = remember(unit, ksrpBattalions, districts) {
-        if (unit == "KSRP") ksrpBattalions else districts
+    // Dynamic District List Logic (Hybrid Strategy)
+    val availableDistricts by produceState(initialValue = emptyList(), key1 = unit, key2 = districts) {
+        value = constantsViewModel.getDistrictsForUnit(unit)
     }
 
     // Reset district/station if Unit changes to/from KSRP
@@ -210,6 +213,9 @@ fun CommonEmployeeForm(
         }
     }
 
+    // Temp URI for camera capture
+    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+
     // UCrop launcher
     val uCropResultLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
@@ -222,12 +228,32 @@ fun CommonEmployeeForm(
         }
     }
 
-    // camera preview -> cache -> uCrop
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp: Bitmap? ->
-        bmp?.let {
-            val src = saveBitmapToCacheAndGetUri(context, it)
-            if (src != null) launchUCrop(context, src, uCropResultLauncher)
-            else Toast.makeText(context, "Camera capture failed", Toast.LENGTH_SHORT).show()
+    // Camera launcher (TakePicture)
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success && tempCameraUri != null) {
+            launchUCrop(context, tempCameraUri!!, uCropResultLauncher)
+        }
+    }
+
+    // Prepare camera capture
+    fun launchCamera() {
+        val uri = createTempImageUri(context)
+        if (uri != null) {
+            tempCameraUri = uri
+            cameraLauncher.launch(uri)
+        } else {
+            Toast.makeText(context, "Failed to create temp file", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // camera permission launcher
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            launchCamera()
+        } else {
+            Toast.makeText(context, "Camera permission is required to take photos", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -378,6 +404,35 @@ fun CommonEmployeeForm(
 
 
 
+            // Unit (moved up)
+            ExposedDropdownMenuBox(
+                expanded = unitExpanded,
+                onExpandedChange = { unitExpanded = !unitExpanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = unit.ifEmpty { "Unit" },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Unit") },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
+                    isError = showValidationErrors && unit.isBlank()
+                )
+                if (showValidationErrors && unit.isBlank()) {
+                    Text("Unit required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
+                    units.forEach { selection ->
+                        DropdownMenuItem(text = { Text(selection) }, onClick = {
+                            unit = selection
+                            unitExpanded = false
+                        })
+                    }
+                }
+            }
+            Spacer(Modifier.height(fieldSpacing))
+
             // Row 6: KGID, Rank, Metal Number (conditional) - all in same row
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -471,33 +526,9 @@ fun CommonEmployeeForm(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Unit
-                ExposedDropdownMenuBox(
-                    expanded = unitExpanded,
-                    onExpandedChange = { unitExpanded = !unitExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    OutlinedTextField(
-                        value = unit.ifEmpty { "Unit" },
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Unit") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
-                        isError = showValidationErrors && unit.isBlank()
-                    )
-                    if (showValidationErrors && unit.isBlank()) {
-                        Text("Unit required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    }
-                    ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
-                        units.forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                unit = selection
-                                unitExpanded = false
-                            })
-                        }
-                    }
-                }
+                // Unit was here, moved up.
+                Spacer(Modifier.width(1.dp)) // Placeholder to prevent empty Row issues if any, though District is aligned.
+
 
                 // District
                 if (!isHighRankingOfficer) {
@@ -1097,7 +1128,11 @@ fun CommonEmployeeForm(
                 Column {
                     Row(modifier = Modifier.fillMaxWidth().clickable {
                         showSourceDialog = false
-                        cameraLauncher.launch(null)
+                        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                            launchCamera()
+                        } else {
+                            cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                        }
                     }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.PhotoCamera, contentDescription = "Camera")
                         Spacer(Modifier.width(12.dp))
@@ -1140,6 +1175,11 @@ private fun launchUCrop(context: Context, sourceUri: Uri, launcher: ActivityResu
             setCircleDimmedLayer(true)
             setFreeStyleCropEnabled(false)
             setCompressionQuality(90)
+            
+            // Fix Color Overlap - Match App Theme
+            setToolbarColor(androidx.core.content.ContextCompat.getColor(context, com.example.policemobiledirectory.R.color.md_theme_light_primary))
+            setStatusBarColor(androidx.core.content.ContextCompat.getColor(context, com.example.policemobiledirectory.R.color.md_theme_light_onPrimaryContainer))
+            setActiveControlsWidgetColor(androidx.core.content.ContextCompat.getColor(context, com.example.policemobiledirectory.R.color.md_theme_light_primary))
         }
 
         val intent = UCrop.of(sourceUri, destUri).withAspectRatio(1f, 1f).withOptions(options).getIntent(context)
@@ -1150,27 +1190,19 @@ private fun launchUCrop(context: Context, sourceUri: Uri, launcher: ActivityResu
     }
 }
 
-private fun saveBitmapToCacheAndGetUri(context: Context, bitmap: Bitmap): Uri? {
+
+// Helper to create temp URI for camera
+private fun createTempImageUri(context: Context): Uri? {
     return try {
-        val file = File(context.cacheDir, "camera_${System.currentTimeMillis()}.jpg")
-        FileOutputStream(file).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
-            out.flush()
-        }
-        try {
-            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-        } catch (e: Exception) {
-            android.util.Log.e("CommonEmployeeForm", "FileProvider error: ${e.message}", e)
-            Toast.makeText(context, "Failed to access file provider", Toast.LENGTH_SHORT).show()
-            null
-        }
-    } catch (e: IOException) {
-        android.util.Log.e("CommonEmployeeForm", "Failed to save bitmap: ${e.message}", e)
-        Toast.makeText(context, "Failed to save image: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
-        null
+        val file = File(context.cacheDir, "camera_capture_${System.currentTimeMillis()}.jpg")
+        androidx.core.content.FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider", // Use dynamic package name for Admin/User flavors
+            file
+        )
     } catch (e: Exception) {
-        android.util.Log.e("CommonEmployeeForm", "Unexpected error: ${e.message}", e)
-        Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+        android.util.Log.e("CommonEmployeeForm", "Error creating temp file URI: ${e.message}", e)
         null
     }
 }
+

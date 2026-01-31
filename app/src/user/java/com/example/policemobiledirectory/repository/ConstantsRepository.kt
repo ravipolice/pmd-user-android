@@ -171,7 +171,8 @@ class ConstantsRepository @Inject constructor(
         val unitName: String,
         val mappingType: String = "all", // "all", "subset", "single", "none"
         val mappedDistricts: List<String> = emptyList(),
-        val isDistrictLevel: Boolean = false
+        val isDistrictLevel: Boolean = false,
+        val scopes: List<String> = emptyList()
     )
 
     private val UNIT_MAPPINGS_CACHE_KEY = "unit_mappings_cache"
@@ -199,14 +200,33 @@ class ConstantsRepository @Inject constructor(
                 val name = doc.getString("name")
                 if (name != null) {
                     val type = doc.getString("mappingType") ?: "all"
-                    // Handle "mappedDistricts" safely
+                    
+                    // Handle "mappedDistricts" (Legacy)
                     val districtsObj = doc.get("mappedDistricts")
-                    val districtsList = when (districtsObj) {
+                    val legacyDistricts = when (districtsObj) {
                         is List<*> -> districtsObj.mapNotNull { it?.toString() }
                         else -> emptyList<String>()
                     }
+
+                    // Handle "mappedAreaIds" (New)
+                    val areaIdsObj = doc.get("mappedAreaIds")
+                    val areaIds = when (areaIdsObj) {
+                        is List<*> -> areaIdsObj.mapNotNull { it?.toString() }
+                        else -> emptyList<String>()
+                    }
+
+                    // Merge both lists
+                    val mergedDistricts = (legacyDistricts + areaIds).distinct()
+
                     val isDistrictLevel = doc.getBoolean("isDistrictLevel") ?: false
-                    UnitMapping(name, type, districtsList, isDistrictLevel)
+                    
+                    val scopesObj = doc.get("scopes")
+                    val scopes = when (scopesObj) {
+                        is List<*> -> scopesObj.mapNotNull { it?.toString() }
+                        else -> emptyList<String>()
+                    }
+
+                    UnitMapping(name, type, mergedDistricts, isDistrictLevel, scopes)
                 } else null
             }.associateBy { it.unitName }
 
@@ -218,12 +238,15 @@ class ConstantsRepository @Inject constructor(
                 val unitModels: List<UnitModel> = snapshot.documents.mapNotNull { doc ->
                     val name = doc.getString("name")
                     if (name != null) {
+                        val legacyDistricts = (doc.get("mappedDistricts") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+                        val areaIds = (doc.get("mappedAreaIds") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+
                         UnitModel(
                             id = doc.id,
                             name = name,
                             isActive = doc.getBoolean("isActive") ?: true,
                             mappingType = doc.getString("mappingType") ?: "all",
-                            mappedDistricts = (doc.get("mappedDistricts") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList(),
+                            mappedDistricts = (legacyDistricts + areaIds).distinct(),
                             isDistrictLevel = doc.getBoolean("isDistrictLevel") ?: false,
                             scopes = (doc.get("scopes") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
                         )
@@ -263,9 +286,9 @@ class ConstantsRepository @Inject constructor(
     fun getDistrictsForUnit(unitName: String): List<String> {
         val startTime = System.currentTimeMillis()
         var source = "Unknown"
-        var result: List<String> = Constants.districtsList // Default 'all'
+        var districts: List<String> = emptyList()
 
-        // Step 1: Check Cached Dynamic Mappings
+        // Step 1: Check Cached Dynamic Mappings (Contains scopes and mapped areas)
         val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null)
         if (!json.isNullOrEmpty()) {
             try {
@@ -274,33 +297,37 @@ class ConstantsRepository @Inject constructor(
                 
                 val mapping = cachedMappings[unitName]
                 if (mapping != null) {
-                   source = "Firestore Cache" 
-                   result = when (mapping.mappingType) {
-                       "subset", "single" -> {
-                           if (mapping.mappedDistricts.isNotEmpty()) {
-                               mapping.mappedDistricts.sorted()
-                           } else {
-                               Constants.districtsList
-                           }
-                       }
-                       "none" -> listOf("No District Required")
-                       "all" -> getDistricts()
-                       else -> getDistricts()
-                   }
+                    source = "Firestore Cache" 
+                    
+                    // A. Start with explicit mapping
+                    districts = when (mapping.mappingType) {
+                        "subset", "single" -> mapping.mappedDistricts
+                        "none" -> listOf("No District Required")
+                        "all" -> getDistricts()
+                        else -> getDistricts()
+                    }
+
+                    // B. If it's a State-level unit (HQ scope), ensure "Unit HQ" is included
+                    if (mapping.scopes.contains("state")) {
+                        districts = (districts + "Unit HQ").distinct()
+                    }
                 } else {
-                    source = "Hardcoded Fallback (Cache Miss)"
-                    result = getHardcodedFallback(unitName)
+                    source = "Generic Fallback (Cache Miss)"
+                    districts = getDistricts() + "Unit HQ"
                 }
             } catch (e: Exception) {
                 Log.e("ConstantsRepository", "Failed to parse unit mappings", e)
-                source = "Hardcoded Fallback (Error)"
-                result = getHardcodedFallback(unitName)
+                source = "Generic Fallback (Error)"
+                districts = getDistricts() + "Unit HQ"
             }
         } else {
-            source = "Hardcoded Fallback (No Cache)"
-            result = getHardcodedFallback(unitName)
+            source = "Generic Fallback (No Cache)"
+            districts = getDistricts() + "Unit HQ"
         }
 
+        // Always sort with HQ priority
+        val result = sortDistricts(districts.distinct())
+        
         Log.d("ConstantsRepository", "🔍 Resolved districts for unit '$unitName': Count=${result.size}, Source=$source, Time=${System.currentTimeMillis() - startTime}ms")
         return result
     }
@@ -319,14 +346,7 @@ class ConstantsRepository @Inject constructor(
         return false
     }
 
-    private fun getHardcodedFallback(unitName: String): List<String> {
-        return when (unitName) {
-            "KSRP" -> Constants.ksrpBattalions
-            "SCRB" -> listOf("Bengaluru City")
-            "STATE" -> listOf("No District Required")
-            else -> Constants.districtsList
-        }
-    }
+
 
     /**
      * Get sections for a specific unit (e.g. "State INT")
@@ -543,15 +563,17 @@ class ConstantsRepository @Inject constructor(
     fun getDistricts(): List<String> {
         // 1. Firestore
         val firestoreDistricts = getCachedList(DISTRICTS_CACHE_KEY, object : TypeToken<List<String>>() {})
-        if (firestoreDistricts.isNotEmpty()) return firestoreDistricts.sorted()
-
-        // 2. Sheets (Legacy)
-        val cached = getCachedData()
-        val sheetDistricts = cached?.districts ?: emptyList()
-        if (sheetDistricts.isNotEmpty()) return sheetDistricts.sorted()
-
-        // 3. Hardcoded Fallback
-        return Constants.districtsList
+        val baseList = if (firestoreDistricts.isNotEmpty()) {
+            firestoreDistricts
+        } else {
+            // 2. Sheets (Legacy)
+            val cached = getCachedData()
+            val sheetDistricts = cached?.districts ?: emptyList()
+            if (sheetDistricts.isNotEmpty()) sheetDistricts else Constants.districtsList
+        }
+        
+        // Add Unit HQ and sort with HQ priority
+        return sortDistricts((baseList + "Unit HQ").distinct())
     }
 
     /**
@@ -742,6 +764,42 @@ class ConstantsRepository @Inject constructor(
             Result.success("Unit '$name' deleted successfully")
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    // =================================================================================
+    // Helper Methods
+    // =================================================================================
+
+    /**
+     * Sort districts with HQ priority
+     * HQ / Unit HQ comes first, rest alphabetical
+     */
+    private fun sortDistricts(list: List<String>): List<String> {
+        val hqItems = list.filter { it.equals("Unit HQ", ignoreCase = true) || it.equals("HQ", ignoreCase = true) || it.equals("UNIT_HQ", ignoreCase = true) }
+        val otherItems = list.filterNot { it.equals("Unit HQ", ignoreCase = true) || it.equals("HQ", ignoreCase = true) || it.equals("UNIT_HQ", ignoreCase = true) }.sorted()
+        return hqItems + otherItems
+    }
+    /**
+     * Get sections for a specific unit (e.g. "State INT")
+     * Fetches from Firestore "unit_sections" collection
+     */
+    suspend fun getSectionsForUnit(unitName: String): List<String> = withContext(Dispatchers.IO) {
+        try {
+            val docSnapshot = firestore.collection("unit_sections")
+                .document(unitName)
+                .get()
+                .await()
+            
+            if (docSnapshot.exists()) {
+                val sections = docSnapshot.get("sections") as? List<String>
+                sections?.filter { it.isNotBlank() }?.sorted() ?: emptyList()
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Log.e("ConstantsRepository", "Error fetching sections for $unitName", e)
+            emptyList()
         }
     }
 }

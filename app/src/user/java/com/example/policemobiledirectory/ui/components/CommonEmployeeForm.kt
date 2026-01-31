@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import coil.compose.rememberAsyncImagePainter
 import androidx.compose.ui.graphics.Color
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 import com.example.policemobiledirectory.data.local.PendingRegistrationEntity
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.utils.Constants
@@ -107,7 +109,7 @@ fun CommonEmployeeForm(
 
     // fields
     var kgid by remember(initialEmployee, initialKgid) { mutableStateOf(initialEmployee?.kgid ?: initialKgid.orEmpty()) }
-    var name by remember(initialEmployee, initialName) { mutableStateOf(initialEmployee?.name ?: initialName) }
+    var name by remember(initialEmployee) { mutableStateOf(initialEmployee?.name ?: "") }
     // ✅ Use initialEmail if provided, otherwise use initialEmployee.email
     var email by remember(initialEmployee, initialEmail) { 
         mutableStateOf(initialEmployee?.email ?: initialEmail) 
@@ -248,6 +250,17 @@ fun CommonEmployeeForm(
             val src = saveBitmapToCacheAndGetUri(context, it)
             if (src != null) launchUCrop(context, src, uCropResultLauncher)
             else Toast.makeText(context, "Camera capture failed", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // camera permission launcher
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            cameraLauncher.launch(null)
+        } else {
+            Toast.makeText(context, "Camera permission is required to take photos", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -398,105 +411,6 @@ fun CommonEmployeeForm(
 
 
 
-            // Row 6: KGID, Rank, Metal Number (conditional) - all in same row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // KGID / ID
-                OutlinedTextField(
-                    value = kgid,
-                    onValueChange = { newValue ->
-                        kgid = when {
-                            // Allow anything for high-ranking officers
-                            isOfficer || isHighRankingOfficer -> newValue
-                            // Otherwise, only allow digits
-                            newValue.all { it.isDigit() } -> newValue
-                            // If new input contains non-digits, keep the old value
-                            else -> kgid
-                        }
-                    },
-                    label = { Text(if(isOfficer || isHighRankingOfficer) "Officer ID (AGID)*" else "KGID*") },
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
-                    isError = showValidationErrors && !isKgidValid(kgid),
-                    enabled = (isAdmin || isRegistration) && !isSelfEdit
-                )
-
-                // Rank
-                ExposedDropdownMenuBox(
-                    expanded = rankExpanded,
-                    onExpandedChange = { rankExpanded = !rankExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    OutlinedTextField(
-                        value = rank,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Rank*") },
-                        placeholder = { Text("Select Rank") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
-                        isError = showValidationErrors && rank.isBlank()
-                    )
-                    ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
-                        ranks.forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                rank = selection
-                                if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
-                                // If rank is ministerial, verify if we need to clear station or just let UI hide it
-                                // Clearing it ensures validation passes if we accidentally had one selected
-                                if (ministerialRanks.any { it.equals(selection, ignoreCase = true) }) {
-                                    station = ""
-                                }
-                                if (highRankingOfficers.contains(selection)) {
-                                    district = ""
-                                    station = ""
-                                }
-                                rankExpanded = false
-                            })
-                        }
-                    }
-                }
-                if (showValidationErrors && rank.isBlank()) {
-                    Text(
-                        "Rank is required",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(start = 16.dp, top = 4.dp).weight(1f)
-                    )
-                }
-
-                // Metal Number (conditional - only show when required AND NOT OFFICER)
-                if (showMetalNumberField && !isOfficer) {
-                    OutlinedTextField(
-                        value = metalNumber,
-                        onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
-                        label = { Text("Metal No.*") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        isError = showValidationErrors && metalNumber.isBlank()
-                    )
-                }
-            }
-            // Error messages below the row
-            if (showValidationErrors) {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    if (!isKgidValid(kgid)) {
-                        Text(if(isOfficer) "ID required" else "KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    }
-                    if (rank.isBlank()) {
-                        Text("Rank required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    }
-                    if (showMetalNumberField && metalNumber.isBlank() && !isOfficer) {
-                        Text("Metal no. required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-            Spacer(Modifier.height(fieldSpacing))
-
-
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -617,6 +531,105 @@ fun CommonEmployeeForm(
                 }
                 if (showValidationErrors && station.isBlank() && !isDistrictLevelUnit) {
                     Text(if(unit == "State INT" || unitSections.isNotEmpty()) "Section required" else "Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            Spacer(Modifier.height(fieldSpacing))
+
+
+
+            // Row 6: KGID, Rank, Metal Number (conditional) - all in same row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // KGID / ID
+                OutlinedTextField(
+                    value = kgid,
+                    onValueChange = { newValue ->
+                        kgid = when {
+                            // Allow anything for high-ranking officers
+                            isOfficer || isHighRankingOfficer -> newValue
+                            // Otherwise, only allow digits
+                            newValue.all { it.isDigit() } -> newValue
+                            // If new input contains non-digits, keep the old value
+                            else -> kgid
+                        }
+                    },
+                    label = { Text(if(isOfficer || isHighRankingOfficer) "Officer ID (AGID)*" else "KGID") },
+                    modifier = Modifier.weight(0.7f),
+                    keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
+                    isError = showValidationErrors && !isKgidValid(kgid),
+                    enabled = (isAdmin || isRegistration) && !isSelfEdit
+                )
+
+                // Rank
+                ExposedDropdownMenuBox(
+                    expanded = rankExpanded,
+                    onExpandedChange = { rankExpanded = !rankExpanded },
+                    modifier = Modifier.weight(1.3f)
+                ) {
+                    OutlinedTextField(
+                        value = rank,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Rank*") },
+                        placeholder = { Text("Select Rank") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
+                        isError = showValidationErrors && rank.isBlank()
+                    )
+                    ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
+                        ranks.forEach { selection ->
+                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                rank = selection
+                                if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
+                                // If rank is ministerial, verify if we need to clear station or just let UI hide it
+                                // Clearing it ensures validation passes if we accidentally had one selected
+                                if (ministerialRanks.any { it.equals(selection, ignoreCase = true) }) {
+                                    station = ""
+                                }
+                                if (highRankingOfficers.contains(selection)) {
+                                    district = ""
+                                    station = ""
+                                }
+                                rankExpanded = false
+                            })
+                        }
+                    }
+                }
+                if (showValidationErrors && rank.isBlank()) {
+                    Text(
+                        "Rank is required",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp).weight(1f)
+                    )
+                }
+
+                // Metal Number (conditional - only show when required AND NOT OFFICER)
+                if (showMetalNumberField && !isOfficer) {
+                    OutlinedTextField(
+                        value = metalNumber,
+                        onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
+                        label = { Text("Metal No") },
+                        modifier = Modifier.weight(0.7f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = showValidationErrors && metalNumber.isBlank()
+                    )
+                }
+            }
+            // Error messages below the row
+            if (showValidationErrors) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    if (!isKgidValid(kgid)) {
+                        Text(if(isOfficer) "ID required" else "KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    }
+                    if (rank.isBlank()) {
+                        Text("Rank required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    }
+                    if (showMetalNumberField && metalNumber.isBlank() && !isOfficer) {
+                        Text("Metal no. required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    }
                 }
             }
             Spacer(Modifier.height(fieldSpacing))
@@ -807,6 +820,31 @@ fun CommonEmployeeForm(
                 Spacer(Modifier.height(fieldSpacing))
             }
 
+            // Unit (Moved here for proper dependency flow)
+            ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = !unitExpanded }) {
+                OutlinedTextField(
+                    value = unit.ifEmpty { "Unit" },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Unit") },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
+                    isError = showValidationErrors && unit.isBlank()
+                )
+                if (showValidationErrors && unit.isBlank()) {
+                    Text("Unit required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
+                    units.forEach { selection ->
+                        DropdownMenuItem(text = { Text(selection) }, onClick = {
+                            unit = selection
+                            unitExpanded = false
+                        })
+                    }
+                }
+            }
+            Spacer(Modifier.height(fieldSpacing))
+
             // District (admin & registration editable; self-edit disabled)
             // District (admin & registration editable; self-edit disabled)
             val isDistrictLocked = availableDistricts.size == 1 && district.isNotBlank()
@@ -869,25 +907,7 @@ fun CommonEmployeeForm(
             if (showValidationErrors && station.isBlank()) Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(fieldSpacing))
 
-                // Unit
-                ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = !unitExpanded }) {
-                    OutlinedTextField(
-                        value = unit.ifEmpty { "Unit" },
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Unit") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) }
-                    )
-                    ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
-                        units.forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                unit = selection
-                                unitExpanded = false
-                            })
-                        }
-                    }
-                }
+
 
             Spacer(Modifier.height(fieldSpacing))
 
@@ -1165,7 +1185,11 @@ fun CommonEmployeeForm(
                 Column {
                     Row(modifier = Modifier.fillMaxWidth().clickable {
                         showSourceDialog = false
-                        cameraLauncher.launch(null)
+                        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                            cameraLauncher.launch(null)
+                        } else {
+                            cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                        }
                     }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.PhotoCamera, contentDescription = "Camera")
                         Spacer(Modifier.width(12.dp))
@@ -1210,6 +1234,11 @@ private fun launchUCrop(context: Context, sourceUri: Uri, launcher: ActivityResu
             setCircleDimmedLayer(true)
             setFreeStyleCropEnabled(false)
             setCompressionQuality(90)
+            
+            // Fix Color Overlap
+            setToolbarColor(androidx.core.content.ContextCompat.getColor(context, com.example.policemobiledirectory.R.color.md_theme_light_primary))
+            setStatusBarColor(androidx.core.content.ContextCompat.getColor(context, com.example.policemobiledirectory.R.color.md_theme_light_onPrimaryContainer))
+            setActiveControlsWidgetColor(androidx.core.content.ContextCompat.getColor(context, com.example.policemobiledirectory.R.color.md_theme_light_primary))
         }
 
         val intent = UCrop.of(sourceUri, destUri).withAspectRatio(1f, 1f).withOptions(options).getIntent(context)

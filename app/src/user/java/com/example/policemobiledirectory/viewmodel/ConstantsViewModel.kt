@@ -212,7 +212,7 @@ class ConstantsViewModel @Inject constructor(
      * Get sections for a specific unit (e.g. State INT)
      */
     suspend fun getSectionsForUnit(unitName: String): List<String> {
-        return constantsRepository.getUnitSections(unitName)
+        return constantsRepository.getSectionsForUnit(unitName)
     }
 }
 

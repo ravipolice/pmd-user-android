@@ -291,9 +291,14 @@ class ConstantsViewModel @Inject constructor(
         return constantsRepository.isDistrictLevelUnit(unitName)
     }
 
+    /**
+     * Get districts for a specific unit (Hybrid Strategy)
+     */
+    fun getDistrictsForUnit(unitName: String): List<String> {
+        return constantsRepository.getDistrictsForUnit(unitName)
+    }
+
     suspend fun getSectionsForUnit(unitName: String): List<String> {
-        return constantsRepository.getUnitSections(unitName)
+        return constantsRepository.getSectionsForUnit(unitName)
     }
 }
-
-
