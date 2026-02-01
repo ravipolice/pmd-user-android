@@ -157,11 +157,27 @@ open class EmployeeRepository @Inject constructor(
             }
 
             // Step 2 — Firestore fallback
-            val snapshot = employeesCollection
+            var snapshot = employeesCollection
                 .whereEqualTo(FIELD_EMAIL, normalizedEmail)
                 .limit(1)
                 .get()
                 .await()
+
+            // ✅ Fallback to admins collection
+            var isAdminCollection = false
+            if (snapshot.isEmpty) {
+                val adminSnapshot = firestore.collection("admins")
+                    .whereEqualTo("email", normalizedEmail)
+                    .limit(1)
+                    .get()
+                    .await()
+                
+                if (!adminSnapshot.isEmpty) {
+                    snapshot = adminSnapshot
+                    isAdminCollection = true
+                    Log.d(TAG, "LoginFlow: User found in 'admins' collection")
+                }
+            }
 
             if (snapshot.isEmpty) {
                 emit(RepoResult.Error(null, "Invalid email or PIN"))
@@ -171,7 +187,13 @@ open class EmployeeRepository @Inject constructor(
             val doc = snapshot.documents.first()
             // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
             val docKgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
-            val remoteEmployee = doc.toObject(Employee::class.java)?.copy(kgid = docKgid)
+            var remoteEmployee = doc.toObject(Employee::class.java)?.copy(kgid = docKgid)
+            
+            // ✅ Enforce isAdmin if from admins collection
+            if (isAdminCollection) {
+                remoteEmployee = remoteEmployee?.copy(isAdmin = true)
+            }
+
             // read pin hash directly from document (defensive if Employee POJO doesn't contain it)
             val remotePinHash = doc.getString(FIELD_PIN_HASH).orEmpty()
 
@@ -953,7 +975,13 @@ open class EmployeeRepository @Inject constructor(
             val result = auth.signInWithCredential(credential).await()
             val user = result.user ?: throw IllegalStateException("Firebase user is null")
             val email = user.email ?: throw IllegalStateException("Google account has no email")
-            val snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, email).limit(1).get().await()
+            var snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, email).limit(1).get().await()
+            
+            // ✅ Fallback to admins collection
+            if (snapshot.isEmpty) {
+                snapshot = firestore.collection("admins").whereEqualTo("email", email).limit(1).get().await()
+            }
+            
             if (snapshot.isEmpty) emit(RepoResult.Error(null,"User not found: $email"))
             else emit(RepoResult.Success(true))
         } catch (e: Exception) {
@@ -997,14 +1025,34 @@ open class EmployeeRepository @Inject constructor(
             Log.d(TAG, "getEmployeeByEmail: User not found with lowercase '$normalizedEmail', trying raw '$rawEmail'")
             snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, rawEmail).limit(1).get().await()
         }
+
+        // ✅ Fallback to 'admins' collection if still not found
+        var isAdminCollection = false
+        if (snapshot.isEmpty) {
+             Log.d(TAG, "getEmployeeByEmail: User not found in 'employees', checking 'admins'")
+             snapshot = firestore.collection("admins").whereEqualTo("email", normalizedEmail).limit(1).get().await()
+             if (!snapshot.isEmpty) {
+                 isAdminCollection = true
+             }
+        }
+
         val doc = snapshot.documents.firstOrNull()
         // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
         val docKgid = doc?.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc?.id ?: ""
-        val remote = doc?.toObject(Employee::class.java)?.copy(kgid = docKgid)
+        
+        var remote = doc?.toObject(Employee::class.java)?.copy(kgid = docKgid)
+        if (isAdminCollection && remote != null) {
+            remote = remote.copy(isAdmin = true)
+        }
+
         if (remote != null && doc != null) {
             val entity = buildEmployeeEntityFromDoc(doc, pinHash = doc.getString(FIELD_PIN_HASH).orEmpty())
-            employeeDao.insertEmployee(entity)
-            return@withContext entity
+            
+            // If from admin collection, ensure entity is marked as admin
+            val finalEntity = if (isAdminCollection) entity.copy(isAdmin = true) else entity
+            
+            employeeDao.insertEmployee(finalEntity)
+            return@withContext finalEntity
         }
         return@withContext null
     }

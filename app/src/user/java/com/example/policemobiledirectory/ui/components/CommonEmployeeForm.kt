@@ -155,6 +155,11 @@ fun CommonEmployeeForm(
         highRankingOfficers.contains(rank)
     }
 
+    // Check if unit is a special unit (State INT, ISD, etc. - No District)
+    val isSpecialUnit = remember(unit) {
+        listOf("ISD", "CCB", "CID", "State INT", "S INT", "IPS").contains(unit)
+    }
+
     // Dynamic District List Logic (Hybrid Strategy)
     // Fetches from Firestore Cache -> Fallback to Hardcoded
     val availableDistricts by produceState<List<String>>(initialValue = emptyList(), key1 = unit) {
@@ -176,6 +181,10 @@ fun CommonEmployeeForm(
     // Check if selected unit is "District Level" (No Station)
     val isDistrictLevelUnit by produceState(initialValue = false, key1 = unit) {
         value = constantsViewModel.isDistrictLevelUnit(unit)
+    }
+
+    val hasSections = remember(unitSections, unit, district, isDistrictLevelUnit) {
+        unitSections.isNotEmpty() || unit == "State INT" || district == "HQ" || (isDistrictLevelUnit && unitSections.isNotEmpty())
     }
 
     // Dynamic Rank List Logic (Filters based on Unit if configured)
@@ -245,6 +254,17 @@ fun CommonEmployeeForm(
     LaunchedEffect(filteredRanks) {
         if (rank.isNotBlank() && filteredRanks.isNotEmpty() && !filteredRanks.contains(rank)) {
             rank = ""
+        }
+    }
+
+    // Track previous unit to detect actual changes and reset dependent fields
+    var previousUnit by remember { mutableStateOf(unit) }
+
+    LaunchedEffect(unit) {
+        if (unit != previousUnit) {
+            district = ""
+            station = ""
+            previousUnit = unit
         }
     }
 
@@ -509,7 +529,7 @@ fun CommonEmployeeForm(
                      Text("Unit is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
 
-                if (!isHighRankingOfficer) {
+                if (!isHighRankingOfficer && !isSpecialUnit) {
                     val isDistrictLocked = availableDistricts.size == 1 && district.isNotBlank()
                     ExposedDropdownMenuBox(
                         expanded = districtExpanded && !isDistrictLocked,
@@ -547,16 +567,13 @@ fun CommonEmployeeForm(
                     }
                 }
             }
-            if (showValidationErrors && district.isBlank() && !isHighRankingOfficer) {
+            if (showValidationErrors && district.isBlank() && !isHighRankingOfficer && !isSpecialUnit) {
                 Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             Spacer(Modifier.height(fieldSpacing))
 
             // Row 8: Station/Section (Full Width)
-            val hasSections = remember(unitSections, unit, district) {
-                unitSections.isNotEmpty() || unit == "State INT" || district == "HQ"
-            }
-            if (!isHighRankingOfficer && (!isDistrictLevelUnit || hasSections)) {
+            if (!isHighRankingOfficer && (!isSpecialUnit || hasSections) && (!isDistrictLevelUnit || hasSections) && !isMinisterial) {
                 val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks, unit, unitSections) {
                     if (unitSections.isNotEmpty()) {
                         unitSections + listOf("Others")
@@ -626,7 +643,7 @@ fun CommonEmployeeForm(
                 
                 if (showValidationErrors) {
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        if (station.isBlank() && (!isDistrictLevelUnit || hasSections)) {
+                        if (station.isBlank() && (!isSpecialUnit || hasSections) && !isHighRankingOfficer && (!isDistrictLevelUnit || hasSections) && !isMinisterial) {
                             Text(
                                 if (hasSections) "Section required" else "Station required", 
                                 color = MaterialTheme.colorScheme.error, 
@@ -658,24 +675,26 @@ fun CommonEmployeeForm(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // KGID / ID
-                OutlinedTextField(
-                    value = kgid,
-                    onValueChange = { newValue ->
-                        kgid = when {
-                            // Allow anything for high-ranking officers
-                            isOfficer || isHighRankingOfficer -> newValue
-                            // Otherwise, only allow digits
-                            newValue.all { it.isDigit() } -> newValue
-                            // If new input contains non-digits, keep the old value
-                            else -> kgid
-                        }
-                    },
-                    label = { Text(if(isOfficer || isHighRankingOfficer) "Officer ID (AGID)*" else "KGID") },
-                    modifier = Modifier.weight(0.7f),
-                    keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
-                    isError = showValidationErrors && !isKgidValid(kgid),
-                    enabled = (isAdmin || isRegistration) && !isSelfEdit
-                )
+                if (unit != "IPS") {
+                    OutlinedTextField(
+                        value = kgid,
+                        onValueChange = { newValue ->
+                            kgid = when {
+                                // Allow anything for high-ranking officers
+                                isOfficer || isHighRankingOfficer -> newValue
+                                // Otherwise, only allow digits
+                                newValue.all { it.isDigit() } -> newValue
+                                // If new input contains non-digits, keep the old value
+                                else -> kgid
+                            }
+                        },
+                        label = { Text(if (isOfficer || isHighRankingOfficer) "Officer ID (AGID)*" else "KGID") },
+                        modifier = Modifier.weight(0.7f),
+                        keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
+                        isError = showValidationErrors && !isKgidValid(kgid),
+                        enabled = (isAdmin || isRegistration) && !isSelfEdit
+                    )
+                }
 
                 // Rank
                 ExposedDropdownMenuBox(
@@ -703,7 +722,7 @@ fun CommonEmployeeForm(
                                 if (ministerialRanks.any { it.equals(selection, ignoreCase = true) }) {
                                     station = ""
                                 }
-                                if (highRankingOfficers.contains(selection)) {
+                                if (highRankingOfficers.contains(selection) || isSpecialUnit) {
                                     district = ""
                                     station = ""
                                 }
@@ -784,11 +803,11 @@ fun CommonEmployeeForm(
                 if (showValidationErrors && bloodGroup.isBlank()) {
                     Text("Blood Group is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
-                if (showValidationErrors && station.isBlank() && !isHighRankingOfficer && !isDistrictLevelUnit && !isMinisterial) {
+                if (showValidationErrors && station.isBlank() && !isHighRankingOfficer && !isSpecialUnit && !isDistrictLevelUnit && !isMinisterial) {
                     Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 } else {
-                     if (showValidationErrors && station.isBlank() && !isMinisterial && !isDistrictLevelUnit) {
+                     if (showValidationErrors && station.isBlank() && !isHighRankingOfficer && !isSpecialUnit && !isMinisterial && !isDistrictLevelUnit) {
                         Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.height(fieldSpacing))
                     }
@@ -992,7 +1011,7 @@ fun CommonEmployeeForm(
                     }
                 }
             }
-            if (showValidationErrors && district.isBlank()) Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            if (showValidationErrors && district.isBlank() && !isHighRankingOfficer && !isSpecialUnit) Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(fieldSpacing))
 
             // Station (editable for admin and self-edit; uses district)
@@ -1018,7 +1037,7 @@ fun CommonEmployeeForm(
                     }
                 }
             }
-            if (showValidationErrors && station.isBlank()) Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            if (showValidationErrors && station.isBlank() && !isHighRankingOfficer && !isSpecialUnit && !isMinisterial && !isDistrictLevelUnit) Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(fieldSpacing))
 
             // Manual Section (if "Others" is selected)
@@ -1118,7 +1137,8 @@ fun CommonEmployeeForm(
                 }
                 
                 // KGID validation (required for admin add and registration, optional for self-edit)
-                if (!isSelfEdit && kgid.isBlank()) {
+                // Skip for IPS unit
+                if (!isSelfEdit && kgid.isBlank() && unit != "IPS") {
                     Toast.makeText(context, "Please fix validation errors", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
@@ -1138,12 +1158,12 @@ fun CommonEmployeeForm(
                         return@Button
                     }
                     // Validate district
-                    if (district.isBlank() && !isHighRankingOfficer) {
+                    if (district.isBlank() && !isHighRankingOfficer && !isSpecialUnit) {
                         Toast.makeText(context, "District is required", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
                     // Validate Station/Section
-                    if (station.isBlank() && !isHighRankingOfficer && !isDistrictLevelUnit && !isMinisterial) {
+                    if (station.isBlank() && !isHighRankingOfficer && !isSpecialUnit && !isDistrictLevelUnit && !isMinisterial) {
                         Toast.makeText(context, "${if(unit == "State INT" || unitSections.isNotEmpty()) "Section" else "Station"} is required", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
@@ -1178,7 +1198,9 @@ fun CommonEmployeeForm(
                 android.util.Log.d("CommonEmployeeForm", "✅ Validation passed, setting isSubmitting = true")
                 isSubmitting = true
 
-                val finalKgid = if (kgid.isBlank()) "TEMP-${System.currentTimeMillis()}" else kgid
+                val finalKgid = if (kgid.isBlank()) {
+                    if (unit == "IPS") "IPS-${System.currentTimeMillis()}" else "TEMP-${System.currentTimeMillis()}"
+                } else kgid
                 android.util.Log.d("CommonEmployeeForm", "📝 Final KGID: $finalKgid")
 
                 val isManual = station == "Others" // Determine if manual station
@@ -1192,8 +1214,8 @@ fun CommonEmployeeForm(
                     landline = landline.trim().takeIf { it.isNotBlank() },
                     landline2 = landline2.trim().takeIf { it.isNotBlank() },
                     rank = rank.trim(),
-                    district = district.trim(),
-                    station = if (isManual) manualSection.trim() else station.trim(),
+                    district = if (isSpecialUnit || isHighRankingOfficer) "" else district.trim(),
+                    station = if (isSpecialUnit || isHighRankingOfficer || isMinisterial || (isDistrictLevelUnit && !hasSections)) "" else (if (isManual) manualSection.trim() else station.trim()),
                     unit = unit.trim().takeIf { it.isNotBlank() },
                     bloodGroup = bloodGroup.ifBlank { null },
                     metalNumber = metalNumber.trim().takeIf { it.isNotBlank() },
