@@ -250,11 +250,7 @@ class ConstantsRepository @Inject constructor(
                         val legacyDistricts = (doc.get("mappedDistricts") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
                         val areaIds = (doc.get("mappedAreaIds") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
 
-                        val stationKeyword = doc.getString("stationKeyword") ?: when(name) {
-                            "DCRB" -> "DCRB"
-                            "ESCOM" -> "ESCOM"
-                            else -> ""
-                        }
+                        val stationKeyword = doc.getString("stationKeyword") ?: ""
 
                         UnitModel(
                             id = doc.id,
@@ -306,11 +302,7 @@ class ConstantsRepository @Inject constructor(
         var source = "Unknown"
         var districts: List<String> = emptyList()
 
-        // HOTFIX: Hardcoded mapping for SCRB to fix "showing all districts" issue
-        if (unitName.equals("SCRB", ignoreCase = true)) {
-             Log.d("ConstantsRepository", "🔍 Resolved districts for unit 'SCRB': Forced to HQ")
-             return listOf("HQ")
-        }
+        // SCRB Hotfix Removed - Relying on Generic Mapping
 
         // Step 1: Check Cached Dynamic Mappings (Contains scopes and mapped areas)
         val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null)

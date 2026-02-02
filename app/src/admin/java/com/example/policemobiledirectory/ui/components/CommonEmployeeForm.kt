@@ -533,11 +533,11 @@ fun CommonEmployeeForm(
                         value = rank,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Rank*") },
-                        placeholder = { Text("Select Rank") },
+                        label = { Text("Rank") },
+                        placeholder = { Text("Select Rank (Optional)") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
-                        isError = showValidationErrors && rank.isBlank()
+
                     )
                     ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
                         filteredRanks.forEach { selection ->
@@ -589,8 +589,8 @@ fun CommonEmployeeForm(
             Spacer(Modifier.height(fieldSpacing))
 
             // Row 7: Unit and District (Unit first, then District)
-            val isSpecialUnit = remember(unit) {
-                listOf("ISD", "CCB", "CID").contains(unit)
+            val isSpecialUnit = remember(selectedUnitModel) {
+                selectedUnitModel?.mappingType == "none"
             }
 
             Row(
@@ -602,7 +602,7 @@ fun CommonEmployeeForm(
 
 
                 // District
-                if (!isHighRankingOfficer) {
+                if (!isHighRankingOfficer && !isSpecialUnit) {
                     ExposedDropdownMenuBox(
                         expanded = districtExpanded,
                         onExpandedChange = {
@@ -633,7 +633,7 @@ fun CommonEmployeeForm(
                     }
                 }
             }
-            if (showValidationErrors && district.isBlank() && !isHighRankingOfficer) {
+            if (showValidationErrors && district.isBlank() && !isHighRankingOfficer && !isSpecialUnit) {
                 Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             Spacer(Modifier.height(fieldSpacing))
@@ -642,7 +642,7 @@ fun CommonEmployeeForm(
             val hasSections = remember(unitSections, unit, district) {
                 unitSections.isNotEmpty() || unit == "State INT" || district == "HQ"
             }
-            if (!isHighRankingOfficer && (!isDistrictLevelUnit || hasSections)) {
+            if (!isHighRankingOfficer && (!isDistrictLevelUnit || hasSections) && !isSpecialUnit) {
                 val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks, unit, unitSections) {
                     if (unitSections.isNotEmpty()) {
                         unitSections + listOf("Others")
@@ -971,10 +971,10 @@ fun CommonEmployeeForm(
                 if (!isSelfEdit) districtExpanded = !districtExpanded
             }) {
                 OutlinedTextField(
-                    value = district.ifEmpty { if (isSelfEdit) district else "Select District" },
+                    value = district.ifEmpty { if (isSelfEdit) district else "Select District / HQ" },
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("District*") },
+                    label = { Text("District / HQ*") },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
                     isError = showValidationErrors && district.isBlank() && !isHighRankingOfficer
@@ -1003,10 +1003,10 @@ fun CommonEmployeeForm(
                     if (district.isNotBlank() && stationsForSelectedDistrict.isNotEmpty()) stationExpanded = !stationExpanded
                 }) {
                     OutlinedTextField(
-                        value = station.ifEmpty { if (district.isNotBlank()) "Select Station" else "Select District First" },
+                        value = station.ifEmpty { if (district.isNotBlank()) "Select Station / Section" else "Select District / HQ First" },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Station*") },
+                        label = { Text("Station / Section*") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
                         enabled = district.isNotBlank() && stationsForSelectedDistrict.isNotEmpty(),

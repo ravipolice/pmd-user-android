@@ -7,36 +7,60 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.example.policemobiledirectory.data.local.OfficerDao
+import com.example.policemobiledirectory.data.local.OfficerEntity
+import com.example.policemobiledirectory.data.mapper.toOfficer
+import com.example.policemobiledirectory.data.mapper.toEntity
+import com.example.policemobiledirectory.utils.SearchUtils
 
 @Singleton
 class OfficerRepository @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val officerDao: OfficerDao
 ) {
     private val TAG = "OfficerRepository"
     private val officersCollection = firestore.collection("officers")
+    private val ioDispatcher = Dispatchers.IO
+
+    fun getOfficers(): Flow<RepoResult<List<Officer>>> = officerDao.getAllOfficers()
+        .map { entities -> 
+            RepoResult.Success(entities.map { it.toOfficer() })
+        }
+        .flowOn(ioDispatcher)
 
     /**
-     * Get all officers from Firestore
+     * Sync all officers from Firestore to Room
      */
-    /**
-     * Get all officers from Firestore
-     */
-    fun getOfficers(): Flow<RepoResult<List<Officer>>> = flow {
-        emit(RepoResult.Loading)
+    suspend fun syncAllOfficers(): RepoResult<Unit> = withContext(ioDispatcher) {
         try {
+            Log.d(TAG, "🔄 Syncing Officers from Firestore to Room...")
             val snapshot = officersCollection.get().await()
-            val officers = snapshot.documents.mapNotNull { doc ->
-                safeOfficerFromDoc(doc)
+            val entities = snapshot.documents.mapNotNull { doc ->
+                val off = safeOfficerFromDoc(doc)
+                if (off != null) {
+                    val blob = SearchUtils.generateSearchBlob(
+                        off.agid, off.name, off.mobile, off.rank, off.unit, off.district, off.station, off.email, off.bloodGroup
+                    )
+                    off.toEntity(blob)
+                } else null
             }
-            emit(RepoResult.Success(officers))
+            
+            officerDao.clearOfficers()
+            if (entities.isNotEmpty()) {
+                officerDao.insertOfficers(entities)
+                Log.d(TAG, "✅ Synced ${entities.size} officers to Room")
+            }
+            RepoResult.Success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching officers: ${e.message}", e)
-            emit(RepoResult.Error(e, "Failed to fetch officers: ${e.message}"))
+            Log.e(TAG, "Error syncing officers: ${e.message}", e)
+            RepoResult.Error(e, "Failed to sync officers")
         }
-    }.flowOn(Dispatchers.IO)
+    }
 
     /**
      * Search officers by query and filter
@@ -56,6 +80,16 @@ class OfficerRepository @Inject constructor(
             emit(RepoResult.Error(e, "Failed to search officers: ${e.message}"))
         }
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * Search Officers by Blob (Global Search)
+     */
+    fun searchByBlob(query: String): Flow<RepoResult<List<Officer>>> {
+        val normalizedQuery = "%${query.trim().lowercase().replace(Regex("[^a-z0-9\\s]"), "")}%"
+        return officerDao.searchByBlob(normalizedQuery)
+            .map { entities -> RepoResult.Success(entities.map { it.toOfficer() }) }
+            .flowOn(Dispatchers.IO)
+    }
 
     /**
      * Add or Update Officer

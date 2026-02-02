@@ -16,6 +16,7 @@ import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.repository.RepoResult
 import com.example.policemobiledirectory.data.local.EmployeeEntity
 import com.example.policemobiledirectory.data.local.EmployeeDao
+import com.example.policemobiledirectory.data.local.toEmployee
 import com.example.policemobiledirectory.data.local.PendingRegistrationEntity
 import com.example.policemobiledirectory.data.local.SearchFilter
 import com.example.policemobiledirectory.utils.PinHasher
@@ -98,6 +99,8 @@ open class EmployeeRepository @Inject constructor(
             SearchFilter.BLOOD_GROUP -> employeeDao.searchByBloodGroup(searchQuery)
         }
     }
+
+
 
     // -------------------------------------------------------------------
     // OFFLINE-FIRST LOGIN (Email + PIN hashed)

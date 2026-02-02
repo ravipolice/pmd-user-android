@@ -293,7 +293,7 @@ private fun EmployeeListContent(
     val units by constantsViewModel.units.collectAsState()
     val fullUnits by constantsViewModel.fullUnits.collectAsState()
     val ranks by constantsViewModel.ranks.collectAsState()
-    val ksrpBattalions by constantsViewModel.ksrpBattalions.collectAsState()
+
     
     // State for dropdown expansion
     // var unitExpanded/districtExpanded/stationExpanded/rankExpanded removed
@@ -315,7 +315,7 @@ private fun EmployeeListContent(
     // Derived UI-specific lists
     // UNIT-TO-DISTRICT MAPPING LOGIC (Consolidated)
     // UNIT-TO-DISTRICT MAPPING LOGIC (Consolidated)
-    val districtsList = remember(districts, ksrpBattalions, searchParams.unit, fullUnits) {
+    val districtsList = remember(districts, searchParams.unit, fullUnits) {
         val selected = searchParams.unit
         val unitConfig = fullUnits.find { it.name == selected }
         
@@ -325,15 +325,15 @@ private fun EmployeeListContent(
                 when (unitConfig.mappingType) {
                     "subset", "single", "commissionerate" -> {
                          if (unitConfig.mappedDistricts.isNotEmpty()) unitConfig.mappedDistricts.sorted()
-                         else districts.filter { !ksrpBattalions.contains(it) }
+                         else districts
                     }
                     "none" -> emptyList()
                     "state" -> listOf("HQ")
-                    else -> districts.filter { !ksrpBattalions.contains(it) }
+                    else -> districts
                 }
             }
-            // Fallback: If no config found, strictly exclude KSRP battalions
-            else -> districts.filter { !ksrpBattalions.contains(it) }
+            // Fallback: If no config found
+            else -> districts
         }
         listOf("All") + baseList
     }
@@ -349,14 +349,15 @@ private fun EmployeeListContent(
              stationsForDistrictBase
          } else {
              // Dynamic Filtering using stationKeyword from DB
-             val keywords = unitConfig?.stationKeyword
-                 ?.split(",")
-                 ?.map { it.trim() }
-                 ?.filter { it.isNotEmpty() }
-                 ?: listOf(searchParams.unit)
-
-             stationsForDistrictBase.filter { station -> 
-                 station == "All" || keywords.any { station.contains(it, ignoreCase = true) }
+             val keywordsStr = unitConfig?.stationKeyword
+             
+             if (keywordsStr.isNullOrBlank()) {
+                 stationsForDistrictBase
+             } else {
+                 val keywords = keywordsStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                 stationsForDistrictBase.filter { station -> 
+                     station == "All" || keywords.any { station.contains(it, ignoreCase = true) }
+                 }
              }
          }
     }

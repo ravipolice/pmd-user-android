@@ -1,7 +1,9 @@
 package com.example.policemobiledirectory.data.mapper
 
 import com.example.policemobiledirectory.data.local.EmployeeEntity
+import com.example.policemobiledirectory.data.local.OfficerEntity
 import com.example.policemobiledirectory.model.Employee
+import com.example.policemobiledirectory.model.Officer
 
 fun EmployeeEntity.toEmployee(): Employee = Employee(
     kgid = kgid,
@@ -47,4 +49,35 @@ fun Employee.toEntity(): EmployeeEntity = EmployeeEntity(
     createdAt = createdAt,
     updatedAt = updatedAt,
     unit = unit
+)
+
+fun OfficerEntity.toOfficer(): Officer = Officer(
+    agid = agid,
+    name = name,
+    email = email,
+    bloodGroup = bloodGroup,
+    mobile = mobile,
+    landline = landline,
+    rank = rank,
+    station = station,
+    district = district,
+    photoUrl = photoUrl,
+    unit = unit,
+    isHidden = isHidden
+)
+
+fun Officer.toEntity(searchBlob: String = ""): OfficerEntity = OfficerEntity(
+    agid = agid,
+    name = name,
+    email = email,
+    bloodGroup = bloodGroup,
+    mobile = mobile,
+    landline = landline,
+    rank = rank,
+    station = station,
+    district = district,
+    photoUrl = photoUrl,
+    unit = unit,
+    isHidden = isHidden,
+    searchBlob = searchBlob
 )

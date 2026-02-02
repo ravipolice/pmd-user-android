@@ -477,6 +477,11 @@ fun CommonEmployeeForm(
 
 
 
+            // Row 7: Unit and District (Unit first, then District)
+            val isSpecialUnit = remember(selectedUnitModel) {
+                selectedUnitModel?.mappingType == "none"
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -509,7 +514,7 @@ fun CommonEmployeeForm(
                      Text("Unit is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
 
-                if (!isHighRankingOfficer) {
+                if (!isHighRankingOfficer && !isSpecialUnit) {
                     val isDistrictLocked = availableDistricts.size == 1 && district.isNotBlank()
                     ExposedDropdownMenuBox(
                         expanded = districtExpanded && !isDistrictLocked,
@@ -547,7 +552,7 @@ fun CommonEmployeeForm(
                     }
                 }
             }
-            if (showValidationErrors && district.isBlank() && !isHighRankingOfficer) {
+            if (showValidationErrors && district.isBlank() && !isHighRankingOfficer && !isSpecialUnit) {
                 Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             Spacer(Modifier.height(fieldSpacing))
@@ -556,7 +561,7 @@ fun CommonEmployeeForm(
             val hasSections = remember(unitSections, unit, district) {
                 unitSections.isNotEmpty() || unit == "State INT" || district == "HQ"
             }
-            if (!isHighRankingOfficer && (!isDistrictLevelUnit || hasSections)) {
+            if (!isHighRankingOfficer && (!isDistrictLevelUnit || hasSections) && !isSpecialUnit) {
                 val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks, unit, unitSections) {
                     if (unitSections.isNotEmpty()) {
                         unitSections + listOf("Others")
@@ -970,7 +975,7 @@ fun CommonEmployeeForm(
                     value = district.ifEmpty { if (isSelfEdit) district else "Select District" },
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("District*") },
+                    label = { Text("District / HQ*") },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                     enabled = !isDistrictLocked,
                     trailingIcon = { 
@@ -1000,10 +1005,10 @@ fun CommonEmployeeForm(
                 if (district.isNotBlank() && stationsForSelectedDistrict.isNotEmpty()) stationExpanded = !stationExpanded
             }) {
                 OutlinedTextField(
-                    value = station.ifEmpty { if (district.isNotBlank()) "Select Station" else "Select District First" },
+                    value = station.ifEmpty { if (district.isNotBlank()) "Select Station / Section" else "Select District / HQ First" },
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Station*") },
+                    label = { Text("Station / Section*") },
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
                     enabled = district.isNotBlank() && stationsForSelectedDistrict.isNotEmpty(),

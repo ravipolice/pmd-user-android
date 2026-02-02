@@ -131,9 +131,12 @@ class EmployeeListViewModel @Inject constructor(
         }
 
         sourceList.filter { contact ->
-            val districtMatch = district == "All" || contact.district?.equals(district, ignoreCase = true) == true
+            // if Global Search (query present), ignore dropdown filters and search whole DB
+            val isGlobalSearch = query.isNotBlank()
+
+            val districtMatch = isGlobalSearch || district == "All" || contact.district?.equals(district, ignoreCase = true) == true
             
-            val stationMatch = if (station == "All") {
+            val stationMatch = if (isGlobalSearch || station == "All") {
                 true
             } else {
                 val isPS = station.endsWith(" PS", ignoreCase = true)
@@ -147,7 +150,7 @@ class EmployeeListViewModel @Inject constructor(
                  contact.name.contains(stripped, ignoreCase = true))
             }
 
-            val rankMatch = rank == "All" || contact.rank?.equals(rank, ignoreCase = true) == true
+            val rankMatch = isGlobalSearch || rank == "All" || contact.rank?.equals(rank, ignoreCase = true) == true
             
             districtMatch && stationMatch && rankMatch
         }

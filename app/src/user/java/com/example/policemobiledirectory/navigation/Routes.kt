@@ -16,8 +16,6 @@ object Routes {
     const val USEFUL_LINKS = "useful_links"
     const val USER_REGISTRATION = "user_registration"
     const val FORGOT_PIN = "forgot_pin"
-    const val GOOGLE_SIGN_IN = "google_sign_in"
-    const val GOOGLE_SIGN_OUT = "google_sign_out"
     const val LOGOUT = "logout"
     // const val NOTIFICATIONS = "notifications" // Removed from here
 

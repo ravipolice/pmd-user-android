@@ -131,7 +131,7 @@ fun SearchFilterBar(
                         value = selectedDistrict,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("District") },
+                        label = { Text("District / HQ") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -186,7 +186,7 @@ fun SearchFilterBar(
                             value = selectedStation,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Station") }, // Caller can handle "Section" label logic via UI state if needed, but "Station" is generic enough or we can pass label
+                            label = { Text("Station / Section") }, // Caller can handle "Section" label logic via UI state if needed, but "Station" is generic enough or we can pass label
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
