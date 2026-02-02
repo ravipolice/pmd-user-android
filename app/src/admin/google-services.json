@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "603972083927",
+    "firebase_url": "https://pmd-police-mobile-directory-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "pmd-police-mobile-directory",
     "storage_bucket": "pmd-police-mobile-directory.firebasestorage.app"
   },
@@ -22,6 +23,14 @@
           }
         },
         {
+          "client_id": "603972083927-msq3diohgl1oq5jblcgco8rukdimiejp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.policemobiledirectory",
+            "certificate_hash": "47d8adcd535c94c69c2d0259dee44c4e06d06dea"
+          }
+        },
+        {
           "client_id": "603972083927-rog2v7ucndnu1399fugu3pemrjchov7t.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -35,7 +44,44 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "603972083927-rog2v7ucndnu1399fugu3pemrjchov7t.apps.googleusercontent.com",
+              "client_id": "603972083927-im2d26cjkuoe4qj50qhrl71th6tttjc9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:603972083927:android:eb83cd18a2de8fdff29092",
+        "android_client_info": {
+          "package_name": "com.pmd.userapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "603972083927-9a121s1a0jpfo51tttgdmb7hcu1qvh0u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pmd.userapp",
+            "certificate_hash": "6a0d5add2b6f79d542754fbae05bea35990c2907"
+          }
+        },
+        {
+          "client_id": "603972083927-rog2v7ucndnu1399fugu3pemrjchov7t.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZjrm7r4h7EdP4WwTzw9Rz42k_nKZRgj8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "603972083927-im2d26cjkuoe4qj50qhrl71th6tttjc9.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

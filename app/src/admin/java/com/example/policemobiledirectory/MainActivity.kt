@@ -78,19 +78,26 @@ class MainActivity : ComponentActivity() {
     /**
      * ✅ Launch Google Sign-In (only called if user selects Google login)
      */
+    /**
+     * ✅ Launch Google Sign-In (only called if user selects Google login)
+     */
     private suspend fun launchGoogleSignIn() {
+        val clientId = getString(R.string.default_web_client_id)
+        Log.d("Auth", "🚀 Launching Google Sign-In with Client ID: $clientId")
+
         val credentialManager = CredentialManager.create(this)
-        val googleIdOption = GetGoogleIdOption.Builder()
-            .setServerClientId(getString(R.string.default_web_client_id))
-            .setFilterByAuthorizedAccounts(false) // Allow selecting any account (fixed)
-            .setAutoSelectEnabled(false) // Disable auto-select for explicit button clicks
-            .build()
-
-        val request = GetCredentialRequest.Builder()
-            .addCredentialOption(googleIdOption)
-            .build()
-
+        
         try {
+            val googleIdOption = GetGoogleIdOption.Builder()
+                .setServerClientId(clientId)
+                .setFilterByAuthorizedAccounts(false) // Allow selecting any account (fixed)
+                .setAutoSelectEnabled(false) // Disable auto-select for explicit button clicks
+                .build()
+
+            val request = GetCredentialRequest.Builder()
+                .addCredentialOption(googleIdOption)
+                .build()
+
             val result: GetCredentialResponse = credentialManager.getCredential(this, request)
             val credential = result.credential
             
@@ -100,8 +107,7 @@ class MainActivity : ComponentActivity() {
             val email = googleIdTokenCredential.id
             
             Log.d("Auth", "✅ Google Sign-In success for email: $email")
-            Log.v("Auth", "Token: ${googleIdToken.take(10)}...")
-
+            
             if (googleIdToken.isNotEmpty()) {
                 viewModel.handleGoogleSignIn(email, googleIdToken)
                 wasLoggedOut = false
@@ -111,7 +117,12 @@ class MainActivity : ComponentActivity() {
             }
         } catch (e: androidx.credentials.exceptions.GetCredentialException) {
             Log.e("Auth", "❌ Google Sign-In failed (Credential Manager): ${e.type} - ${e.message}", e)
-            Toast.makeText(this, "Sign-In Failed: Use a valid Google Account", Toast.LENGTH_LONG).show()
+            val errorMsg = when {
+                e.message?.contains("canceled") == true -> "Sign-In canceled"
+                e.message?.contains("No credential") == true -> "No valid Google account found. Please check your account settings."
+                else -> "Sign-In Failed: ${e.message}"
+            }
+            Toast.makeText(this, errorMsg, Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             Log.e("Auth", "❌ Google Sign-In unexpected error", e)
             Toast.makeText(this, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()

@@ -242,7 +242,7 @@ fun LoginScreen(
                 Spacer(Modifier.height(24.dp))
 
                 // Expandable "Login with email and pin" button
-                var isEmailPinExpanded by remember { mutableStateOf(false) }
+                var isEmailPinExpanded by remember { mutableStateOf(true) }
                 
                 Card(
                     modifier = Modifier
