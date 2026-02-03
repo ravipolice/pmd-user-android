@@ -313,7 +313,8 @@ open class EmployeeViewModel @Inject constructor(
                     contact.employee.matches(queryLower, filterString)
                 }
                 contact.officer != null -> {
-                     if (filterType == SearchFilter.METAL_NUMBER || filterType == SearchFilter.BLOOD_GROUP) false // Officers have no metal number or blood group field
+                     // Officers don't have metal number, but they DO have blood group
+                     if (filterType == SearchFilter.METAL_NUMBER) false
                      else {
                          val filterString = when (filterType) {
                             SearchFilter.NAME -> "name"
@@ -321,7 +322,7 @@ open class EmployeeViewModel @Inject constructor(
                             SearchFilter.MOBILE -> "mobile"
                             SearchFilter.STATION -> "station"
                              SearchFilter.RANK -> "rank"
-                             SearchFilter.METAL_NUMBER -> "metal"
+                             SearchFilter.METAL_NUMBER -> "metal" // Won't reach here due to check above
                              SearchFilter.BLOOD_GROUP -> "blood"
                              SearchFilter.ALL -> "all"
                          }
