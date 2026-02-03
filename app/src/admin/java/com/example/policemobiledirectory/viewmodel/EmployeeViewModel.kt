@@ -1149,6 +1149,10 @@ open class EmployeeViewModel @Inject constructor(
     fun refreshOfficers() = viewModelScope.launch {
         _officerStatus.value = OperationStatus.Loading
         try {
+            // First sync from Firebase to Room
+            officerRepo.syncAllOfficers()
+            
+            // Then observe Room via Repo
             officerRepo.getOfficers().collect { result ->
                 when (result) {
                     is RepoResult.Success -> {
