@@ -839,6 +839,58 @@ open class EmployeeViewModel @Inject constructor(
         }
     }
 
+    // =========================================================
+    // DATA REFRESH METHODS
+    // =========================================================
+    
+    fun refreshEmployees() = viewModelScope.launch {
+        _employeeStatus.value = OperationStatus.Loading
+        try {
+            employeeRepo.refreshEmployees()
+            val result = employeeRepo.getEmployees()
+                .filterNot { it is RepoResult.Loading }
+                .firstOrNull()
+            when (result) {
+                is RepoResult.Success -> {
+                    val list = result.data ?: emptyList()
+                    _employees.value = list
+                    _employeeStatus.value = OperationStatus.Success(list)
+                }
+                is RepoResult.Error -> _employeeStatus.value = OperationStatus.Error(result.message ?: "Failed to load employees")
+                else -> _employeeStatus.value = OperationStatus.Error("Failed to load employees")
+            }
+        } catch (e: Exception) {
+            _employeeStatus.value = OperationStatus.Error("Refresh failed: ${e.message}")
+        }
+    }
+    
+    fun refreshOfficers() = viewModelScope.launch {
+        _officerStatus.value = OperationStatus.Loading
+        try {
+            // First sync from Firebase to Room
+            officerRepo.syncAllOfficers()
+            
+            // Then observe Room via Repo
+            officerRepo.getOfficers().collect { result ->
+                when (result) {
+                    is RepoResult.Success -> {
+                        val list = result.data ?: emptyList()
+                        _officers.value = list
+                        _officerStatus.value = OperationStatus.Success(list)
+                    }
+                    is RepoResult.Error -> {
+                        _officerStatus.value = OperationStatus.Error(result.message ?: "Failed to load officers")
+                    }
+                    is RepoResult.Loading -> {
+                        _officerStatus.value = OperationStatus.Loading
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            _officerStatus.value = OperationStatus.Error("Refresh failed: ${e.message}")
+        }
+    }
+
     // --- Officer Management ---
 
 
