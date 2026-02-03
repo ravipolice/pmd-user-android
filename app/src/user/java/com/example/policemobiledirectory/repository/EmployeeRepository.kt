@@ -165,6 +165,22 @@ open class EmployeeRepository @Inject constructor(
     }
     
     /**
+     * Unified search method for ViewModel (returns RepoResult for compatibility)
+     * Searches across all employee fields using searchBlob
+     */
+    fun searchByBlob(query: String): Flow<RepoResult<List<Employee>>> = flow {
+        try {
+            searchEmployees(query, SearchFilter.ALL).collect { entities ->
+                val employees = entities.map { it.toEmployee() }
+                emit(RepoResult.Success(employees))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "searchByBlob failed", e)
+            emit(RepoResult.Error(e, "Search failed: ${e.message}"))
+        }
+    }.flowOn(ioDispatcher)
+    
+    /**
      * Extract range from district name based on official Karnataka Police structure
      * 7 Ranges: Southern, Western, Eastern, Central, Northern, North Eastern, Ballari
      */

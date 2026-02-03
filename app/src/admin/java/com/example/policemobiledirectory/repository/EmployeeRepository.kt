@@ -237,19 +237,22 @@ open class EmployeeRepository @Inject constructor(
         }
     }
 
-
-    // Unified Blob Search (Global Search)
+    /**
+     * Unified search method for ViewModel (returns RepoResult for compatibility)
+     * Searches across all employee fields using searchBlob
+     */
     fun searchByBlob(query: String): Flow<RepoResult<List<Employee>>> = flow {
-        emit(RepoResult.Loading)
         try {
-            val normalizedQuery = "%${query.trim().lowercase().replace(Regex("[^a-z0-9\\s]"), "")}%"
-            employeeDao.searchByBlob(normalizedQuery).collect { entities ->
-                emit(RepoResult.Success(entities.map { it.toEmployee() }))
+            searchEmployees(query, SearchFilter.ALL).collect { entities ->
+                val employees = entities.map { it.toEmployee() }
+                emit(RepoResult.Success(employees))
             }
         } catch (e: Exception) {
-            emit(RepoResult.Error(e, "Search failed"))
+            Log.e(TAG, "searchByBlob failed", e)
+            emit(RepoResult.Error(e, "Search failed: ${e.message}"))
         }
-    }
+    }.flowOn(ioDispatcher)
+
 
     // -------------------------------------------------------------------
     // OFFLINE-FIRST LOGIN (Email + PIN hashed)
