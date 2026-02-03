@@ -84,11 +84,76 @@ open class EmployeeRepository @Inject constructor(
     }
 
     // -------------------------------------------------------------------
-    // SEARCH (Room backed)
+    // SEARCH (Room backed) - Multi-keyword AND search with intelligent sorting
     // -------------------------------------------------------------------
-    fun searchEmployees(query: String, filter: SearchFilter): Flow<List<EmployeeEntity>> {
+    fun searchEmployees(query: String, filter: SearchFilter, currentUserDistrict: String? = null): Flow<List<EmployeeEntity>> {
+        // For SearchFilter.ALL, use multi-keyword AND search
+        if (filter == SearchFilter.ALL && query.trim().contains(" ")) {
+            // Multi-keyword search: split by spaces and search for ALL keywords
+            val keywords = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotBlank() }
+            
+            if (keywords.isEmpty()) {
+                return employeeDao.searchByName("%${query.trim().lowercase()}%")
+            }
+            
+            // Get all employees and filter in memory for multi-keyword AND logic
+            return employeeDao.getAllEmployees().map { employees ->
+                val queryLower = query.trim().lowercase()
+                val filtered = employees.filter { employee ->
+                    // Check if ALL keywords are present in searchBlob
+                    val searchBlob = employee.searchBlob.lowercase()
+                    keywords.all { keyword -> searchBlob.contains(keyword) }
+                }
+                
+                // Sort by relevance: exact match > same district > same range > others
+                filtered.sortedWith(compareBy<EmployeeEntity> { employee ->
+                    // Priority 1: Exact name match (lowest number = highest priority)
+                    if (employee.name.lowercase() == queryLower) 0
+                    else if (employee.name.lowercase().startsWith(queryLower)) 1
+                    else 2
+                }.thenBy { employee ->
+                    // Priority 2: Same district as current user
+                    if (currentUserDistrict != null && employee.district?.equals(currentUserDistrict, ignoreCase = true) == true) 0
+                    else 1
+                }.thenBy { employee ->
+                    // Priority 3: Same range (extract range from district)
+                    val userRange = extractRange(currentUserDistrict)
+                    val employeeRange = extractRange(employee.district)
+                    if (userRange != null && employeeRange != null && userRange == employeeRange) 0
+                    else 1
+                }.thenBy { employee ->
+                    // Priority 4: Alphabetical by name
+                    employee.name.lowercase()
+                }).take(100) // Limit results
+            }
+        }
+        
+        // Single keyword or specific field search
         val searchQuery = "%${query.trim().lowercase()}%"
+        val queryLower = query.trim().lowercase()
+        
         return when (filter) {
+            SearchFilter.ALL -> employeeDao.searchByName(searchQuery).map { employees ->
+                // Sort single keyword searches too
+                employees.sortedWith(compareBy<EmployeeEntity> { employee ->
+                    // Exact match first
+                    if (employee.name.lowercase() == queryLower) 0
+                    else if (employee.name.lowercase().startsWith(queryLower)) 1
+                    else 2
+                }.thenBy { employee ->
+                    // Same district
+                    if (currentUserDistrict != null && employee.district?.equals(currentUserDistrict, ignoreCase = true) == true) 0
+                    else 1
+                }.thenBy { employee ->
+                    // Same range
+                    val userRange = extractRange(currentUserDistrict)
+                    val employeeRange = extractRange(employee.district)
+                    if (userRange != null && employeeRange != null && userRange == employeeRange) 0
+                    else 1
+                }.thenBy { employee ->
+                    employee.name.lowercase()
+                })
+            }
             SearchFilter.NAME -> employeeDao.searchByName(searchQuery)
             SearchFilter.KGID -> employeeDao.searchByKgid(searchQuery)
             SearchFilter.MOBILE -> employeeDao.searchByMobile(searchQuery)
@@ -96,9 +161,82 @@ open class EmployeeRepository @Inject constructor(
             SearchFilter.METAL_NUMBER -> employeeDao.searchByMetalNumber(searchQuery)
             SearchFilter.RANK -> employeeDao.searchByRank(searchQuery)
             SearchFilter.BLOOD_GROUP -> employeeDao.searchByBloodGroup(searchQuery)
-            SearchFilter.ALL -> employeeDao.searchByName(searchQuery)
         }
     }
+    
+    /**
+     * Extract range from district name based on official Karnataka Police structure
+     * 7 Ranges: Southern, Western, Eastern, Central, Northern, North Eastern, Ballari
+     */
+    private fun extractRange(district: String?): String? {
+        if (district == null) return null
+        
+        // Direct range names
+        if (district.contains("Range", ignoreCase = true)) {
+            return district
+        }
+        
+        // Map districts to their ranges (based on official Karnataka Police structure)
+        return when {
+            // Southern Range (Mysuru)
+            district.contains("Mysuru", ignoreCase = true) -> "Southern Range"
+            district.contains("Kodagu", ignoreCase = true) -> "Southern Range"
+            district.contains("Mandya", ignoreCase = true) -> "Southern Range"
+            district.contains("Hassan", ignoreCase = true) -> "Southern Range"
+            district.contains("Chamarajanagar", ignoreCase = true) -> "Southern Range"
+            
+            // Western Range (Mangaluru)
+            district.contains("Dakshina Kannada", ignoreCase = true) -> "Western Range"
+            district.contains("Mangaluru", ignoreCase = true) -> "Western Range"
+            district.contains("Udupi", ignoreCase = true) -> "Western Range"
+            district.contains("Chikkamagaluru", ignoreCase = true) -> "Western Range"
+            district.contains("Uttara Kannada", ignoreCase = true) -> "Western Range"
+            
+            // Eastern Range (Davangere)
+            district.contains("Chitradurga", ignoreCase = true) -> "Eastern Range"
+            district.contains("Davanagere", ignoreCase = true) -> "Eastern Range"
+            district.contains("Davangere", ignoreCase = true) -> "Eastern Range"
+            district.contains("Haveri", ignoreCase = true) -> "Eastern Range"
+            district.contains("Shivamogga", ignoreCase = true) -> "Eastern Range"
+            
+            // Central Range (Bengaluru)
+            district.contains("Bengaluru Rural", ignoreCase = true) -> "Central Range"
+            district.contains("Bengaluru Urban", ignoreCase = true) -> "Central Range"
+            district.contains("Bengaluru City", ignoreCase = true) -> "Central Range"
+            district.contains("Bengaluru", ignoreCase = true) -> "Central Range"
+            district.contains("Chikkaballapura", ignoreCase = true) -> "Central Range"
+            district.contains("Kolar", ignoreCase = true) -> "Central Range"
+            district.contains("Ramanagara", ignoreCase = true) -> "Central Range"
+            district.contains("Tumakuru", ignoreCase = true) -> "Central Range"
+            
+            // Northern Range (Belagavi)
+            district.contains("Bagalkote", ignoreCase = true) -> "Northern Range"
+            district.contains("Bagalkot", ignoreCase = true) -> "Northern Range"
+            district.contains("Belagavi", ignoreCase = true) -> "Northern Range"
+            district.contains("Belgaum", ignoreCase = true) -> "Northern Range"
+            district.contains("Dharwad", ignoreCase = true) -> "Northern Range"
+            district.contains("Gadag", ignoreCase = true) -> "Northern Range"
+            district.contains("Vijayapura", ignoreCase = true) -> "Northern Range"
+            district.contains("Bijapur", ignoreCase = true) -> "Northern Range"
+            
+            // North Eastern Range (Kalaburagi)
+            district.contains("Bidar", ignoreCase = true) -> "North Eastern Range"
+            district.contains("Kalaburagi", ignoreCase = true) -> "North Eastern Range"
+            district.contains("Gulbarga", ignoreCase = true) -> "North Eastern Range"
+            district.contains("Yadgir", ignoreCase = true) -> "North Eastern Range"
+            
+            // Ballari Range (Ballari)
+            district.contains("Ballari", ignoreCase = true) -> "Ballari Range"
+            district.contains("Bellary", ignoreCase = true) -> "Ballari Range"
+            district.contains("Koppal", ignoreCase = true) -> "Ballari Range"
+            district.contains("Raichur", ignoreCase = true) -> "Ballari Range"
+            district.contains("Raichuru", ignoreCase = true) -> "Ballari Range"
+            district.contains("Vijayanagara", ignoreCase = true) -> "Ballari Range"
+            
+            else -> null
+        }
+    }
+
 
     // Unified Blob Search (Global Search)
     fun searchByBlob(query: String): Flow<RepoResult<List<Employee>>> = flow {
