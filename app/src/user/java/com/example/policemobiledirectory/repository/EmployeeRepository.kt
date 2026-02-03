@@ -1678,11 +1678,4 @@ open class EmployeeRepository @Inject constructor(
             RepoResult.Error(e)
         }
     }
-
-    fun searchByBlob(query: String): Flow<RepoResult<List<Employee>>> {
-        val normalizedQuery = "%${query.trim().lowercase().replace(Regex("[^a-z0-9\\s]"), "")}%"
-        return employeeDao.searchByBlob(normalizedQuery)
-            .map { entities -> RepoResult.Success(entities.map { it.toEmployee() }) }
-            .flowOn(ioDispatcher)
-    }
 }
