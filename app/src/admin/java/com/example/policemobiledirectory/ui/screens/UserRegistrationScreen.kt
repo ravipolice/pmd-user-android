@@ -2,6 +2,7 @@ package com.example.policemobiledirectory.ui.screens
 
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -9,6 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -78,8 +80,9 @@ fun UserRegistrationScreen(
         }
     }
 
-    Scaffold { _ ->
+    Scaffold { innerPadding ->
         CommonEmployeeForm(
+            modifier = Modifier.padding(innerPadding),
             isAdmin = false,
             isSelfEdit = false,
             isRegistration = true,

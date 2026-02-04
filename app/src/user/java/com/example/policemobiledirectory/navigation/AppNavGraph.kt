@@ -73,6 +73,7 @@ fun AppNavGraph(
                     // ✅ 2. Pass the callback down to the content host
                     onGoogleSignInClicked = onGoogleSignInClicked,
                     startDestination = startDestination,
+                    modifier = Modifier.padding(innerPadding)
                 )
             }
         }
