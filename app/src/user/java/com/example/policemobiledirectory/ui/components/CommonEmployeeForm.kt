@@ -271,8 +271,15 @@ fun CommonEmployeeForm(
             val stations = normalizedStationsMap[district.trim().lowercase()] ?: emptyList()
 
             // 2. Apply unit-specific dynamic filtering
+            // CRITICAL FIX: Only filter by stationKeyword if unit does NOT have district scope
+            // Units with district scope (like L&O) should show ALL stations for the selected district
             val currentUnitModel = selectedUnitModel
-            val filtered = if (currentUnitModel?.stationKeyword?.isNotBlank() == true) {
+            val hasDistrictScope = currentUnitModel?.scopes?.contains("district") == true || 
+                                   currentUnitModel?.scopes?.contains("district_stations") == true ||
+                                   currentUnitModel?.isDistrictLevel == true
+            
+            val filtered = if (currentUnitModel?.stationKeyword?.isNotBlank() == true && !hasDistrictScope) {
+                // Only apply keyword filter if unit does NOT have district scope
                 stations.filter { it.contains(currentUnitModel.stationKeyword, ignoreCase = true) }
             } else {
                 stations
