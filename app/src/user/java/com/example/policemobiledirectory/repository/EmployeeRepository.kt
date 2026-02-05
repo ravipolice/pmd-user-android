@@ -133,9 +133,13 @@ open class EmployeeRepository @Inject constructor(
         val queryLower = query.trim().lowercase()
         
         return when (filter) {
-            SearchFilter.ALL -> employeeDao.searchAllFields(searchQuery).map { employees ->
-                // Sort single keyword searches too
+            SearchFilter.ALL -> employeeDao.smartSearch(queryLower).map { employees ->
+                // Sort single keyword searches too - DAO does name/rank priority, we add District priority here
                 employees.sortedWith(compareBy<EmployeeEntity> { employee ->
+                    // Priority 0: Exact match handled by DAO (smartSearch returns sorted list)
+                    // We just want to boost local district results without losing the name/rank relevance
+                    // Actually, let's keep the manual sort power on top of smart results
+                    
                     // Exact match first
                     if (employee.name.lowercase() == queryLower) 0
                     else if (employee.name.lowercase().startsWith(queryLower)) 1
@@ -1147,15 +1151,32 @@ open class EmployeeRepository @Inject constructor(
         
         if (local != null) return@withContext local
 
-        // Fallback: Firestore (try normalized first)
-        var snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
-        
-        // If not found in Firestore with lowercase, try raw email (legacy data support)
-        if (snapshot.isEmpty && normalizedEmail != rawEmail) {
-            Log.d(TAG, "getEmployeeByEmail: User not found with lowercase '$normalizedEmail', trying raw '$rawEmail'")
-            snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, rawEmail).limit(1).get().await()
+        // Fallback: Firestore (GATED: Only if authenticated)
+        if (auth.currentUser == null) {
+            Log.w(TAG, "getEmployeeByEmail: Skip Firestore check, auth not ready")
+            return@withContext null
         }
-        val doc = snapshot.documents.firstOrNull()
+
+        var snapshot = try {
+            employeesCollection.whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
+        } catch (e: Exception) {
+            Log.e(TAG, "getEmployeeByEmail: Firestore query failed", e)
+            null
+        }
+        
+        if (snapshot == null || snapshot.isEmpty) {
+            if (normalizedEmail != rawEmail) {
+                Log.d(TAG, "getEmployeeByEmail: User not found with lowercase '$normalizedEmail', trying raw '$rawEmail'")
+                snapshot = try {
+                    employeesCollection.whereEqualTo(FIELD_EMAIL, rawEmail).limit(1).get().await()
+                } catch (e: Exception) {
+                    Log.e(TAG, "getEmployeeByEmail: Firestore query (raw) failed", e)
+                    null
+                }
+            }
+        }
+
+        val doc = snapshot?.documents?.firstOrNull()
         // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
         val docKgid = doc?.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc?.id ?: ""
         val remote = doc?.toObject(Employee::class.java)?.copy(kgid = docKgid)
@@ -1217,7 +1238,9 @@ open class EmployeeRepository @Inject constructor(
             isApproved = isApproved,
             createdAt = createdAt,
             updatedAt = updatedAt,
-            isManualStation = isManualStation
+            unit = unit,
+            isManualStation = isManualStation,
+            searchBlob = searchBlob
         )
     }
 

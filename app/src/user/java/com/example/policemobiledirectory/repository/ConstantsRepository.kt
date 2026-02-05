@@ -18,6 +18,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import java.util.concurrent.TimeUnit
 import com.example.policemobiledirectory.model.UnitModel
+import com.example.policemobiledirectory.model.UnitMapping
 import com.example.policemobiledirectory.data.local.EmployeeDao
 
 /**
@@ -139,20 +140,17 @@ class ConstantsRepository @Inject constructor(
             */
             Log.d("ConstantsRepository", "ℹ️ Google Sheets sync disabled. Fetching from Firestore only.")
 
-            // 2. Fetch Units from Firestore
-            fetchUnitsFromFirestore()
-
-            // 3. Fetch Districts from Firestore
-            fetchDistrictsFromFirestore()
-
-            // 4. Fetch Ranks from Firestore
-            fetchRanksFromFirestore()
-            
-            // 5. Fetch Stations from Firestore
-            fetchStationsFromFirestore()
-            
-            // If we reached here without crashing, Firestore operations likely succeeded
-            firestoreSuccess = true
+            // 2. Fetch from Firestore (GATED: Only if authenticated)
+            val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+            if (auth.currentUser != null) {
+                fetchUnitsFromFirestore()
+                fetchDistrictsFromFirestore()
+                fetchRanksFromFirestore()
+                fetchStationsFromFirestore()
+                firestoreSuccess = true
+            } else {
+                Log.w("ConstantsRepository", "⚠️ Skip Firestore sync: Not authenticated")
+            }
 
         } catch (e: Exception) {
             Log.e("ConstantsRepository", "❌ Failed to fetch constants: ${e.message}", e)
@@ -167,15 +165,6 @@ class ConstantsRepository @Inject constructor(
     // NEW: Hybrid Unit-District Mapping Strategy
     // =================================================================================
 
-    data class UnitMapping(
-        val unitName: String,
-        val mappingType: String = "all", // "all", "subset", "single", "none"
-        val mappedDistricts: List<String> = emptyList(),
-        val isDistrictLevel: Boolean = false,
-        val isHqLevel: Boolean = false,
-        val scopes: List<String> = emptyList(),
-        val applicableRanks: List<String> = emptyList()
-    )
 
     private val UNIT_MAPPINGS_CACHE_KEY = "unit_mappings_cache"
 

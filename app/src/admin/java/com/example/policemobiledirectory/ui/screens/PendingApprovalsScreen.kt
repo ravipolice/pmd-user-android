@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -97,7 +98,7 @@ fun PendingApprovalsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = androidx.compose.ui.graphics.Color.White,
                     navigationIconContentColor = androidx.compose.ui.graphics.Color.White
                 )
@@ -207,6 +208,7 @@ fun PendingApprovalsScreen(
     pendingToEdit?.let { entityToEdit ->
         PendingRegistrationEditDialog(
             entity = entityToEdit,
+            isLoading = isProcessing,
             onDismiss = { pendingToEdit = null },
             onSubmit = { updatedEntity, photoUri ->
                 viewModel.updatePendingRegistration(updatedEntity, photoUri)
@@ -292,6 +294,7 @@ fun PendingApprovalCard(
 @Composable
 private fun PendingRegistrationEditDialog(
     entity: PendingRegistrationEntity,
+    isLoading: Boolean,
     onDismiss: () -> Unit,
     onSubmit: (PendingRegistrationEntity, android.net.Uri?) -> Unit
 ) {
@@ -301,11 +304,13 @@ private fun PendingRegistrationEditDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(usePlatformDefaultWidth = true) 
     ) {
         Surface(
-            modifier = Modifier.fillMaxSize(),
-            shape = MaterialTheme.shapes.extraSmall, // Use clearer shape or Rectangle
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
         ) {
@@ -334,6 +339,7 @@ private fun PendingRegistrationEditDialog(
                     isAdmin = true,
                     isSelfEdit = false,
                     isRegistration = false,
+                    isLoading = isLoading,
                     initialEmployee = editableEmployee,
                     initialKgid = entity.kgid,
                     onNavigateToTerms = null,
@@ -349,7 +355,11 @@ private fun PendingRegistrationEditDialog(
                             district = employee.district ?: "",
                             station = employee.station ?: "",
                             bloodGroup = employee.bloodGroup ?: "",
-                            photoUrl = employee.photoUrl
+                            photoUrl = employee.photoUrl,
+                            unit = employee.unit,
+                            landline = employee.landline,
+                            landline2 = employee.landline2,
+                            isManualStation = employee.isManualStation
                         )
                         onSubmit(updatedPending, photoUri)
                     },

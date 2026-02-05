@@ -318,11 +318,11 @@ fun NavigationDrawer(
                         onDismissRequest = { showSupportDialog = false },
                         icon = { Icon(Icons.Default.Email, contentDescription = null) },
                         title = { Text("Contact Support") },
-                        text = { Text("Email: noreply.policemobiledirectory@gmail.com\nWe usually respond quickly.") },
+                        text = { Text("Email: noreply.pmdapp@gmail.com\nWe usually respond quickly.") },
                         confirmButton = {
                             TextButton(onClick = {
                                 val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
-                                    data = Uri.parse("mailto:noreply.policemobiledirectory@gmail.com")
+                                    data = Uri.parse("mailto:noreply.pmdapp@gmail.com")
                                     putExtra(Intent.EXTRA_SUBJECT, "App Support Request")
                                 }
                                 try {
@@ -338,7 +338,7 @@ fun NavigationDrawer(
                         dismissButton = {
                             Row {
                                 TextButton(onClick = {
-                                    clipboardManager.setText(AnnotatedString("noreply.policemobiledirectory@gmail.com"))
+                                    clipboardManager.setText(AnnotatedString("noreply.pmdapp@gmail.com"))
                                     Toast.makeText(context, "Email copied", Toast.LENGTH_SHORT).show()
                                 }) { Text("Copy") }
                                 Spacer(modifier = Modifier.width(4.dp))

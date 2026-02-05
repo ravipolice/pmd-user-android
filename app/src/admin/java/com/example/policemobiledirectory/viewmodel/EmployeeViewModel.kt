@@ -251,12 +251,21 @@ open class EmployeeViewModel @Inject constructor(
         
         if (contacts.isEmpty()) return@combine emptyList<Contact>()
 
-        contacts
-            .filterByDistrict(effectiveParams.district)
-            .filterByStation(effectiveParams.station)
-            .filterByRank(effectiveParams.rank)
-            .filterByUnit(effectiveParams.unit)
-            .filterByQuery(effectiveParams.query, effectiveParams.filter)
+        val isGlobalSearch = effectiveParams.query.isNotBlank()
+
+        // If Global Search, bypass dropdown filters
+        val filteredByDropdowns = if (isGlobalSearch) {
+            contacts
+        } else {
+            contacts
+                .filterByDistrict(effectiveParams.district)
+                .filterByStation(effectiveParams.station)
+                .filterByRank(effectiveParams.rank)
+                .filterByUnit(effectiveParams.unit)
+        }
+
+        // Always apply text query filter
+        filteredByDropdowns.filterByQuery(effectiveParams.query, effectiveParams.filter)
             
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
@@ -335,13 +344,22 @@ open class EmployeeViewModel @Inject constructor(
     }
 
     private val _adminNotifications = MutableStateFlow<List<AppNotification>>(emptyList())
-    val adminNotifications = _adminNotifications.asStateFlow()
-    private val _userNotificationsLastSeen = MutableStateFlow(0L)
-    val userNotificationsLastSeen = _userNotificationsLastSeen.asStateFlow()
     private val _adminNotificationsLastSeen = MutableStateFlow(0L)
     val adminNotificationsLastSeen = _adminNotificationsLastSeen.asStateFlow()
+
+    // Filter admin notifications: Show only those newer than lastSeen
+    val adminNotifications = combine(_adminNotifications, _adminNotificationsLastSeen) { notifications, lastSeen ->
+        notifications.filter { (it.timestamp ?: 0L) > lastSeen }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     private val _userNotifications = MutableStateFlow<List<AppNotification>>(emptyList())
-    val userNotifications: StateFlow<List<AppNotification>> = _userNotifications.asStateFlow()
+    private val _userNotificationsLastSeen = MutableStateFlow(0L)
+    val userNotificationsLastSeen = _userNotificationsLastSeen.asStateFlow()
+
+    // Filter user notifications: Show only those newer than lastSeen
+    val userNotifications: StateFlow<List<AppNotification>> = combine(_userNotifications, _userNotificationsLastSeen) { notifications, lastSeen ->
+        notifications.filter { (it.timestamp ?: 0L) > lastSeen }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     // Simplified filteredEmployees (reusing logic implicitly or explicitly if needed, but keeping separate for now as it returns Employee objects)
     val filteredEmployees: StateFlow<List<Employee>> = combine(_employees, _searchParams, _isAdmin, _debouncedSearchQuery) { employees, params, isAdmin, debouncedQuery ->
@@ -1339,9 +1357,11 @@ open class EmployeeViewModel @Inject constructor(
 //  NEW USER REGISTRATION (Pending Approval + Admin Notification)
 // =========================================================
     fun registerNewUser(entity: PendingRegistrationEntity) {
-        viewModelScope.launch {
-            _pendingStatus.value = OperationStatus.Loading
+        // Prevent duplicate submissions
+        if (_pendingStatus.value is OperationStatus.Loading) return
+        _pendingStatus.value = OperationStatus.Loading
 
+        viewModelScope.launch {
             try {
                 // 1️⃣ Check for duplicate registration directly in Firestore (more reliable than cached list)
                 val hasDuplicate = try {

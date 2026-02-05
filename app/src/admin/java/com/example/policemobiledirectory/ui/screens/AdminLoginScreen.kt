@@ -31,11 +31,13 @@ fun AdminLoginScreen(
     val loginStatus by viewModel.authStatus.collectAsState(initial = OperationStatus.Idle)
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("Admin Login") },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = androidx.compose.ui.graphics.Color.White
                 )
             )

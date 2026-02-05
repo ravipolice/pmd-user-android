@@ -218,7 +218,12 @@ fun StaffListContent(
                 value = localSearchQuery,
                 onValueChange = { localSearchQuery = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Search by ${searchFilter.name.lowercase()}...") },
+                placeholder = { 
+                    Text(
+                        if (searchFilter == SearchFilter.ALL) "Search by Name, KGID, Mobile, Rank, Station..."
+                        else "Search by ${searchFilter.name.lowercase()}..."
+                    )
+                },
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = PrimaryTeal) },
                 trailingIcon = {
                     if (localSearchQuery.isNotEmpty()) {

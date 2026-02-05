@@ -75,8 +75,10 @@ fun DocumentsScreen(
 
     // Handle delete status
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("Documents") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -84,7 +86,7 @@ fun DocumentsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = androidx.compose.ui.graphics.Color.White,
                     navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
                     actionIconContentColor = androidx.compose.ui.graphics.Color.White
@@ -301,7 +303,7 @@ fun FullscreenPreviewDialog(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                        containerColor = MaterialTheme.colorScheme.primary
                     ),
                     actions = {
                         IconButton(onClick = { downloadFile(context, url, "Document") }) {

@@ -44,35 +44,6 @@ object Constants {
         "5th Bn – Mysuru", "6th Bn – Kalaburagi", "7th Bn – Mangaluru", "8th Bn – Shivamogga",
         "9th Bn – Bengaluru", "10th Bn – Shiggavi", "11th Bn – Hassan", "12th Bn – Tumakuru"
     ).sorted()
-<<<<<<< HEAD
-
-    val irbBattalions = listOf(
-        "IRB -Bn 1 Munirabad", "IRB -Bn 2 Vijayapura", "IRB -Bn 3 Avathi", "IRB -Bn 4 KGF"
-    ).sorted()
-
-    val districtsList = listOf(
-        "Bagalkot", "Ballari", "Belagavi City", "Belagavi Dist", "Bengaluru City", "Bengaluru Dist", "Bidar",
-        "Chamarajanagar", "Chikkaballapura", "Chikkamagaluru", "Chitradurga",
-        "Dakshina Kannada", "Davanagere", "Dharwad", "Gadag", "Hassan", "Haveri",
-        "Hubballi Dharwad City", "KGF", "Kalaburagi", "Kalaburagi City", "Kodagu", "Kolar", "Koppal", "Mandya",
-        "Mangaluru City", "Mysuru City", "Mysuru Dist",
-        "Raichur", "Ramanagara", "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada",
-        "Vijayanagara", "Vijayapura", "Yadgir"
-    ).sorted() + ksrpBattalions + irbBattalions
-
-    // Functional Units for filtering
-    val defaultUnitsList = listOf(
-        "Admin", "ASC Team", "BDDS", "C Room", "CAR", "CCB", "CCRB", "CDR", "CEN", "CID", 
-        "Coast Guard", "Computer", "Court", "CSB", "CSP", "DAR", "DCIB", "DCRB", "DCRE", 
-        "Dog Squad", "DSB", "ERSS", "ESCOM", "Excise", "Fire", "Forest", "FPB", "FRRO", 
-        "FSL", "Guest House", "Health", "Home Guard", "INT", "IPS", "ISD", "KSRP", "Lokayukta", "L&O", 
-        "Ministrial", "Minisrial", "Others", "Prison", "PTS", "Railway", "RTO", 
-        "S INT", "SCRB", "Social Media", "State INT", "Toll", "Traffic", "VVIP", "Wireless"
-    )
-
-
-=======
->>>>>>> aea4bad3d8b070fa97d7bc59490398e692831031
 
     val irbBattalions = listOf(
         "IRB -Bn 1 Munirabad", "IRB -Bn 2 Vijayapura", "IRB -Bn 3 Avathi", "IRB -Bn 4 KGF"
@@ -334,18 +305,6 @@ object Constants {
                 "State INT Hubballi Dharwad City", "DCRE Hubballi Dharwad City", "Lokayukta Hubballi Dharwad City", "ESCOM Hubballi Dharwad City"
             )
 
-<<<<<<< HEAD
-            "KGF" -> listOf(
-                "Andersonpet PS", "Bangarpet PS", "BEML Nagar PS", "Bethamangala PS", "Budikote PS",
-                "Champion Reefs PS", "Kamasamudram PS", "KGF CEN Crime PS", "Kyasamballi PS",
-                "Marikuppam PS", "Oorgaum PS", "Robertsonpet PS",
-                "Control Room KGF", "DPO KGF", "Computer Sec KGF", "DAR KGF",
-                "FPB KGF", "MCU KGF", "DCRB KGF", "DSB KGF", "SMMC KGF",
-                "State INT KGF", "DCRE KGF", "Lokayukta KGF", "ESCOM KGF"
-            )
-
-=======
->>>>>>> aea4bad3d8b070fa97d7bc59490398e692831031
             "Kalaburagi" -> listOf(
                 "Afzalpur PS", "Alland PS", "Chincholi PS", "Chittapura PS", "Devalagangapur PS", "Jewargi PS",
                 "Kalaburagi CEN Crime PS", "Kalaburagi Women PS", "Kalagi PS", "Kamalapur PS", "Kunchavaram PS",

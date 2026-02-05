@@ -80,12 +80,17 @@ fun UserRegistrationScreen(
         }
     }
 
-    Scaffold { innerPadding ->
+    Scaffold(
+        contentWindowInsets = WindowInsets(0.dp)
+    ) { innerPadding ->
+        val isProcessing = pendingStatus is OperationStatus.Loading || hasSubmittedState.value
+        
         CommonEmployeeForm(
             modifier = Modifier.padding(innerPadding),
             isAdmin = false,
             isSelfEdit = false,
             isRegistration = true,
+            isLoading = isProcessing,
             initialEmployee = null,
             initialKgid = null,
             initialEmail = initialEmail, // ✅ Prefill email from Google Sign-In

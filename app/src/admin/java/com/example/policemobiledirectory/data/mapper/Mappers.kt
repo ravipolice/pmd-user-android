@@ -25,7 +25,8 @@ fun EmployeeEntity.toEmployee(): Employee = Employee(
     isApproved = isApproved,
     createdAt = createdAt,
     updatedAt = updatedAt,
-    unit = unit
+    unit = unit,
+    searchBlob = searchBlob
 )
 
 fun Employee.toEntity(): EmployeeEntity = EmployeeEntity(
@@ -48,7 +49,8 @@ fun Employee.toEntity(): EmployeeEntity = EmployeeEntity(
     isApproved = isApproved,
     createdAt = createdAt,
     updatedAt = updatedAt,
-    unit = unit
+    unit = unit,
+    searchBlob = searchBlob
 )
 
 fun OfficerEntity.toOfficer(): Officer = Officer(
@@ -63,7 +65,8 @@ fun OfficerEntity.toOfficer(): Officer = Officer(
     district = district,
     photoUrl = photoUrl,
     unit = unit,
-    isHidden = isHidden
+    isHidden = isHidden,
+    searchBlob = searchBlob
 )
 
 fun Officer.toEntity(searchBlob: String = ""): OfficerEntity = OfficerEntity(

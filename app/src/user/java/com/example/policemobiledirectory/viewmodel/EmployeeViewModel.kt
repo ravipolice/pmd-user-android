@@ -46,6 +46,7 @@ import com.example.policemobiledirectory.repository.AppIconRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import com.example.policemobiledirectory.utils.SearchEngine
 
 
 @HiltViewModel
@@ -209,26 +210,42 @@ open class EmployeeViewModel @Inject constructor(
         return district.split(" -")[0].trim().lowercase()
     }
 
+
+
     // Unified Power Search Strategy
     val filteredContacts: StateFlow<List<Contact>> = combine(
         allContacts,
-        _powerSearchResults,
         searchFiltersFlow,
         _isAdmin
-    ) { contacts, powerResults, filters, isAdmin ->
+    ) { contacts, filters, isAdmin ->
         val query = filters.query
         val unit = filters.unit
         val district = filters.district
         val station = filters.station
         val rank = filters.rank
         
-        val sourceList = if (query.isNotBlank()) {
-            powerResults
-        } else {
-            contacts
-        }
+        // 1. Determine base list and "Global Search" status
+        val isGlobalSearch = query.isNotBlank()
 
-        sourceList.filter { contact ->
+        // 2. Filter Process
+        val filtered = contacts.filter { contact ->
+            // A. Search Query Filter (Relevance Check)
+            if (isGlobalSearch) {
+                // For global search, ONLY items with a relevance score > 0 are kept
+                val queryLower = query.trim().lowercase()
+                val score = when {
+                    contact.employee != null -> SearchEngine.calculateEmployeeScore(contact.employee, queryLower, filters.filter)
+                    contact.officer != null -> SearchEngine.calculateOfficerScore(contact.officer, queryLower, filters.filter.name)
+                    else -> 0.0
+                }
+                if (score <= 0.0) return@filter false
+            }
+
+            // B. Dropdown Filters (Ignored during Global Search)
+            // If Global Search is ACTIVE, we bypass district/station/rank/unit filters
+            if (isGlobalSearch) return@filter true
+
+            // Normal Browsing Mode Logic
             val districtMatch = district == "All" || normalizeDistrict(contact.district) == normalizeDistrict(district)
             val stationMatch = station == "All" || contact.station?.equals(station, ignoreCase = true) == true
             val rankMatch = rank == "All" || contact.rank?.equals(rank, ignoreCase = true) == true
@@ -242,10 +259,24 @@ open class EmployeeViewModel @Inject constructor(
             }
             
             districtMatch && stationMatch && rankMatch && unitMatch
-        }.sortedWith(
-            compareBy<Contact> { getRankPriority(it.rank) }
-                .thenBy { it.name }
-        )
+        }
+
+        // 3. Sorting Process
+        if (query.isNotBlank()) {
+            val queryLower = query.trim().lowercase()
+            filtered.sortedByDescending { contact ->
+                when {
+                    contact.employee != null -> SearchEngine.calculateEmployeeScore(contact.employee, queryLower, filters.filter)
+                    contact.officer != null -> SearchEngine.calculateOfficerScore(contact.officer, queryLower, filters.filter.name)
+                    else -> 0.0
+                }
+            }
+        } else {
+            filtered.sortedWith(
+                compareBy<Contact> { getRankPriority(it.rank) }
+                    .thenBy { it.name }
+            )
+        }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
     // Simplified Notifications for User App
@@ -300,43 +331,22 @@ open class EmployeeViewModel @Inject constructor(
         loadSession()
         // Constants.kt is the primary source - no automatic syncing
 
-        // Power Search Logic
-        viewModelScope.launch {
-            _debouncedSearchQuery.collect { query ->
-                if (query.isBlank()) {
-                    _powerSearchResults.value = emptyList()
-                    return@collect
-                }
-                
-                // Unified Room Search
-                combine(
-                    employeeRepo.searchByBlob(query),
-                    officerRepo.searchByBlob(query)
-                ) { empResult, offResult ->
-                    val emps = (empResult as? RepoResult.Success)?.data ?: emptyList()
-                    val offs = (offResult as? RepoResult.Success)?.data ?: emptyList()
-                    
-                    val isAdmin = _isAdmin.value
-                    val filteredEmps = if (isAdmin) emps else emps.filter { it.isApproved }
-                    
-                    val employeeContacts = filteredEmps.map { Contact(employee = it) }
-                    val officerContacts = offs.map { Contact(officer = it) }
-                    
-                    employeeContacts + officerContacts
-                }.collect { combined ->
-                    _powerSearchResults.value = combined
-                }
-            }
-        }
+        // Power Search Logic (REMOVED: Now using in-memory filtering for consistency)
+        // Only debounce logic remains below
 
         // 🚀 PERFORMANCE OPTIMIZATION: Debounce search query (300ms) to avoid searching on every keystroke
         // This significantly improves performance for 10k+ users by reducing unnecessary filtering operations
+        // 🚀 PERFORMANCE OPTIMIZATION: Debounce search query (300ms) to avoid searching on every keystroke
+        // Manual debounce using collectLatest + delay to ensure reliability
         viewModelScope.launch {
-            _searchQuery
-                .debounce(300) // Wait 300ms after user stops typing before filtering
-                .collect { query ->
+            _searchQuery.collectLatest { query ->
+                if (query.isBlank()) {
+                    _debouncedSearchQuery.value = query
+                } else {
+                    delay(300) // Wait 300ms after user stops typing
                     _debouncedSearchQuery.value = query
                 }
+            }
         }
 
         // 2️⃣ Observe login state from DataStore
@@ -414,13 +424,20 @@ open class EmployeeViewModel @Inject constructor(
             }
         }
 
-        // 5️⃣ Startup data prefetch
-        viewModelScope.launch {
-            try {
-                ensureSignedInIfNeeded()
+        // 5️⃣ NO AUTO-PREFETCH - Gated by Authentication Flow
+        // Data will be refreshed by loadSession() or handleGoogleSignIn() ONLY when auth is ready
 
-            } catch (e: Exception) {
-                Log.e("Startup", "Startup failed: ${e.message}", e)
+        // ✅ 6️⃣ Auth-Ready Trigger: Automatically refresh data once Firebase sees the user
+        viewModelScope.launch {
+            // Listen for changes in Firebase Auth state
+            auth.addAuthStateListener { firebaseAuth ->
+                val user = firebaseAuth.currentUser
+                if (user != null && _isLoggedIn.value == true) {
+                    Log.d("EmployeeVM", "🔥 Auth is ready for ${user.email}. Triggering initial sync...")
+                    refreshEmployees()
+                    refreshOfficers()
+                    fetchUsefulLinks()
+                }
             }
         }
 
@@ -498,17 +515,31 @@ open class EmployeeViewModel @Inject constructor(
         viewModelScope.launch {
             _googleSignInUiEvent.value = GoogleSignInUiEvent.Loading
             try {
+                Log.d("GoogleSignIn", "🔐 Authenticating with Firebase for $email")
                 val credential = GoogleAuthProvider.getCredential(googleIdToken, null)
                 val authResult = auth.signInWithCredential(credential).await()
+                
                 if (authResult.user != null) {
+                    Log.d("GoogleSignIn", "✅ Firebase Auth success. Checking Firestore for registration...")
+                    
+                    // Force a Firestore lookup (the repo does this internally)
                     val existingUser = employeeRepo.getEmployeeByEmail(email)
+                    
                     if (existingUser != null) {
                         val user = existingUser.toEmployee()
+                        Log.d("GoogleSignIn", "🏠 User registered: ${user.name}. Moving to Dashboard.")
                         sessionManager.saveLogin(user.email, user.isAdmin)
                         _currentUser.value = user
                         _isLoggedIn.value = true
+                        
+                        // Prefetch data now that we are authenticated
+                        refreshEmployees()
+                        refreshOfficers()
+                        fetchUsefulLinks()
+                        
                         _googleSignInUiEvent.value = GoogleSignInUiEvent.SignInSuccess(user)
                     } else {
+                        Log.w("GoogleSignIn", "🆕 User NOT found in database. Redirecting to Registration.")
                         _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, authResult.user?.displayName)
                     }
                 } else {
@@ -861,6 +892,13 @@ open class EmployeeViewModel @Inject constructor(
     // EMPLOYEE CRUD + HELPERS
     // =========================================================
     fun refreshEmployees() = viewModelScope.launch {
+        // ✅ GATING-1: Only fetch from Firestore if authenticated
+        if (auth.currentUser == null) {
+            Log.w("EmployeeVM", "⚠️ Skip refreshEmployees: Auth not ready")
+            _employeeStatus.value = OperationStatus.Error("Auth not ready")
+            return@launch
+        }
+        
         _employeeStatus.value = OperationStatus.Loading
         try {
             employeeRepo.refreshEmployees()
@@ -937,6 +975,13 @@ open class EmployeeViewModel @Inject constructor(
     }
     
     fun refreshOfficers() = viewModelScope.launch {
+        // ✅ GATING-2: Only fetch from Firestore if authenticated
+        if (auth.currentUser == null) {
+            Log.w("EmployeeVM", "⚠️ Skip refreshOfficers: Auth not ready")
+            _officerStatus.value = OperationStatus.Error("Auth not ready")
+            return@launch
+        }
+        
         _officerStatus.value = OperationStatus.Loading
         try {
             // First sync from Firebase to Room
@@ -1039,6 +1084,11 @@ open class EmployeeViewModel @Inject constructor(
     // =========================================================
     fun fetchUsefulLinks() {
         viewModelScope.launch {
+            // ✅ GATING-3: Only fetch from Firestore if authenticated
+            if (auth.currentUser == null) {
+                Log.w("EmployeeVM", "⚠️ Skip fetchUsefulLinks: Auth not ready")
+                return@launch
+            }
             try {
                 val collection = firestore.collection("useful_links")
                 val snapshot = try {
@@ -1118,9 +1168,11 @@ open class EmployeeViewModel @Inject constructor(
     //  NEW USER REGISTRATION
     // =========================================================
     fun registerNewUser(entity: PendingRegistrationEntity) {
-        viewModelScope.launch {
-            _pendingStatus.value = OperationStatus.Loading
+        // Prevent duplicate submissions
+        if (_pendingStatus.value is OperationStatus.Loading) return
+        _pendingStatus.value = OperationStatus.Loading
 
+        viewModelScope.launch {
             try {
                 // 1️⃣ Check for duplicate registration directly in Firestore
                 val hasDuplicate = try {

@@ -28,6 +28,7 @@ import kotlin.math.roundToInt
 @Composable
 fun CommonTopAppBar(title: String, navController: NavController) {
     TopAppBar(
+        windowInsets = WindowInsets(0.dp),
         title = { Text(text = title) },
         navigationIcon = {
             if (navController.previousBackStackEntry != null) {
@@ -39,7 +40,7 @@ fun CommonTopAppBar(title: String, navController: NavController) {
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            containerColor = MaterialTheme.colorScheme.primary,
             titleContentColor = Color.White,
             navigationIconContentColor = Color.White
         )

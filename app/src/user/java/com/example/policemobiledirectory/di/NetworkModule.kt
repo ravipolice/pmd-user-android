@@ -40,15 +40,15 @@ object NetworkModule {
     // ✅ Officers sync URL (for officers Sheet → Firestore sync)
     private const val OFFICERS_SYNC_BASE_URL =
         "https://script.google.com/macros/s/AKfycbyYb-m0egcqz69JNbBYQj0Qv8qStnn6GlntPfK47Nj75bN7K3u2onqUaPgvAtPQjH8V/"
-    
+
     // ✅ Constants API URL (for dynamic constants sync from Google Sheets)
     private const val CONSTANTS_BASE_URL =
         "https://script.google.com/macros/s/AKfycbyFMd7Qsv02wDYdM71ZCh_hUr08aFW6eYRztgmUYYI1ZuOKbKAXQtxnSZ3bhfbKWahY/"
-    
+
     // ✅ Useful Links API URL (for useful links management)
     private const val USEFUL_LINKS_BASE_URL =
         "https://script.google.com/macros/s/AKfycbyut8D5xNsytdL7m0IDiK5fH2z0s7Kc9eO8bT5IDqCpHworWvaTBMzB0MUcJmszlT1v/"
-    
+
     @Provides
     @Singleton
     @Named("OfficersSyncRetrofit")
@@ -57,7 +57,7 @@ object NetworkModule {
             .baseUrl(OFFICERS_SYNC_BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-    
+
     @Provides
     @Singleton
     fun provideOfficersSyncApiService(@Named("OfficersSyncRetrofit") retrofit: Retrofit): OfficersSyncApiService =
@@ -76,7 +76,7 @@ object NetworkModule {
             .readTimeout(180, TimeUnit.SECONDS)  // 3 minutes for large uploads
             .writeTimeout(180, TimeUnit.SECONDS)  // 3 minutes for large uploads
             .build()
-        
+
         return Retrofit.Builder()
             .baseUrl(DOCUMENTS_BASE_URL)
             .client(okHttpClient)
@@ -94,12 +94,12 @@ object NetworkModule {
             .readTimeout(180, TimeUnit.SECONDS)  // 3 minutes for large uploads
             .writeTimeout(180, TimeUnit.SECONDS)  // 3 minutes for large uploads
             .build()
-        
+
         // ✅ Use lenient Gson to handle malformed JSON from Apps Script
         val gson = GsonBuilder()
             .setLenient()
             .create()
-        
+
         return Retrofit.Builder()
             .baseUrl(GALLERY_BASE_URL)
             .client(okHttpClient)
@@ -116,7 +116,7 @@ object NetworkModule {
             .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
             .build()
-        
+
         return Retrofit.Builder()
             .baseUrl(EMPLOYEES_SYNC_BASE_URL)
             .client(okHttpClient)
@@ -134,7 +134,7 @@ object NetworkModule {
             .writeTimeout(20, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .build()
-        
+
         return Retrofit.Builder()
             .baseUrl(CONSTANTS_BASE_URL)
             .client(okHttpClient)
@@ -181,7 +181,7 @@ object NetworkModule {
             .writeTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .build()
-        
+
         return Retrofit.Builder()
             .baseUrl(USEFUL_LINKS_BASE_URL)
             .client(okHttpClient)

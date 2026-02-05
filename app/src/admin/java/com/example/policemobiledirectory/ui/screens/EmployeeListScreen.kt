@@ -105,7 +105,10 @@ fun EmployeeListScreen(
             TopAppBar(
                 windowInsets = WindowInsets(0.dp),
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text("PMD Home")
                         Spacer(Modifier.width(6.dp))
                         Box {
@@ -145,50 +148,50 @@ fun EmployeeListScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
+                    containerColor = PrimaryTeal,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
                 ),
-                modifier = Modifier.background(
-                    brush = Brush.linearGradient(
-                        listOf(
-                            PrimaryTeal.copy(alpha = GlassOpacity),
-                            PrimaryTealDark.copy(alpha = GlassOpacity)
-                        )
-                    )
-                ),
                 actions = {
-                    IconButton(onClick = { 
-                        viewModel.refreshEmployees()
-                        viewModel.refreshOfficers()
-                        constantsViewModel.forceRefresh()
-                    }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
-                    
-                    // Font Size Selector
-                    FontSizeSelectorButton(
-                        currentFontScale = fontScale,
-                        onFontScaleSelected = { scale: Float -> viewModel.setFontScale(scale) },
-                        onFontScaleToggle = {
-                            val presets = listOf(0.8f, 1.0f, 1.2f, 1.4f, 1.6f, 1.8f)
-                            val current = fontScale
-                            val currentIndex = presets.indexOfFirst { kotlin.math.abs(it - current) < 0.05f }
-                            val nextIndex = if (currentIndex >= 0 && currentIndex < presets.size - 1) currentIndex + 1 else 0
-                            viewModel.setFontScale(presets[nextIndex])
-                        },
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                    
-                    // Style Selector
-                    CardStyleSelectorButton(
-                        currentStyle = viewModel.currentCardStyle.collectAsState().value,
-                        onStyleSelected = { viewModel.updateCardStyle(it) }
-                    )
+                    Row(
+                        
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = {
+                            viewModel.refreshEmployees()
+                            viewModel.refreshOfficers()
+                            constantsViewModel.forceRefresh()
+                        }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        }
 
-                    IconButton(onClick = onThemeToggle) {
-                        Icon(Icons.Default.Brightness6, contentDescription = "Toggle Theme")
+                        // Font Size Selector
+                        FontSizeSelectorButton(
+                            currentFontScale = fontScale,
+                            onFontScaleSelected = { scale: Float -> viewModel.setFontScale(scale) },
+                            onFontScaleToggle = {
+                                val presets =
+                                    listOf(0.8f, 1.0f, 1.2f, 1.4f, 1.6f, 1.8f)
+                                val current = fontScale
+                                val currentIndex =
+                                    presets.indexOfFirst { kotlin.math.abs(it - current) < 0.05f }
+                                val nextIndex =
+                                    if (currentIndex >= 0 && currentIndex < presets.size - 1) currentIndex + 1 else 0
+                                viewModel.setFontScale(presets[nextIndex])
+                            },
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+
+                        // Style Selector
+                        CardStyleSelectorButton(
+                            currentStyle = viewModel.currentCardStyle.collectAsState().value,
+                            onStyleSelected = { viewModel.updateCardStyle(it) }
+                        )
+
+                        IconButton(onClick = onThemeToggle) {
+                            Icon(Icons.Default.Brightness6, contentDescription = "Toggle Theme")
+                        }
                     }
                 }
             )
@@ -566,5 +569,3 @@ private fun FontSizeSelectorButton(
         }
     }
 }
-
-

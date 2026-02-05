@@ -38,9 +38,17 @@ fun NotificationsScreen(
         viewModel.markAllAsRead()
     }
 
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            viewModel.clearAllNotifications()
+        }
+    }
+
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("Notifications") },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
@@ -55,8 +63,10 @@ fun NotificationsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = androidx.compose.ui.graphics.Color.White,
+                    navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
+                    actionIconContentColor = androidx.compose.ui.graphics.Color.White
                 )
             )
         }

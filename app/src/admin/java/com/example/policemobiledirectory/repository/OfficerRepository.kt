@@ -85,8 +85,8 @@ class OfficerRepository @Inject constructor(
      * Search Officers by Blob (Global Search)
      */
     fun searchByBlob(query: String): Flow<RepoResult<List<Officer>>> {
-        val normalizedQuery = "%${query.trim().lowercase().replace(Regex("[^a-z0-9\\s]"), "")}%"
-        return officerDao.searchByBlob(normalizedQuery)
+        val normalizedQuery = query.trim().lowercase()
+        return officerDao.smartSearch(normalizedQuery)
             .map { entities -> RepoResult.Success(entities.map { it.toOfficer() }) }
             .flowOn(Dispatchers.IO)
     }

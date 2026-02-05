@@ -88,7 +88,7 @@ fun PMDTheme(
     SideEffect {
         // Match status bar to primary color
         systemUiController.setStatusBarColor(
-            color = colors.primary,
+            color = PrimaryTeal,
             darkIcons = false // Keep icons white for purple top bar
         )
         // Optionally, set navigation bar to background or primary

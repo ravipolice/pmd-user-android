@@ -1,0 +1,93 @@
+﻿Configuration on demand is an incubating feature.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preUserReleaseBuild UP-TO-DATE
+> Task :app:extractUserReleaseVersionControlInfo UP-TO-DATE
+> Task :app:mergeUserReleaseArtProfile UP-TO-DATE
+> Task :app:expandUserReleaseL8ArtProfileWildcards UP-TO-DATE
+> Task :app:checkUserReleaseDuplicateClasses UP-TO-DATE
+> Task :app:buildKotlinToolingMetadata UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateUserReleaseBuildConfig UP-TO-DATE
+> Task :app:checkUserReleaseAarMetadata UP-TO-DATE
+> Task :app:processUserReleaseNavigationResources UP-TO-DATE
+> Task :app:compileUserReleaseNavigationResources UP-TO-DATE
+> Task :app:generateUserReleaseResValues UP-TO-DATE
+> Task :app:processUserReleaseGoogleServices UP-TO-DATE
+> Task :app:mapUserReleaseSourceSetPaths UP-TO-DATE
+> Task :app:generateUserReleaseResources UP-TO-DATE
+> Task :app:mergeUserReleaseResources UP-TO-DATE
+> Task :app:packageUserReleaseResources UP-TO-DATE
+> Task :app:parseUserReleaseLocalResources UP-TO-DATE
+> Task :app:createUserReleaseCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksUserRelease UP-TO-DATE
+> Task :app:processUserReleaseMainManifest UP-TO-DATE
+> Task :app:processUserReleaseManifest UP-TO-DATE
+> Task :app:processUserReleaseManifestForPackage UP-TO-DATE
+> Task :app:processUserReleaseResources UP-TO-DATE
+> Task :app:kspUserReleaseKotlin UP-TO-DATE
+> Task :app:compileUserReleaseKotlin UP-TO-DATE
+> Task :app:javaPreCompileUserRelease UP-TO-DATE
+> Task :app:compileUserReleaseJavaWithJavac UP-TO-DATE
+> Task :app:hiltAggregateDepsUserRelease UP-TO-DATE
+> Task :app:hiltJavaCompileUserRelease UP-TO-DATE
+> Task :app:transformUserReleaseClassesWithAsm UP-TO-DATE
+> Task :app:expandUserReleaseArtProfileWildcards UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :app:mergeUserReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :app:processUserReleaseJavaRes UP-TO-DATE
+> Task :app:mergeUserReleaseJavaResource UP-TO-DATE
+> Task :app:mergeUserReleaseStartupProfile UP-TO-DATE
+> Task :app:minifyUserReleaseWithR8 FAILED
+./gradlew : 
+At line:1 char:1
++ ./gradlew :app:bundl
+eUserRelease 2>&1 | 
+Out-File -Encoding 
+UTF8 r8_er ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (:String) [   
+ ], RemoteExceptio    
+n
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for 
+task ':app:minifyUserR
+eleaseWithR8'.
+> java.nio.file.FileSy
+stemException: C:\User
+s\ravip\AndroidStudioP
+rojects\PoliceMobileDi
+rectory\app\build\inte
+rmediates\dex\userRele
+ase\minifyUserReleaseW
+ithR8\classes.dex: 
+The process cannot 
+access the file 
+because it is being 
+used by another 
+process
+
+* Try:
+> Run with 
+--stacktrace option 
+to get the stack 
+trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at htt
+ps://help.gradle.org.
+
+BUILD FAILED in 32s
+36 actionable tasks: 1 executed, 35 up-to-date

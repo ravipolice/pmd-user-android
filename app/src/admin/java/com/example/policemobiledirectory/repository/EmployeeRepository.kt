@@ -133,9 +133,11 @@ open class EmployeeRepository @Inject constructor(
         val queryLower = query.trim().lowercase()
         
         return when (filter) {
-            SearchFilter.ALL -> employeeDao.searchByName(searchQuery).map { employees ->
-                // Sort single keyword searches too
+            SearchFilter.ALL -> employeeDao.smartSearch(queryLower).map { employees ->
+                // Sort single keyword searches too - DAO does name/rank priority, we add District priority here
                 employees.sortedWith(compareBy<EmployeeEntity> { employee ->
+                    // Priority 0: Exact match handled by DAO (smartSearch returns sorted list)
+                    
                     // Exact match first
                     if (employee.name.lowercase() == queryLower) 0
                     else if (employee.name.lowercase().startsWith(queryLower)) 1
@@ -1181,12 +1183,18 @@ open class EmployeeRepository @Inject constructor(
         }
 
         // ✅ Fallback to 'admins' collection if still not found
+        // ✅ Fallback to 'admins' collection if still not found
         var isAdminCollection = false
         if (snapshot.isEmpty) {
              Log.d(TAG, "getEmployeeByEmail: User not found in 'employees', checking 'admins'")
-             snapshot = firestore.collection("admins").whereEqualTo("email", normalizedEmail).limit(1).get().await()
-             if (!snapshot.isEmpty) {
-                 isAdminCollection = true
+             try {
+                 snapshot = firestore.collection("admins").whereEqualTo("email", normalizedEmail).limit(1).get().await()
+                 if (!snapshot.isEmpty) {
+                     isAdminCollection = true
+                 }
+             } catch (e: Exception) {
+                 Log.w(TAG, "getEmployeeByEmail: Failed to check admins collection (likely permission denied for new user). Treating as not found. Error: ${e.message}")
+                 // Swallow error and keep snapshot empty -> returns null -> triggers registration
              }
         }
 
@@ -1260,7 +1268,9 @@ open class EmployeeRepository @Inject constructor(
             isAdmin = isAdmin,
             isApproved = isApproved,
             createdAt = createdAt,
-            updatedAt = updatedAt
+            updatedAt = updatedAt,
+            unit = unit,
+            searchBlob = searchBlob
         )
     }
 

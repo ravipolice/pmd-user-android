@@ -1,0 +1,108 @@
+﻿Configuration on demand is an incubating feature.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preAdminReleaseBuild UP-TO-DATE
+> Task :app:extractAdminReleaseVersionControlInfo UP-TO-DATE
+> Task :app:mergeAdminReleaseArtProfile UP-TO-DATE
+> Task :app:expandAdminReleaseL8ArtProfileWildcards UP-TO-DATE
+> Task :app:checkAdminReleaseDuplicateClasses UP-TO-DATE
+> Task :app:buildKotlinToolingMetadata UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateAdminReleaseBuildConfig UP-TO-DATE
+> Task :app:checkAdminReleaseAarMetadata UP-TO-DATE
+> Task :app:processAdminReleaseNavigationResources UP-TO-DATE
+> Task :app:compileAdminReleaseNavigationResources UP-TO-DATE
+> Task :app:generateAdminReleaseResValues UP-TO-DATE
+> Task :app:processAdminReleaseGoogleServices UP-TO-DATE
+> Task :app:mapAdminReleaseSourceSetPaths UP-TO-DATE
+> Task :app:generateAdminReleaseResources UP-TO-DATE
+> Task :app:mergeAdminReleaseResources UP-TO-DATE
+> Task :app:packageAdminReleaseResources UP-TO-DATE
+> Task :app:parseAdminReleaseLocalResources UP-TO-DATE
+> Task :app:createAdminReleaseCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksAdminRelease UP-TO-DATE
+> Task :app:processAdminReleaseMainManifest UP-TO-DATE
+> Task :app:processAdminReleaseManifest UP-TO-DATE
+> Task :app:processAdminReleaseManifestForPackage UP-TO-DATE
+> Task :app:processAdminReleaseResources UP-TO-DATE
+> Task :app:kspAdminReleaseKotlin UP-TO-DATE
+> Task :app:javaPreCompileAdminRelease UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :app:mergeAdminReleaseStartupProfile UP-TO-DATE
+> Task :app:mergeAdminReleaseShaders UP-TO-DATE
+> Task :app:compileAdminReleaseShaders NO-SOURCE
+> Task :app:generateAdminReleaseAssets UP-TO-DATE
+> Task :app:mergeAdminReleaseAssets UP-TO-DATE
+> Task :app:mergeAdminReleaseJniLibFolders UP-TO-DATE
+> Task :app:mergeAdminReleaseNativeLibs UP-TO-DATE
+> Task :app:stripAdminReleaseDebugSymbols UP-TO-DATE
+> Task :app:writeAdminReleaseAppMetadata UP-TO-DATE
+> Task :app:collectAdminReleaseDependencies UP-TO-DATE
+> Task :app:configureAdminReleaseDependencies UP-TO-DATE
+> Task :app:extractAdminReleaseNativeSymbolTables UP-TO-DATE
+> Task :app:parseAdminReleaseIntegrityConfig UP-TO-DATE
+> Task :app:validateSigningAdminRelease UP-TO-DATE
+
+> Task :app:compileAdminReleaseKotlin FAILED
+./gradlew : e: file://
+/C:/Users/ravip/Androi
+dStudioProjects/Police
+MobileDirectory/app/sr
+c/admin/java/com/examp
+le/policemobiledirecto
+ry/ui/screens/Notifica
+tionsScreen.kt:146:56 
+Unresolved reference 
+'Locale'.
+At line:1 char:1
++ ./gradlew :app:bundl
+eAdminRelease 2>&1 | 
+Out-File -Encoding 
+UTF8 rele ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
+    + CategoryInfo    
+          : 
+NotSpecified    : (e: 
+file:///C:/U.    
+..rence 'Locale'.:S   
+ tring) [], RemoteEx  
+  ception
+    + 
+FullyQualifiedErr    
+orId : NativeComman   
+ dError
+ 
+
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for 
+task ':app:compileAdmi
+nReleaseKotlin'.
+> A failure occurred 
+while executing org.je
+tbrains.kotlin.compile
+rRunner.GradleCompiler
+RunnerWithWorkers$Grad
+leKotlinCompilerWorkAc
+tion
+   > Compilation 
+error. See log for 
+more details
+
+* Try:
+> Run with 
+--stacktrace option 
+to get the stack 
+trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at htt
+ps://help.gradle.org.
+
+BUILD FAILED in 5s
+38 actionable tasks: 1 executed, 37 up-to-date

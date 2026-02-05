@@ -137,7 +137,7 @@ Fields:
 
 If you have hardcoded admin emails, create documents for each:
 - `admins/ravipolice@gmail.com` → `{ isActive: true, email: "ravipolice@gmail.com" }`
-- `admins/noreply.policemobiledirectory@gmail.com` → `{ isActive: true, email: "noreply.policemobiledirectory@gmail.com" }`
+- `admins/noreply.pmdapp@gmail.com` → `{ isActive: true, email: "noreply.policemobiledirectory@gmail.com" }`
 
 ### 3. Deploy Rules
 

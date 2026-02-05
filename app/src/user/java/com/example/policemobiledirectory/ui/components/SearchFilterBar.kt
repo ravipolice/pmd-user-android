@@ -281,7 +281,7 @@ fun SearchFilterBar(
         }
 
         val placeholderText = if (searchFilter == SearchFilter.ALL) {
-            "Search name, ID, rank, station..."
+            "Search by Name, KGID, Mobile, Rank, Station, Blood Group..."
         } else {
             "Search by $searchLabel"
         }

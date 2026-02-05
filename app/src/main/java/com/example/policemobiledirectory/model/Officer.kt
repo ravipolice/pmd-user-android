@@ -1,6 +1,7 @@
 package com.example.policemobiledirectory.model
 
 import com.google.firebase.firestore.PropertyName
+import com.google.firebase.firestore.Exclude
 
 /**
  * Officer - Read-only contact information for police officers
@@ -20,7 +21,9 @@ data class Officer(
     val photoUrl: String? = null,
     val unit: String? = null,
     @get:PropertyName("isHidden")
-    val isHidden: Boolean = false
+    val isHidden: Boolean = false,
+    @get:Exclude
+    val searchBlob: String = ""
 ) {
     /**
      * ✅ Effective Unit: Hybrid Strategy
@@ -55,6 +58,13 @@ data class Officer(
      * Supports filters: name, agid, rank, mobile, district, station, email
      */
     fun matchesOptimized(queryLower: String, filter: String): Boolean {
+        // Use rich searchBlob for general searches if available
+        if (filter.equals("name", ignoreCase = true) || filter.equals("all", ignoreCase = true)) {
+            if (searchBlob.isNotEmpty() && searchBlob.contains(queryLower)) {
+                return true
+            }
+        }
+
         return when (filter.lowercase()) {
             "name" -> {
                 val nameLower = name.lowercase()

@@ -115,9 +115,10 @@ fun AdminPanelScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
-
+                windowInsets = WindowInsets(0.dp),
                 title = { 
                     Column {
                         Text(
@@ -154,8 +155,8 @@ fun AdminPanelScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = Color.White
                 )
             )
         },

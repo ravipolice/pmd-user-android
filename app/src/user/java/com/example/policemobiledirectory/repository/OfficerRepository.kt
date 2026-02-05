@@ -63,8 +63,8 @@ class OfficerRepository @Inject constructor(
     }
 
     fun searchByBlob(query: String): Flow<RepoResult<List<Officer>>> {
-        val normalizedQuery = "%${query.trim().lowercase().replace(Regex("[^a-z0-9\\s]"), "")}%"
-        return officerDao.searchByBlob(normalizedQuery)
+        val normalizedQuery = query.trim().lowercase()
+        return officerDao.smartSearch(normalizedQuery)
             .map { entities -> RepoResult.Success(entities.map { it.toOfficer() }) }
             .flowOn(ioDispatcher)
     }
@@ -131,7 +131,8 @@ class OfficerRepository @Inject constructor(
             unit = unit,
             photoUrl = photoUrl,
             bloodGroup = bloodGroup,
-            isHidden = isHidden
+            isHidden = isHidden,
+            searchBlob = searchBlob
         )
     }
 }

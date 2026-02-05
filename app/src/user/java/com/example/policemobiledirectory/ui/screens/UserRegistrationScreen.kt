@@ -4,6 +4,8 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -79,12 +81,17 @@ fun UserRegistrationScreen(
         }
     }
 
-    Scaffold { paddingValues ->
+    Scaffold(
+        contentWindowInsets = WindowInsets(0.dp)
+    ) { paddingValues ->
+        val isProcessing = pendingStatus is OperationStatus.Loading || hasSubmittedState.value
+        
         CommonEmployeeForm(
             modifier = Modifier.padding(paddingValues).fillMaxSize(),
             isAdmin = false,
             isSelfEdit = false,
             isRegistration = true,
+            isLoading = isProcessing,
             initialEmployee = null,
             initialKgid = null,
             initialEmail = initialEmail, // ✅ Prefill email from Google Sign-In

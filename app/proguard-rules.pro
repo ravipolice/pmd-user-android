@@ -25,8 +25,15 @@
 # --- Gson ---
 -keepattributes Signature
 -keepattributes *Annotation*
+-keepattributes EnclosingMethod
 -keep class sun.misc.Unsafe { *; }
 -keep class com.google.gson.** { *; }
+-keep class com.google.gson.reflect.TypeToken
+-keep class * extends com.google.gson.reflect.TypeToken
+-keepclassmembers class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
 
 # --- Retrofit ---
 -keep class retrofit2.** { *; }
@@ -38,6 +45,14 @@
 # --- Models (Keep all data classes used in JSON parsing) ---
 -keep class com.example.policemobiledirectory.model.** { *; }
 -keep class com.example.policemobiledirectory.data.local.** { *; }
+
+# --- Retrofit API Interfaces ---
+-keep interface com.example.policemobiledirectory.api.** { *; }
+-keep class com.example.policemobiledirectory.api.** { *; }
+
+# --- Remote Data/Services (Fixes ImageRepository Crash) ---
+-keep class com.example.policemobiledirectory.data.remote.** { *; }
+-keep interface com.example.policemobiledirectory.data.remote.** { *; }
 
 # --- App Specific ---
 -keep class com.example.policemobiledirectory.di.** { *; }

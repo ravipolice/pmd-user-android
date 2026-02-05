@@ -108,10 +108,11 @@ fun EmployeeListScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-
+                windowInsets = WindowInsets(0.dp),
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("PMD Home")
@@ -153,18 +154,10 @@ fun EmployeeListScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent, // Will use gradient background
+                    containerColor = PrimaryTeal, // Solid Teal to match Status Bar
                     titleContentColor = androidx.compose.ui.graphics.Color.White,
                     navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
                     actionIconContentColor = androidx.compose.ui.graphics.Color.White
-                ),
-                modifier = Modifier.background(
-                    brush = Brush.linearGradient(
-                        listOf(
-                            PrimaryTeal.copy(alpha = GlassOpacity),
-                            PrimaryTealDark.copy(alpha = GlassOpacity)
-                        )
-                    )
                 ),
                 actions = {
                     IconButton(onClick = { 
@@ -548,7 +541,7 @@ private fun EmployeeListContent(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 80.dp)
+                        contentPadding = PaddingValues(bottom = 0.dp)
                     ) {
                         items(filteredContacts, key = { it.id }) { contact ->
                             ContactCard(

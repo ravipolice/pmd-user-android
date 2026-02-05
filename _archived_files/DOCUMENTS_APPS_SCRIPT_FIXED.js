@@ -44,7 +44,7 @@ const PICKER_APP_ID        = "603972083927";  // numeric project ID
 
 const ALLOWED_ADMINS = [
   "ravipolice@gmail.com",
-  "noreply.policemobiledirectory@gmail.com"
+  "noreply.pmdapp@gmail.com"
 ];
 
 // =======================================================

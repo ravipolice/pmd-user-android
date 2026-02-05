@@ -56,8 +56,10 @@ fun ChangePinScreen(
     val pinChangeState by viewModel.pinChangeState.collectAsState()
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("Change PIN") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -65,7 +67,7 @@ fun ChangePinScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = androidx.compose.ui.graphics.Color.White,
                     navigationIconContentColor = androidx.compose.ui.graphics.Color.White
                 )

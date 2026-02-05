@@ -35,9 +35,7 @@ fun AboutScreen(navController: NavController) {
     val context = LocalContext.current
     val versionName = BuildConfig.VERSION_NAME
 
-    // Handle back button to navigate to home screen
     BackHandler {
-        // Navigate to home screen, clearing back stack up to (but not including) EMPLOYEE_LIST
         navController.navigate(Routes.EMPLOYEE_LIST) {
             popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
             launchSingleTop = true
@@ -56,7 +54,7 @@ fun AboutScreen(navController: NavController) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = androidx.compose.ui.graphics.Color.White,
                     navigationIconContentColor = androidx.compose.ui.graphics.Color.White
                 )
@@ -69,10 +67,9 @@ fun AboutScreen(navController: NavController) {
                 .padding(paddingValues)
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 🔹 App Logo
+
             Image(
                 painter = painterResource(id = R.drawable.app_logo),
                 contentDescription = "App Logo",
@@ -84,7 +81,6 @@ fun AboutScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 🔹 App Name
             Text(
                 text = "Police Mobile Directory",
                 style = MaterialTheme.typography.headlineSmall,
@@ -94,9 +90,8 @@ fun AboutScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // 🔹 App Version & Package Info
             Text(
-                text = "Version: ${BuildConfig.VERSION_NAME}",
+                text = "Version: $versionName",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.secondary
             )
@@ -109,14 +104,52 @@ fun AboutScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 🔹 App Description
+            // 🔹 App Description / Disclaimer
             Text(
                 text = """
-                    Police Mobile Directory is a simple and secure app designed 
-                    to make communication within the police department faster 
-                    and easier. It helps officers find and contact personnel 
-                    across various stations quickly.
-                    
+                    Police Mobile Directory – Important Notice
+
+                    This application is developed as an independent utility tool to help police personnel communicate easily and quickly.
+
+                    DISCLAIMER:
+                    • This application is NOT an official Government of Karnataka or Karnataka Police Department application.
+                    • The app is developed as a personal initiative to simplify internal communication.
+                    • All information displayed in this application is collected from publicly available official sources and internal authorized records.
+                    • This app does not represent or claim to represent any government entity.
+
+                    Official Data Sources:
+                    The information used in this application is referenced from official government sources such as:
+
+                    • Karnataka State Police Official Website:
+                    https://ksp.karnataka.gov.in
+
+                    • District Police Official Websites and Public Directories
+
+                    Users are advised to verify any critical information directly from the above official government websites.
+                """.trimIndent(),
+                style = MaterialTheme.typography.bodySmall,
+                lineHeight = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 🔹 Official Source Button
+            Button(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ksp.karnataka.gov.in"))
+                    context.startActivity(intent)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            ) {
+                Text("👉 Official Source Website")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 🔹 Key Features
+            Text(
+                text = """
                     Key Features:
                     • Employee Directory with search and filters  
                     • Admin management tools  
@@ -139,14 +172,13 @@ fun AboutScreen(navController: NavController) {
 
             Text(
                 text = "Ravikumar J",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                style = MaterialTheme.typography.titleMedium
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 🔹 Clickable Email
-            val email = "noreply.policemobiledirectory@gmail.com"
+            val email = "noreply.pmdapp@gmail.com"
+
             val annotatedText = buildAnnotatedString {
                 append("For feedback or support:\n")
                 withStyle(
@@ -169,6 +201,17 @@ fun AboutScreen(navController: NavController) {
                     }
                     context.startActivity(intent)
                 }
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 🔹 Affiliation Statement
+            Text(
+                text = "Affiliation Statement:\nThis app is NOT affiliated with, endorsed, sponsored, or officially connected with any government organization.",
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(16.dp)
             )
 
             Spacer(modifier = Modifier.height(32.dp))

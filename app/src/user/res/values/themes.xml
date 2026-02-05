@@ -6,5 +6,6 @@
         <item name="colorOnPrimaryContainer">@color/md_theme_light_onPrimaryContainer</item>
         <item name="colorSecondary">@color/md_theme_light_secondary</item>
         <item name="colorOnSecondary">@color/md_theme_light_onSecondary</item>
+        <item name="android:statusBarColor">@color/md_theme_light_primary</item>
     </style>
 </resources>

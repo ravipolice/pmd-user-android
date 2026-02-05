@@ -17,7 +17,7 @@ const PICKER_APP_ID = "603972083927";
 
 const ALLOWED_ADMINS = [
   "ravipolice@gmail.com",
-  "noreply.policemobiledirectory@gmail.com"
+  "noreply.pmdapp@gmail.com"
 ];
 
 // =======================================================

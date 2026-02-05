@@ -35,13 +35,18 @@ fun NotificationsScreen(
     val notifications = if (isAdmin) adminNotifications else userNotifications
     val pendingCount by viewModel.pendingApprovalsTotalCount.collectAsState() // Correctly collected here
 
-    LaunchedEffect(notifications, isAdmin) {
-        viewModel.markNotificationsRead(isAdmin, notifications)
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        onDispose {
+           viewModel.markNotificationsRead(isAdmin, notifications)
+        }
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("Notifications") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -49,7 +54,7 @@ fun NotificationsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = androidx.compose.ui.graphics.Color.White,
                     navigationIconContentColor = androidx.compose.ui.graphics.Color.White
                 )

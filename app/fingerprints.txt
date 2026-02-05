@@ -1,0 +1,15 @@
+﻿Alias name: pmdkey
+Creation date: 29-Jan-2026
+Entry type: PrivateKeyEntry
+Certificate chain length: 1
+Certificate[1]:
+Owner: C=IN, ST=Karnataka, L=Chikkaballapura, O=Nandija, OU=PMD, CN=PoliceMobileDirectory
+Issuer: C=IN, ST=Karnataka, L=Chikkaballapura, O=Nandija, OU=PMD, CN=PoliceMobileDirectory
+Serial number: 1
+Valid from: Thu Jan 29 11:55:31 IST 2026 until: Mon Jan 23 11:55:31 IST 2051
+Certificate fingerprints:
+	 SHA1: A4:AA:B1:D5:6D:F7:E0:46:DF:21:F2:7F:9F:DA:D9:41:BA:43:A1:1B
+	 SHA256: D4:DC:AE:8B:CC:86:6E:26:77:00:FD:9E:58:39:F6:C9:EC:C3:B8:F7:49:E8:7D:08:29:5D:5C:FE:32:69:E7:0E
+Signature algorithm name: SHA256withRSA
+Subject Public Key Algorithm: 2048-bit RSA key
+Version: 1

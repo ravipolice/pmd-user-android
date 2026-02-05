@@ -92,7 +92,10 @@ object SearchEngine {
     /**
      * Calculate relevance score for employee
      */
-    private fun calculateEmployeeScore(
+    /**
+     * Calculate relevance score for employee
+     */
+    fun calculateEmployeeScore(
         employee: Employee,
         queryLower: String,
         filter: SearchFilter
@@ -123,7 +126,7 @@ object SearchEngine {
     /**
      * Calculate relevance score for officer
      */
-    private fun calculateOfficerScore(
+    fun calculateOfficerScore(
         officer: Officer,
         queryLower: String,
         filter: String
@@ -153,7 +156,7 @@ object SearchEngine {
     /**
      * Calculate name score (highest weight for names)
      */
-    private fun calculateNameScore(name: String, queryLower: String): Double {
+    fun calculateNameScore(name: String, queryLower: String): Double {
         val nameLower = name.lowercase()
         return when {
             nameLower == queryLower -> FieldWeights.EXACT_MATCH
@@ -166,7 +169,7 @@ object SearchEngine {
     /**
      * Calculate ID score
      */
-    private fun calculateIdScore(id: String, queryLower: String): Double {
+    fun calculateIdScore(id: String, queryLower: String): Double {
         val idLower = id.lowercase()
         return when {
             idLower == queryLower -> FieldWeights.EXACT_MATCH
@@ -179,7 +182,7 @@ object SearchEngine {
     /**
      * Calculate mobile score
      */
-    private fun calculateMobileScore(mobile1: String?, mobile2: String?, queryLower: String): Double {
+    fun calculateMobileScore(mobile1: String?, mobile2: String?, queryLower: String): Double {
         val mobile1Score = mobile1?.let { calculateFieldScore(it, queryLower) } ?: 0.0
         val mobile2Score = mobile2?.let { calculateFieldScore(it, queryLower) } ?: 0.0
         return maxOf(mobile1Score, mobile2Score)
@@ -188,7 +191,7 @@ object SearchEngine {
     /**
      * Calculate generic field score
      */
-    private fun calculateFieldScore(field: String?, queryLower: String): Double {
+    fun calculateFieldScore(field: String?, queryLower: String): Double {
         if (field == null) return 0.0
         val fieldLower = field.lowercase()
         return when {

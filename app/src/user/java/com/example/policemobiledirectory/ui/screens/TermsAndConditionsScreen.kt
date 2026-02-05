@@ -16,8 +16,10 @@ import androidx.navigation.NavController
 @Composable
 fun TermsAndConditionsScreen(navController: NavController) {
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("Terms & Conditions") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -25,7 +27,7 @@ fun TermsAndConditionsScreen(navController: NavController) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = androidx.compose.ui.graphics.Color.White,
                     navigationIconContentColor = androidx.compose.ui.graphics.Color.White
                 )

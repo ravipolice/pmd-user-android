@@ -1,7 +1,7 @@
 package com.example.policemobiledirectory.model
 
-import com.example.policemobiledirectory.utils.Constants
 import com.google.firebase.firestore.PropertyName
+import com.google.firebase.firestore.Exclude
 import com.google.firebase.firestore.ServerTimestamp
 import java.util.Date
 
@@ -37,7 +37,9 @@ data class Employee(
     @get:PropertyName("isHidden")
     val isHidden: Boolean = false,       // Added for Hide/Unhide feature
     @get:PropertyName("isManualStation")
-    val isManualStation: Boolean = false // Added for manual section tracking
+    val isManualStation: Boolean = false, // Added for manual section tracking
+    @get:Exclude
+    val searchBlob: String = ""
 ) {
     // Computed property for display
     val displayRank: String
@@ -92,6 +94,14 @@ data class Employee(
      * Optimized matching function (query is already lowercase)
      */
     fun matchesOptimized(queryLower: String, filter: String): Boolean {
+        // Use rich searchBlob for general searches if available
+        // This enables fuzzy matching (e.g. "bmravi" -> "B.M. Ravi")
+        if (filter.equals("name", ignoreCase = true) || filter.equals("all", ignoreCase = true)) {
+            if (searchBlob.isNotEmpty() && searchBlob.contains(queryLower)) {
+                return true
+            }
+        }
+
         return when (filter.lowercase()) {
             "name" -> {
                 val nameLower = name.lowercase()
