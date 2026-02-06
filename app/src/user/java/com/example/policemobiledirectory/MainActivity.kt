@@ -111,11 +111,12 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, "No ID token found.", Toast.LENGTH_SHORT).show()
             }
         } catch (e: androidx.credentials.exceptions.GetCredentialException) {
-            Log.e("Auth", "❌ Google Sign-In failed (Credential Manager): ${e.type} - ${e.message}", e)
-            Toast.makeText(this, "Sign-In Failed: Use a valid Google Account", Toast.LENGTH_LONG).show()
+            Log.e("Auth", "❌ Google Sign-In failed: ${e.type} - ${e.message}", e)
+            // Show actual error to user for debugging
+            Toast.makeText(this, "Sign-In Error: ${e.type.javaClass.simpleName} - ${e.message}", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
-            Log.e("Auth", "❌ Google Sign-In unexpected error", e)
-            Toast.makeText(this, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+             Log.e("Auth", "❌ Google Sign-In unexpected error", e)
+             Toast.makeText(this, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
         }
     }
 
