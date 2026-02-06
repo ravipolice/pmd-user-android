@@ -46,6 +46,8 @@
 # --- Credential Manager & Identity ---
 -keep class androidx.credentials.** { *; }
 -keep class com.google.android.libraries.identity.googleid.** { *; }
+-keep class com.google.android.gms.identity.** { *; }
+-keep class com.google.android.libraries.identity.** { *; }
 -dontwarn androidx.credentials.**
 -dontwarn com.google.android.libraries.identity.googleid.**
 

@@ -195,7 +195,7 @@ class MainActivity : ComponentActivity() {
                     startDestination = startDestination,
                     employeeViewModel = viewModel,
                     isDarkTheme = isDarkTheme,
-                    onGoogleSignInClicked = { scope.launch { launchGoogleSignIn() } },
+                    onGoogleSignInClicked = { lifecycleScope.launch { launchGoogleSignIn() } },
                     onThemeToggle = { viewModel.toggleTheme() }
                 )
             }
