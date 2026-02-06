@@ -21,6 +21,7 @@
 # --- Firebase ---
 -keep class com.google.firebase.** { *; }
 -dontwarn com.google.firebase.**
+-keepattributes Signature, *Annotation*, InnerClasses, EnclosingMethod
 
 # --- Gson ---
 -keepattributes Signature
@@ -41,6 +42,12 @@
 
 # --- Coroutines ---
 -keep class kotlinx.coroutines.** { *; }
+
+# --- Credential Manager & Identity ---
+-keep class androidx.credentials.** { *; }
+-keep class com.google.android.libraries.identity.googleid.** { *; }
+-dontwarn androidx.credentials.**
+-dontwarn com.google.android.libraries.identity.googleid.**
 
 # --- Models (Keep all data classes used in JSON parsing) ---
 -keep class com.example.policemobiledirectory.model.** { *; }
