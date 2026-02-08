@@ -82,7 +82,8 @@ class MainActivity : ComponentActivity() {
     private suspend fun launchGoogleSignIn() {
         val credentialManager = CredentialManager.create(this)
         val googleIdOption = GetGoogleIdOption.Builder()
-            .setServerClientId(getString(R.string.default_web_client_id))
+            // Hardcoded to ensure no resource merging issues
+            .setServerClientId("603972083927-rog2v7ucndnu1399fugu3pemrjchov7t.apps.googleusercontent.com")
             .setFilterByAuthorizedAccounts(false)
             .setAutoSelectEnabled(false)
             .build()
@@ -110,6 +111,9 @@ class MainActivity : ComponentActivity() {
                 Log.e("Auth", "❌ No ID token found in credential data")
                 Toast.makeText(this, "No ID token found.", Toast.LENGTH_SHORT).show()
             }
+        } catch (e: java.util.concurrent.CancellationException) {
+            Log.d("Auth", "⚠️ Sign-In job cancelled (likely app closed)")
+            // Do not show toast
         } catch (e: androidx.credentials.exceptions.GetCredentialException) {
             Log.e("Auth", "❌ Google Sign-In failed: ${e.type} - ${e.message}", e)
             // Show actual error to user for debugging

@@ -37,8 +37,8 @@ android {
     defaultConfig {
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "1.16"
+        versionCode = 20
+        versionName = "1.20"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         multiDexEnabled = true
@@ -194,7 +194,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     // Google Sign-In
-    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    // implementation("com.google.android.gms:play-services-auth:21.0.0") // Removed to prevent conflicts w/ CredentialManager
     implementation(libs.play.identity)
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.0")
