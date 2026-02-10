@@ -50,6 +50,8 @@
 -keep class com.google.android.libraries.identity.** { *; }
 -dontwarn androidx.credentials.**
 -dontwarn com.google.android.libraries.identity.googleid.**
+-keep class com.google.android.gms.auth.api.signin.** { *; }
+-keep class com.google.android.gms.auth.api.** { *; }
 
 # --- Models (Keep all data classes used in JSON parsing) ---
 -keep class com.example.policemobiledirectory.model.** { *; }
@@ -84,3 +86,11 @@
 # --- Javax / AWT classes for POI ---
 -dontwarn java.awt.**
 -dontwarn javax.xml.stream.**
+
+# --- AndroidX Media3 (ExoPlayer) ---
+-keep class androidx.media3.** { *; }
+-dontwarn androidx.media3.**
+
+# --- AndroidX Camera (CameraX) ---
+-keep class androidx.camera.** { *; }
+-dontwarn androidx.camera.**

@@ -37,8 +37,8 @@ android {
     defaultConfig {
         minSdk = 26
         targetSdk = 35
-        versionCode = 20
-        versionName = "1.20"
+        versionCode = 26
+        versionName = "1.26"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         multiDexEnabled = true
@@ -197,6 +197,7 @@ dependencies {
     // implementation("com.google.android.gms:play-services-auth:21.0.0") // Removed to prevent conflicts w/ CredentialManager
     implementation(libs.play.identity)
     implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.0")
 
     implementation("commons-io:commons-io:2.15.1")
