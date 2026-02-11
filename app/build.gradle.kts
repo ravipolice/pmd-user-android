@@ -24,7 +24,7 @@ android {
     productFlavors {
         create("admin") {
             dimension = "version"
-            applicationId = "com.example.policemobiledirectory"
+            applicationId = "com.pmd.adminapp"
             resValue("string", "app_name", "PMD Admin")
         }
         create("user") {
@@ -37,8 +37,8 @@ android {
     defaultConfig {
         minSdk = 26
         targetSdk = 35
-        versionCode = 26
-        versionName = "1.26"
+        versionCode = 32
+        versionName = "1.32"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         multiDexEnabled = true
@@ -194,7 +194,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     // Google Sign-In
-    // implementation("com.google.android.gms:play-services-auth:21.0.0") // Removed to prevent conflicts w/ CredentialManager
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
     implementation(libs.play.identity)
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
