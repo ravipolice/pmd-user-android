@@ -11,5 +11,7 @@ data class UnitMapping(
     val isDistrictLevel: Boolean = false,
     val isHqLevel: Boolean = false,
     val scopes: List<String> = emptyList(),
-    val applicableRanks: List<String> = emptyList()
+    val applicableRanks: List<String> = emptyList(),
+    val stationKeyword: String? = null,
+    val mappedAreaType: String? = null
 )

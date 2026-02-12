@@ -915,7 +915,7 @@ fun CommonEmployeeForm(
                     isError = showValidationErrors && rank.isBlank()
                 )
                 ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
-                    ranks.forEach { selection ->
+                    filteredRanks.forEach { selection ->
                         DropdownMenuItem(text = { Text(selection) }, onClick = {
                             rank = selection
                             if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
@@ -935,11 +935,11 @@ fun CommonEmployeeForm(
             Spacer(Modifier.height(fieldSpacing))
 
             // Metal number
-            if (showMetalNumberField) {
+            if (showMetalNumberField && !isOfficer) {
                 OutlinedTextField(
                     value = metalNumber,
                     onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
-                    label = { Text("Metal Number${if (isRegistration) "*" else ""}") },
+                    label = { Text("Metal Number") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     isError = showValidationErrors && metalNumber.isBlank()
@@ -974,53 +974,92 @@ fun CommonEmployeeForm(
             Spacer(Modifier.height(fieldSpacing))
 
             // District (admin & registration editable; self-edit disabled)
-            ExposedDropdownMenuBox(expanded = districtExpanded, onExpandedChange = {
-                if (!isSelfEdit) districtExpanded = !districtExpanded
-            }) {
-                OutlinedTextField(
-                    value = district.ifEmpty { if (isSelfEdit) district else "Select District / HQ" },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("District / HQ*") },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
-                    isError = showValidationErrors && district.isBlank() && !isHighRankingOfficer
-                )
-                if (!isSelfEdit) {
-                    ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
-                        availableDistricts.forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                if (district != selection) station = ""
-                                district = selection
-                                districtExpanded = false
-                            })
+            val isSpecialUnit = remember(selectedUnitModel) {
+                selectedUnitModel?.mappingType == "none"
+            }
+
+            if (!isHighRankingOfficer && !isSpecialUnit) {
+                val isDistrictLocked = availableDistricts.size == 1 && district.isNotBlank()
+                ExposedDropdownMenuBox(expanded = districtExpanded && !isDistrictLocked, onExpandedChange = {
+                    if (!isSelfEdit && !isDistrictLocked) districtExpanded = !districtExpanded
+                }) {
+                    OutlinedTextField(
+                        value = district.ifEmpty { if (isSelfEdit) district else "Select District / HQ*" },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("District / HQ*") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        enabled = !isDistrictLocked,
+                        trailingIcon = { 
+                            if (!isDistrictLocked) {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded)
+                            }
+                        },
+                        isError = showValidationErrors && district.isBlank()
+                    )
+                    if (!isSelfEdit && !isDistrictLocked) {
+                        ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
+                            availableDistricts.forEach { selection ->
+                                DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                    if (district != selection) station = ""
+                                    district = selection
+                                    districtExpanded = false
+                                })
+                            }
                         }
                     }
                 }
+                if (showValidationErrors && district.isBlank()) Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(fieldSpacing))
             }
-            if (showValidationErrors && district.isBlank() && !isHighRankingOfficer) Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(fieldSpacing))
 
-            // Station (editable for admin and self-edit; uses district)
-            // Station (editable for admin and self-edit; uses district)
-            // Station (editable for admin and self-edit; uses district)
-            // Station (editable for admin and self-edit; uses district)
-            if (!isHighRankingOfficer) {
+            // Station/Section (editable for admin and self-edit; uses district)
+            val hasSections = remember(unitSections, unit, district) {
+                unitSections.isNotEmpty() || unit == "State INT" || district == "HQ"
+            }
+
+            if (!isHighRankingOfficer && (!isDistrictLevelUnit || hasSections) && !isSpecialUnit) {
+                val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks, unit, unitSections) {
+                    if (unitSections.isNotEmpty()) {
+                        unitSections + listOf("Others")
+                    } else if (unit == "State INT") {
+                         com.example.policemobiledirectory.utils.Constants.stateIntSections + listOf("Others")
+                    } else {
+                        val isPoliceStationRank = policeStationRanks.contains(rank)
+                        val baseStations = if (isPoliceStationRank) {
+                            stationsForSelectedDistrict
+                        } else {
+                            stationsForSelectedDistrict.filter { !it.endsWith(" PS", ignoreCase = true) }
+                        }
+                        
+                        // Also add "Others" if it's an HQ-level unit (where we might need manual names)
+                        if (hasSections || district == "HQ") {
+                            baseStations + listOf("Others")
+                        } else {
+                            baseStations
+                        }
+                    }
+                }
+
                 ExposedDropdownMenuBox(expanded = stationExpanded, onExpandedChange = {
-                    if (district.isNotBlank() && stationsForSelectedDistrict.isNotEmpty()) stationExpanded = !stationExpanded
+                    if ((district.isNotBlank() || hasSections) && filteredStations.isNotEmpty()) stationExpanded = !stationExpanded
                 }) {
                     OutlinedTextField(
-                        value = station.ifEmpty { if (district.isNotBlank()) "Select Station / Section" else "Select District / HQ First" },
+                        value = station.ifEmpty { 
+                            if (hasSections) "Select Section" 
+                            else if (district.isNotBlank()) "Select Station" 
+                            else "Select District / HQ First" 
+                        },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Station / Section*") },
+                        label = { Text(if (hasSections) "Section *" else "Station *") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
-                        enabled = district.isNotBlank() && stationsForSelectedDistrict.isNotEmpty(),
+                        enabled = (district.isNotBlank() || hasSections) && filteredStations.isNotEmpty(),
                         isError = showValidationErrors && station.isBlank()
                     )
                     ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
-                        stationsForSelectedDistrict.forEach { selection ->
+                        filteredStations.forEach { selection ->
                             DropdownMenuItem(text = { Text(selection) }, onClick = {
                                 station = selection
                                 stationExpanded = false
@@ -1028,23 +1067,23 @@ fun CommonEmployeeForm(
                         }
                     }
                 }
-            }
-            if (showValidationErrors && station.isBlank() && !isHighRankingOfficer) Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Manual Section (if "Others" is selected)
-            if (station == "Others") {
-                OutlinedTextField(
-                    value = manualSection,
-                    onValueChange = { manualSection = it },
-                    label = { Text("Specify Section Name*") },
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = showValidationErrors && manualSection.isBlank()
-                )
-                if (showValidationErrors && manualSection.isBlank()) {
-                    Text("Please specify section name", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
+                if (showValidationErrors && station.isBlank()) Text(if (hasSections) "Section required" else "Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(fieldSpacing))
+
+                // Manual Section (if "Others" is selected)
+                if (station == "Others") {
+                    OutlinedTextField(
+                        value = manualSection,
+                        onValueChange = { manualSection = it },
+                        label = { Text("Specify ${if (hasSections) "Section" else "Station"} Name*") },
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = showValidationErrors && manualSection.isBlank()
+                    )
+                    if (showValidationErrors && manualSection.isBlank()) {
+                        Text("Please specify name", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Spacer(Modifier.height(fieldSpacing))
+                }
             }
 
 

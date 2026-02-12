@@ -51,6 +51,8 @@ fun SearchFilterBar(
     // Config
     isDistrictLevelUnit: Boolean,
     isAdmin: Boolean,
+    districtLabel: String = "District / HQ",
+    stationLabel: String = "Station / Section",
     modifier: Modifier = Modifier
 ) {
     // UI State for Dropdowns (Internal)
@@ -131,7 +133,7 @@ fun SearchFilterBar(
                         value = selectedDistrict,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("District / HQ") },
+                        label = { Text(districtLabel) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -186,7 +188,7 @@ fun SearchFilterBar(
                             value = selectedStation,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Station / Section") }, // Caller can handle "Section" label logic via UI state if needed, but "Station" is generic enough or we can pass label
+                            label = { Text(stationLabel) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -281,7 +283,7 @@ fun SearchFilterBar(
         }
 
         val placeholderText = if (searchFilter == SearchFilter.ALL) {
-            "Search by Name, KGID, Mobile, Rank, Station, Blood Group..."
+            "Search by Name, Mobile, Rank, Station, Blood..."
         } else {
             "Search by $searchLabel"
         }

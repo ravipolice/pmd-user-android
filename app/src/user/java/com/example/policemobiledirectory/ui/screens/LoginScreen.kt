@@ -1,6 +1,7 @@
 package com.example.policemobiledirectory.ui.screens
 
 import android.widget.Toast
+import com.example.policemobiledirectory.utils.ToastUtil
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -77,13 +78,13 @@ fun LoginScreen(
                 isLoading = false
                 val user = status.data as? Employee
                 if (user != null && viewModel.isLoggedIn.value) {
-                    Toast.makeText(context, "Welcome ${user.name}", Toast.LENGTH_SHORT).show()
+                    ToastUtil.showToast(context, "Welcome ${user.name}")
                     onLoginSuccess(viewModel.isAdmin.value)
                 }
             }
             is OperationStatus.Error -> {
                 isLoading = false
-                Toast.makeText(context, status.message, Toast.LENGTH_LONG).show()
+                ToastUtil.showToast(context, status.message, Toast.LENGTH_LONG)
             }
             else -> isLoading = false
         }
@@ -99,7 +100,7 @@ fun LoginScreen(
             is GoogleSignInUiEvent.SignInSuccess -> {
                 isLoading = false
                 if (viewModel.isLoggedIn.value) {
-                    Toast.makeText(context, "Welcome ${event.user.name}", Toast.LENGTH_SHORT).show()
+                    ToastUtil.showToast(context, "Welcome ${event.user.name}")
                     onLoginSuccess(viewModel.isAdmin.value)
                 }
             }
@@ -113,7 +114,7 @@ fun LoginScreen(
 
             is GoogleSignInUiEvent.Error -> {
                 isLoading = false
-                Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                ToastUtil.showToast(context, event.message, Toast.LENGTH_LONG)
             }
 
             else -> isLoading = false
@@ -156,11 +157,10 @@ fun LoginScreen(
             dismissButton = {
                 TextButton(onClick = {
                     showRegisterDialog = false
-                    Toast.makeText(
+                    ToastUtil.showToast(
                         context,
-                        "Please sign in with a registered account.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                        "Please sign in with a registered account."
+                    )
                 }) {
                     Text("Use another account")
                 }
@@ -319,7 +319,7 @@ fun LoginScreen(
                                         if (android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                                             viewModel.loginWithPin(email, pin)
                                         } else {
-                                            Toast.makeText(context, "Please enter a valid email", Toast.LENGTH_SHORT).show()
+                                            ToastUtil.showToast(context, "Please enter a valid email")
                                         }
                                     })
                                 )
@@ -331,7 +331,7 @@ fun LoginScreen(
                                         if (android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                                             viewModel.loginWithPin(email, pin)
                                         } else {
-                                            Toast.makeText(context, "Please enter a valid email", Toast.LENGTH_SHORT).show()
+                                            ToastUtil.showToast(context, "Please enter a valid email")
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth(),

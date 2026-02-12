@@ -66,7 +66,6 @@ fun EmployeeListScreen(
     val employeeStatus by viewModel.employeeStatus.collectAsState()
     val isAdmin by viewModel.isAdmin.collectAsState()
     val fontScale by viewModel.fontScale.collectAsState()
-    val stationsForDistrict by viewModel.stationsForSelectedDistrict.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     
@@ -318,56 +317,20 @@ private fun EmployeeListContent(
     // Derived UI-specific lists
     // UNIT-TO-DISTRICT MAPPING LOGIC (Consolidated)
     // UNIT-TO-DISTRICT MAPPING LOGIC (Consolidated)
-    val districtsList = remember(districts, searchParams.unit, fullUnits) {
-        val selected = searchParams.unit
-        val unitConfig = fullUnits.find { it.name == selected }
-        
-        val baseList = when {
-            selected == "All" -> districts
-            unitConfig != null -> {
-                when (unitConfig.mappingType) {
-                    "subset", "single", "commissionerate" -> {
-                         if (unitConfig.mappedDistricts.isNotEmpty()) unitConfig.mappedDistricts.sorted()
-                         else districts
-                    }
-                    "none" -> emptyList()
-                    "state" -> listOf("HQ")
-                    else -> districts
-                }
-            }
-            // Fallback: If no config found
-            else -> districts
-        }
+    // 🔹 DYNAMIC DISTRICTS LIST (Sync with Admin Mapping)
+    val districtsList = remember(districts, searchParams.unit) {
+        val baseList = if (searchParams.unit == "All") districts else constantsViewModel.getDistrictsForUnit(searchParams.unit)
         listOf("All") + baseList
     }
 
-    val stationsForDistrictBase by viewModel.stationsForSelectedDistrict.collectAsState()
-    
-    val stationsForDistrict = remember(stationsForDistrictBase, unitSections, searchParams.unit, fullUnits) {
-         val unitConfig = fullUnits.find { it.name == searchParams.unit }
-         
-         if (unitSections.isNotEmpty()) {
-             listOf("All") + unitSections
-         } else if (searchParams.unit == "All" || searchParams.unit == "Law & Order") {
-             stationsForDistrictBase
-         } else {
-             // Dynamic Filtering using stationKeyword from DB
-             val keywordsStr = unitConfig?.stationKeyword
-             
-             if (keywordsStr.isNullOrBlank()) {
-                 stationsForDistrictBase
-             } else {
-                 val keywords = keywordsStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                 stationsForDistrictBase.filter { station -> 
-                     station == "All" || keywords.any { station.contains(it, ignoreCase = true) }
-                 }
-             }
-         }
+    // 🔹 DYNAMIC STATIONS / SECTIONS STATE
+    val stationsForDistrict by produceState<List<String>>(initialValue = listOf("All"), key1 = searchParams.unit, key2 = searchParams.district) {
+        val resolved = constantsViewModel.getStationsAndSectionsForUnit(searchParams.unit, searchParams.district)
+        value = listOf("All") + resolved
     }
+
     val allRanks = remember(ranks) { listOf("All") + ranks }
 
-
-    // val searchFields removed
     val listState = rememberLazyListState()
 
     Column(
@@ -377,6 +340,11 @@ private fun EmployeeListContent(
             .padding(horizontal = 12.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
+
+        // 🔹 DYNAMIC LABELS
+        val unitObj = fullUnits.find { it.name == searchParams.unit }
+        val districtLabel = if (unitObj?.mappedAreaType == "BATTALION") "Battalion" else "District / HQ"
+        val stationLabel = if (stationsForDistrict.size > 1 && !stationsForDistrict.contains("Others") && searchParams.unit != "All") "Section" else "Station / Section"
 
         // 🔹 SEARCH & FILTER BAR
         SearchFilterBar(
@@ -401,6 +369,8 @@ private fun EmployeeListContent(
             onSearchFilterChange = { viewModel.updateSearchFilter(it) },
             isDistrictLevelUnit = isDistrictLevelUnit,
             isAdmin = isAdmin,
+            districtLabel = districtLabel,
+            stationLabel = stationLabel,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 

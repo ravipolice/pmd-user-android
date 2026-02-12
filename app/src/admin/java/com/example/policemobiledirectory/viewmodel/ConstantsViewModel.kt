@@ -302,6 +302,22 @@ class ConstantsViewModel @Inject constructor(
         return constantsRepository.getSectionsForUnit(unitName)
     }
 
+    suspend fun getStationsAndSectionsForUnit(unitName: String, districtName: String): List<String> {
+        // 1. Priority: Unit-specific sections (Admin Panel)
+        val sections = constantsRepository.getSectionsForUnit(unitName)
+        if (sections.isNotEmpty()) return sections
+
+        // 2. Fallback: District-based stations filtered by keywords
+        if (districtName == "All" || districtName.isBlank()) return emptyList()
+        
+        val allStationsMap = _stationsByDistrict.value
+        val districtStations = allStationsMap[districtName] ?: run {
+            allStationsMap.keys.find { it.equals(districtName, ignoreCase = true) }?.let { allStationsMap[it] }
+        } ?: emptyList()
+        
+        return constantsRepository.getStationsForUnit(unitName, districtStations)
+    }
+
     /**
      * Get applicable ranks for a unit
      */

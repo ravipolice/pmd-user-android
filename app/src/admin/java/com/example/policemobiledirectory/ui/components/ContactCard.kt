@@ -207,7 +207,7 @@ fun ContactCard(
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 2.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -295,7 +295,7 @@ fun ContactCard(
                         )
                     }
 
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                         if (!mobileNumber.isNullOrBlank() && mobileNumber.uppercase() != "NM") {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),

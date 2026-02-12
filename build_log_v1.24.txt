@@ -1,0 +1,79 @@
+﻿Starting a Gradle Daemon, 5 stopped Daemons could not be reused, use --status for details
+Daemon JVM discovery is an incubating feature.
+Configuration on demand is an incubating feature.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preUserReleaseBuild UP-TO-DATE
+> Task :app:processUserReleaseNavigationResources FROM-CACHE
+> Task :app:compileUserReleaseNavigationResources FROM-CACHE
+> Task :app:generateUserReleaseResValues FROM-CACHE
+> Task :app:processUserReleaseGoogleServices FROM-CACHE
+> Task :app:mapUserReleaseSourceSetPaths
+> Task :app:generateUserReleaseResources FROM-CACHE
+> Task :app:mergeUserReleaseResources FROM-CACHE
+> Task :app:createUserReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksUserRelease FROM-CACHE
+
+> Task :app:processUserReleaseMainManifest
+C:\Users\ravip\AndroidStudioProjects\PoliceMobileDirectory\app\src\user\AndroidManifest.xml Warning:
+	uses-permission#android.permission.ACCESS_ADSERVICES_TOPICS was tagged at AndroidManifest.xml:0 to remove other declarations but no other declaration present
+C:\Users\ravip\AndroidStudioProjects\PoliceMobileDirectory\app\src\user\AndroidManifest.xml:2:5-3:19 Warning:
+	application@android:icon was tagged at AndroidManifest.xml:2 to replace other declarations but no other declaration present
+C:\Users\ravip\AndroidStudioProjects\PoliceMobileDirectory\app\src\user\AndroidManifest.xml:2:5-3:19 Warning:
+	application@android:theme was tagged at AndroidManifest.xml:2 to replace other declarations but no other declaration present
+C:\Users\ravip\AndroidStudioProjects\PoliceMobileDirectory\app\src\user\AndroidManifest.xml:2:5-3:19 Warning:
+	application@android:label was tagged at AndroidManifest.xml:2 to replace other declarations but no other declaration present
+C:\Users\ravip\AndroidStudioProjects\PoliceMobileDirectory\app\src\user\AndroidManifest.xml:2:5-3:19 Warning:
+	application@android:roundIcon was tagged at AndroidManifest.xml:2 to replace other declarations but no other declaration present
+
+> Task :app:processUserReleaseManifest
+> Task :app:processApplicationManifestUserReleaseForBundle
+> Task :app:packageUserReleaseResources FROM-CACHE
+> Task :app:checkUserReleaseAarMetadata
+> Task :app:parseUserReleaseLocalResources FROM-CACHE
+> Task :app:extractUserReleaseVersionControlInfo
+> Task :app:mergeUserReleaseArtProfile
+> Task :app:expandUserReleaseL8ArtProfileWildcards FROM-CACHE
+> Task :app:buildKotlinToolingMetadata
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateUserReleaseBuildConfig
+> Task :app:checkUserReleaseDuplicateClasses
+> Task :app:javaPreCompileUserRelease FROM-CACHE
+> Task :app:desugarUserReleaseFileDependencies FROM-CACHE
+> Task :app:mergeUserReleaseStartupProfile UP-TO-DATE
+> Task :app:processUserReleaseManifestForPackage
+> Task :app:processUserReleaseResources
+> Task :app:mergeExtDexUserRelease
+./gradlew : 
+At line:1 char:104
++ ... ild }; ./gradlew 
+clean; ./gradlew 
+:app:bundleUserRelease 2>&1 
+| Out-F ...
++                            
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (:String  
+  ) [], RemoteException
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+FAILURE: Build failed with 
+an exception.
+
+* What went wrong:
+Gradle build daemon has been 
+stopped: stop command 
+received
+
+* Try:
+> Run with --stacktrace 
+option to get the stack 
+trace.
+> Run with --info or --debug 
+option to get more log 
+output.
+> Run with --scan to get 
+full insights.
+> Get more help at 
+https://help.gradle.org.

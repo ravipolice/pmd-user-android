@@ -15,6 +15,7 @@ object Routes {
     // --- Admin Screens ---
     const val ADMIN_PANEL = "admin_panel"
     const val EMPLOYEE_STATS = "employee_stats"
+    const val OFFICER_STATS = "officer_stats"
     const val PENDING_APPROVALS = "pending_approvals"
     const val SEND_NOTIFICATION = "send_notification"
     const val UPLOAD_CSV = "upload_csv"

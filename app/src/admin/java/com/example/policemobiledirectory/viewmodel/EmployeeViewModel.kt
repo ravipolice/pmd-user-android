@@ -124,6 +124,8 @@ open class EmployeeViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
     
     // Combined contacts (employees + officers) for unified search
+    enum class StaffType { ALL, EMPLOYEE, OFFICER }
+
     data class Contact(
         val employee: Employee? = null,
         val officer: Officer? = null
@@ -144,7 +146,8 @@ open class EmployeeViewModel @Inject constructor(
         val district: String = "All",
         val station: String = "All",
         val rank: String = "All",
-        val unit: String = "All" // New Unit filter
+        val unit: String = "All", // New Unit filter
+        val staffType: StaffType = StaffType.ALL
     )
     
     // Unified Search Source of Truth
@@ -158,6 +161,7 @@ open class EmployeeViewModel @Inject constructor(
     val selectedStation: Flow<String> = _searchParams.map { it.station }
     val selectedRank: Flow<String> = _searchParams.map { it.rank }
     val selectedUnit: Flow<String> = _searchParams.map { it.unit }
+    val selectedStaffType: Flow<StaffType> = _searchParams.map { it.staffType }
 
     // Update helpers
     fun updateSearchQuery(query: String) { _searchParams.value = _searchParams.value.copy(query = query) }
@@ -175,6 +179,10 @@ open class EmployeeViewModel @Inject constructor(
             unit = unit,
             station = if (unit != "All") "All" else _searchParams.value.station
         ) 
+    }
+
+    fun updateStaffType(staffType: StaffType) {
+        _searchParams.value = _searchParams.value.copy(staffType = staffType)
     }
     
     fun clearFilters() {
@@ -196,7 +204,7 @@ open class EmployeeViewModel @Inject constructor(
         val district = params.district
         val selectedUnit = params.unit
         
-        val districtStations = if (district == "All") {
+        val baseStations = if (district == "All") {
              listOf("All") 
         } else {
             val stations = stationsMap[district] ?: run {
@@ -206,26 +214,13 @@ open class EmployeeViewModel @Inject constructor(
             listOf("All") + stations
         }
         
-        // Apply Unit filtering on the stations dropdown if needed
-        if (selectedUnit == "All" || selectedUnit == "Law & Order") {
-            districtStations
+        if (selectedUnit == "All") {
+            baseStations
         } else {
-             val expectedKeywords = when(selectedUnit) {
-                 "Traffic" -> listOf("Traffic")
-                 "Control Room" -> listOf("Control Room") 
-                 "CEN Crime / Cyber" -> listOf("CEN", "Cyber")
-                 "Women Police" -> listOf("Women")
-                 "DPO / Admin" -> listOf("DPO", "Computer", "Admin", "Office")
-                 "DAR" -> listOf("DAR")
-                 "DCRB" -> listOf("DCRB")
-                 "DSB / Intelligence" -> listOf("DSB", "Intelligence", "INT")
-                 "Special Units" -> listOf("FPB", "MCU", "SMMC", "DCRE", "Lokayukta", "ESCOM")
-                 else -> listOf(selectedUnit)
-             }
-             
-             districtStations.filter { station -> 
-                 station == "All" || expectedKeywords.any { station.contains(it, ignoreCase = true) }
-             }
+            // Priority: Fetch unitSections from Firestore if it's a section-based unit
+            // However, for search filters, we usually want to combine both or use repository logic
+            val resolved = constantsRepository.getStationsForUnit(selectedUnit, baseStations.filter { it != "All" })
+            listOf("All") + resolved
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -254,10 +249,16 @@ open class EmployeeViewModel @Inject constructor(
         val isGlobalSearch = effectiveParams.query.isNotBlank()
 
         // If Global Search, bypass dropdown filters
+        val filteredByType = when (effectiveParams.staffType) {
+            StaffType.ALL -> contacts
+            StaffType.EMPLOYEE -> contacts.filter { it.employee != null }
+            StaffType.OFFICER -> contacts.filter { it.officer != null }
+        }
+
         val filteredByDropdowns = if (isGlobalSearch) {
-            contacts
+            filteredByType
         } else {
-            contacts
+            filteredByType
                 .filterByDistrict(effectiveParams.district)
                 .filterByStation(effectiveParams.station)
                 .filterByRank(effectiveParams.rank)

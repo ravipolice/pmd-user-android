@@ -1,0 +1,74 @@
+﻿Starting a Gradle Daemon, 7 stopped Daemons could not be reused, use --status for details
+Daemon JVM discovery is an incubating feature.
+Configuration on demand is an incubating feature.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preUserReleaseBuild UP-TO-DATE
+> Task :app:processUserReleaseNavigationResources UP-TO-DATE
+> Task :app:compileUserReleaseNavigationResources UP-TO-DATE
+> Task :app:generateUserReleaseResValues UP-TO-DATE
+> Task :app:processUserReleaseGoogleServices UP-TO-DATE
+> Task :app:mapUserReleaseSourceSetPaths UP-TO-DATE
+> Task :app:generateUserReleaseResources UP-TO-DATE
+> Task :app:mergeUserReleaseResources UP-TO-DATE
+> Task :app:createUserReleaseCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksUserRelease UP-TO-DATE
+> Task :app:processUserReleaseMainManifest UP-TO-DATE
+> Task :app:processUserReleaseManifest UP-TO-DATE
+> Task :app:processApplicationManifestUserReleaseForBundle UP-TO-DATE
+> Task :app:checkUserReleaseAarMetadata UP-TO-DATE
+> Task :app:packageUserReleaseResources UP-TO-DATE
+> Task :app:parseUserReleaseLocalResources UP-TO-DATE
+> Task :app:processUserReleaseManifestForPackage UP-TO-DATE
+> Task :app:processUserReleaseResources UP-TO-DATE
+> Task :app:bundleUserReleaseResources UP-TO-DATE
+> Task :app:extractUserReleaseVersionControlInfo UP-TO-DATE
+> Task :app:mergeUserReleaseArtProfile UP-TO-DATE
+> Task :app:expandUserReleaseL8ArtProfileWildcards UP-TO-DATE
+> Task :app:checkUserReleaseDuplicateClasses UP-TO-DATE
+> Task :app:buildKotlinToolingMetadata UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateUserReleaseBuildConfig UP-TO-DATE
+> Task :app:kspUserReleaseKotlin UP-TO-DATE
+> Task :app:compileUserReleaseKotlin UP-TO-DATE
+> Task :app:javaPreCompileUserRelease UP-TO-DATE
+> Task :app:compileUserReleaseJavaWithJavac
+> Task :app:hiltAggregateDepsUserRelease FROM-CACHE
+> Task :app:hiltJavaCompileUserRelease
+> Task :app:desugarUserReleaseFileDependencies UP-TO-DATE
+> Task :app:mergeUserReleaseStartupProfile UP-TO-DATE
+> Task :app:mergeExtDexUserRelease UP-TO-DATE
+> Task :app:mergeUserReleaseShaders UP-TO-DATE
+> Task :app:compileUserReleaseShaders NO-SOURCE
+> Task :app:generateUserReleaseAssets UP-TO-DATE
+> Task :app:mergeUserReleaseAssets UP-TO-DATE
+> Task :app:processUserReleaseJavaRes
+> Task :app:mergeUserReleaseJniLibFolders UP-TO-DATE
+> Task :app:mergeUserReleaseNativeLibs UP-TO-DATE
+> Task :app:stripUserReleaseDebugSymbols UP-TO-DATE
+> Task :app:writeUserReleaseAppMetadata UP-TO-DATE
+> Task :app:collectUserReleaseDependencies UP-TO-DATE
+> Task :app:configureUserReleaseDependencies UP-TO-DATE
+> Task :app:extractUserReleaseNativeSymbolTables UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :app:generateUserReleaseLintVitalReportModel
+> Task :app:parseUserReleaseIntegrityConfig UP-TO-DATE
+> Task :app:validateSigningUserRelease UP-TO-DATE
+> Task :app:transformUserReleaseClassesWithAsm
+> Task :app:mergeUserReleaseJavaResource
+> Task :app:lintVitalAnalyzeUserRelease
+> Task :app:dexBuilderUserRelease
+> Task :app:mergeUserReleaseGlobalSynthetics FROM-CACHE
+> Task :app:mergeDexUserRelease
+> Task :app:lintVitalReportUserRelease
+> Task :app:lintVitalUserRelease
+> Task :app:l8DexDesugarLibUserRelease
+> Task :app:buildUserReleasePreBundle
+> Task :app:compileUserReleaseArtProfile
+> Task :app:packageUserReleaseBundle
+> Task :app:signUserReleaseBundle
+> Task :app:produceUserReleaseBundleIdeListingFile
+> Task :app:createUserReleaseBundleListingFileRedirect
+> Task :app:bundleUserRelease
+
+BUILD SUCCESSFUL in 3m 47s
+62 actionable tasks: 18 executed, 2 from cache, 42 up-to-date

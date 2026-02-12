@@ -58,6 +58,8 @@ fun SearchFilterBar(
     // Config
     isDistrictLevelUnit: Boolean,
     isAdmin: Boolean,
+    districtLabel: String = "District / HQ",
+    stationLabel: String = "Station / Section",
     modifier: Modifier = Modifier
 ) {
     // UI State for Dropdowns (Internal)
@@ -138,7 +140,7 @@ fun SearchFilterBar(
                         value = selectedDistrict,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("District / HQ") },
+                        label = { Text(districtLabel) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -193,7 +195,7 @@ fun SearchFilterBar(
                             value = selectedStation,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Station / Section") },
+                            label = { Text(stationLabel) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()

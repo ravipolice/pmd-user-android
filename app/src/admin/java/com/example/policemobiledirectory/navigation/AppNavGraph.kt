@@ -196,6 +196,11 @@ private fun AppNavHostContent(
             EmployeeStatsScreen(navController = navController, viewModel = hiltViewModel())
         }
 
+        // --- OFFICER STATS ---
+        composable(Routes.OFFICER_STATS) {
+            OfficerStatsScreen(navController = navController, viewModel = hiltViewModel())
+        }
+
         // --- PENDING APPROVALS ---
         composable(Routes.PENDING_APPROVALS) {
             PendingApprovalsScreen(navController = navController, viewModel = hiltViewModel())

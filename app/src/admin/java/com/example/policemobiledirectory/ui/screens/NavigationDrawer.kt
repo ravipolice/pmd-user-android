@@ -234,27 +234,6 @@ fun NavigationDrawer(
                     }
                 )
 
-                if (isAdmin) {
-                    DrawerItem(
-                        icon = Icons.Default.AdminPanelSettings,
-                        text = "Admin Panel",
-                        selected = currentRoute == Routes.ADMIN_PANEL,
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                delay(250)
-                                val current = navController.currentDestination?.route
-                                if (current != Routes.ADMIN_PANEL) {
-                                    navController.navigate(Routes.ADMIN_PANEL) {
-                                        launchSingleTop = true
-                                        restoreState = true
-                                        popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
-                                    }
-                                }
-                            }
-                        }
-                    )
-                }
 
                 DrawerItem(
                     icon = Icons.Default.Translate,

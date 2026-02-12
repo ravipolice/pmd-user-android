@@ -1,0 +1,25 @@
+﻿Configuration on demand is an incubating feature.
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preAdminDebugBuild UP-TO-DATE
+> Task :app:generateAdminDebugBuildConfig UP-TO-DATE
+> Task :app:checkAdminDebugAarMetadata UP-TO-DATE
+> Task :app:processAdminDebugNavigationResources UP-TO-DATE
+> Task :app:compileAdminDebugNavigationResources UP-TO-DATE
+> Task :app:generateAdminDebugResValues UP-TO-DATE
+> Task :app:processAdminDebugGoogleServices UP-TO-DATE
+> Task :app:mapAdminDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateAdminDebugResources UP-TO-DATE
+> Task :app:mergeAdminDebugResources UP-TO-DATE
+> Task :app:packageAdminDebugResources UP-TO-DATE
+> Task :app:parseAdminDebugLocalResources UP-TO-DATE
+> Task :app:createAdminDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksAdminDebug UP-TO-DATE
+> Task :app:processAdminDebugMainManifest UP-TO-DATE
+> Task :app:processAdminDebugManifest UP-TO-DATE
+> Task :app:processAdminDebugManifestForPackage UP-TO-DATE
+> Task :app:processAdminDebugResources UP-TO-DATE
+> Task :app:kspAdminDebugKotlin UP-TO-DATE
+
+> Task :app:compileAdminDebugKotlin FAILED
+19 actionable tasks: 1 executed, 18 up-to-date

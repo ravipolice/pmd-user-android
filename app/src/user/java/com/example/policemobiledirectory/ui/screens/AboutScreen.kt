@@ -160,7 +160,6 @@ fun AboutScreen(navController: NavController) {
                     • Admin management tools  
                     • Notifications and approvals  
                     • Useful links and document uploads
-                    • Nudi Converter: ASCII to Unicode and Unicode to ASCII conversion with PDF and DOCX support
                 """.trimIndent(),
                 style = MaterialTheme.typography.bodyMedium,
                 lineHeight = 22.sp

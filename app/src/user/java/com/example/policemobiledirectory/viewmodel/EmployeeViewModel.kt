@@ -349,77 +349,70 @@ open class EmployeeViewModel @Inject constructor(
             }
         }
 
-        // 2️⃣ Observe login state from DataStore
+        // 2️⃣ Unified Session Observation (Single Source of Truth)
+        // Consolidates isLoggedIn, isAdmin, and userEmail into a single atomic update
         viewModelScope.launch {
-            sessionManager.isLoggedIn.collect { loggedIn ->
-                _isLoggedIn.value = loggedIn
-                Log.d("Session", "🔄 isLoggedIn = $loggedIn")
-            }
-        }
-
-        // 3️⃣ Observe admin flag from DataStore
-        viewModelScope.launch {
-            sessionManager.isAdmin.collect { isAdmin ->
-                _isAdmin.value = isAdmin
-                Log.d("Session", "🔄 isAdmin = $isAdmin")
-            }
-        }
-
-        // 4️⃣ Restore current user session from Room or Firestore
-        viewModelScope.launch {
-            sessionManager.userEmail.collect { email ->
-                // ✅ Only restore if we're not in the middle of a logout
-                // Check if isLoggedIn is already false (indicating logout in progress)
-                if (_isLoggedIn.value == false && email.isBlank()) {
-                    Log.d("Session", "🔒 Logout in progress, skipping session restore")
+            combine(
+                sessionManager.isLoggedIn,
+                sessionManager.isAdmin,
+                sessionManager.userEmail
+            ) { loggedIn, admin, email ->
+                Triple(loggedIn, admin, email)
+            }.collect { (loggedIn, admin, email) ->
+                Log.d("Session", "🔄 DataStore Sync: isLoggedIn=$loggedIn, isAdmin=$admin, email=$email")
+                
+                // ✅ Case A: DataStore says logged out
+                if (!loggedIn || email.isBlank()) {
+                    if (_isLoggedIn.value) {
+                         Log.d("Session", "🔒 DataStore triggered logout, clearing memory")
+                         _isLoggedIn.value = false
+                         _isAdmin.value = false
+                         _currentUser.value = null
+                    }
                     return@collect
                 }
-                
-                if (email.isNotBlank()) {
-                    Log.d("Session", "🔁 Restoring session for $email")
 
-                    // Try Room first
-                    val localUser = employeeRepo.getEmployeeByEmail(email)
-                    if (localUser != null) {
-                        _currentUser.value = localUser.toEmployee()
-                        _isAdmin.value = localUser.isAdmin
-                        _isLoggedIn.value = true
-                        Log.d("Session", "✅ Loaded user ${localUser.name} (Admin=${localUser.isAdmin})")
-                    } else {
-                        // Fallback to Firestore if Room is empty
-                        when (val remoteResult = employeeRepo.getUserByEmail(email)) {
-                            is RepoResult.Success -> {
-                                remoteResult.data?.let { user ->
-                                    _currentUser.value = user
-                                    _isAdmin.value = user.isAdmin
-                                    _isLoggedIn.value = true
-                                    Log.d("Session", "✅ Loaded remote user ${user.name}")
-                                } ?: run {
-                                    Log.w("Session", "⚠️ No matching user found for $email — resetting session")
-                                    sessionManager.clearSession()
-                                    _isLoggedIn.value = false
-                                }
-                            }
-                            is RepoResult.Error -> {
-                                Log.e("Session", "❌ Error loading user: ${remoteResult.message}")
-                                sessionManager.clearSession()
+                // ✅ Case B: Profile match, just sync flags
+                if (_currentUser.value?.email == email && _isLoggedIn.value == loggedIn) {
+                    _isAdmin.value = admin
+                    return@collect
+                }
+
+                // ✅ Case C: Restore full profile
+                Log.d("Session", "🔁 Restoring profile for $email")
+                val localUser = employeeRepo.getEmployeeByEmail(email)
+                if (localUser != null) {
+                    _currentUser.value = localUser.toEmployee()
+                    _isAdmin.value = localUser.isAdmin
+                    _isLoggedIn.value = true
+                    Log.d("Session", "✅ Loaded profile from local DB: ${localUser.name}")
+                } else {
+                    // Fallback to Firestore
+                    when (val remoteResult = employeeRepo.getUserByEmail(email)) {
+                        is RepoResult.Success -> {
+                            remoteResult.data?.let { user ->
+                                _currentUser.value = user
+                                _isAdmin.value = user.isAdmin
+                                _isLoggedIn.value = true
+                                Log.d("Session", "✅ Loaded profile from Firestore: ${user.name}")
+                            } ?: run {
+                                Log.w("Session", "⚠️ User $email not found in database. Setting isLoggedIn=false in memory, but NOT clearing DataStore yet.")
                                 _isLoggedIn.value = false
+                                _currentUser.value = null
                             }
-                            else -> Unit
                         }
+                        is RepoResult.Error -> {
+                            Log.e("Session", "❌ Firestore error during restore: ${remoteResult.message}")
+                            // Keep current state, don't logout if it's just a network error
+                        }
+                        else -> Unit
                     }
-
-                    // Refresh employees and officers after user restore
+                }
+                
+                // Refresh data if auth is healthy
+                if (auth.currentUser != null && _isLoggedIn.value) {
                     refreshEmployees()
                     refreshOfficers()
-                } else {
-                    Log.d("Session", "🔒 No stored email — user not logged in")
-                    // Only clear if not already cleared (avoid unnecessary updates)
-                    if (_currentUser.value != null || _isLoggedIn.value == true) {
-                        _currentUser.value = null
-                        _isAdmin.value = false
-                        _isLoggedIn.value = false
-                    }
                 }
             }
         }
@@ -786,57 +779,9 @@ open class EmployeeViewModel @Inject constructor(
         _pinResetUiState.value = OperationStatus.Error(message)
     }
 
-    /**
-     * Loads the user session from SessionManager.
-     * If a valid session exists, it fetches user details and refreshes data.
-     * If not, it ensures the app is in a clean, logged-out state.
-     */
+    // ✅ Consolidated into init { ... } block's Unified Session Observation
     fun loadSession() {
-        viewModelScope.launch {
-            // First, get the logged-in status.
-            val isLoggedIn = sessionManager.isLoggedIn.first()
-            _isLoggedIn.value = isLoggedIn
-
-            if (isLoggedIn) {
-                // If logged in, get the email and admin status.
-                val email = sessionManager.userEmail.first()
-                val isAdmin = sessionManager.isAdmin.first()
-                _isAdmin.value = isAdmin
-
-                if (email.isNotBlank()) {
-                    try {
-                        // Fetch the full user object from the repository.
-                        val userEntity = employeeRepo.getEmployeeByEmail(email)
-                        val user = userEntity?.toEmployee()
-
-                        if (user != null) {
-                            _currentUser.value = user
-                            Log.d("Session", "✅ Session restored for user: ${user.name}, admin=$isAdmin")
-                            // Refresh data now that we have a valid user.
-                            refreshEmployees()
-
-                        } else {
-                            // Data is inconsistent (session exists but user not in DB).
-                            // This is a failure case, so log out.
-                            Log.e("Session", "❌ Session exists for $email but user not found in DB. Forcing logout.")
-                            logout()
-                        }
-                    } catch (e: Exception) {
-                        Log.e("Session", "❌ DB error during session restore: ${e.message}. Forcing logout.")
-                        logout()
-                    }
-                } else {
-                    // Session is invalid (isLoggedIn=true but no email). Force logout.
-                    Log.e("Session", "❌ Invalid session state. Forcing logout.")
-                    logout()
-                }
-            } else {
-                // Not logged in. Ensure all states are clean.
-                _isAdmin.value = false
-                _currentUser.value = null
-                Log.d("Session", "ℹ️ No active session. App is in Guest mode.")
-            }
-        }
+        Log.d("EmployeeViewModel", "ℹ️ loadSession() called. State is managed by atomic Unified Session Observation in init.")
     }
 
     // Optimized matching function (query is already lowercase)

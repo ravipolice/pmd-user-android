@@ -815,7 +815,7 @@ fun CommonEmployeeForm(
                     OutlinedTextField(
                         value = pin,
                         onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) pin = it },
-                        label = { Text("Create PIN*") },
+                        label = { Text("Create 6 Digit PIN*") },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         isError = showValidationErrors && (pin.length != 6 || (pin.isNotEmpty() && pin != confirmPin))
@@ -823,7 +823,7 @@ fun CommonEmployeeForm(
                     OutlinedTextField(
                         value = confirmPin,
                         onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) confirmPin = it },
-                        label = { Text("Confirm PIN*") },
+                        label = { Text("Confirm 6 Digit PIN*") },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         isError = showValidationErrors && (confirmPin.length != 6 || (confirmPin.isNotEmpty() && pin != confirmPin))
@@ -902,50 +902,50 @@ fun CommonEmployeeForm(
             OutlinedTextField(value = landline2, onValueChange = { landline2 = it.filter { ch -> ch.isDigit() || ch == '-' } }, label = { Text("Landline 2 (Optional)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
             Spacer(Modifier.height(fieldSpacing))
 
-            // Rank
-            ExposedDropdownMenuBox(expanded = rankExpanded, onExpandedChange = { rankExpanded = !rankExpanded }) {
-                OutlinedTextField(
-                    value = rank.ifEmpty { "Select Rank" },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Rank*") },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
-                    isError = showValidationErrors && rank.isBlank()
-                )
-                ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
-                    ranks.forEach { selection ->
-                        DropdownMenuItem(text = { Text(selection) }, onClick = {
-                            rank = selection
-                            if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
-                            if (ministerialRanks.any { it.equals(selection, ignoreCase = true) }) {
-                                station = ""
-                            }
-                            if (highRankingOfficers.contains(selection)) {
-                                district = ""
-                                station = ""
-                            }
-                            rankExpanded = false
-                        })
+                // Rank
+                ExposedDropdownMenuBox(expanded = rankExpanded, onExpandedChange = { rankExpanded = !rankExpanded }) {
+                    OutlinedTextField(
+                        value = rank.ifEmpty { "Select Rank" },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Rank*") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
+                        isError = showValidationErrors && rank.isBlank()
+                    )
+                    ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
+                        filteredRanks.forEach { selection ->
+                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                rank = selection
+                                if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
+                                if (ministerialRanks.any { it.equals(selection, ignoreCase = true) }) {
+                                    station = ""
+                                }
+                                if (highRankingOfficers.contains(selection)) {
+                                    district = ""
+                                    station = ""
+                                }
+                                rankExpanded = false
+                            })
+                        }
                     }
                 }
-            }
-            if (showValidationErrors && rank.isBlank()) Text("Rank required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Metal number
-            if (showMetalNumberField) {
-                OutlinedTextField(
-                    value = metalNumber,
-                    onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
-                    label = { Text("Metal Number${if (isRegistration) "*" else ""}") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    isError = showValidationErrors && metalNumber.isBlank()
-                )
-                if (showValidationErrors && metalNumber.isBlank()) Text("Metal number required for this rank", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                if (showValidationErrors && rank.isBlank()) Text("Rank required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(fieldSpacing))
-            }
+
+                // Metal number
+                if (showMetalNumberField && !isOfficer) {
+                    OutlinedTextField(
+                        value = metalNumber,
+                        onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
+                        label = { Text("Metal Number") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = showValidationErrors && metalNumber.isBlank()
+                    )
+                    if (showValidationErrors && metalNumber.isBlank()) Text("Metal number required for this rank", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(fieldSpacing))
+                }
 
             // Unit (Moved here for proper dependency flow)
             ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = !unitExpanded }) {
@@ -972,81 +972,118 @@ fun CommonEmployeeForm(
             }
             Spacer(Modifier.height(fieldSpacing))
 
-            // District (admin & registration editable; self-edit disabled)
-            // District (admin & registration editable; self-edit disabled)
-            val isDistrictLocked = availableDistricts.size == 1 && district.isNotBlank()
-            ExposedDropdownMenuBox(expanded = districtExpanded && !isDistrictLocked, onExpandedChange = {
-                if (!isSelfEdit && !isDistrictLocked) districtExpanded = !districtExpanded
-            }) {
-                OutlinedTextField(
-                    value = district.ifEmpty { if (isSelfEdit) district else "Select District" },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("District / HQ*") },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    enabled = !isDistrictLocked,
-                    trailingIcon = { 
-                        if (!isDistrictLocked) {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded)
-                        }
-                    },
-                    isError = showValidationErrors && district.isBlank()
-                )
-                if (!isSelfEdit && !isDistrictLocked) {
-                    ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
-                        availableDistricts.forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                if (district != selection) station = ""
-                                district = selection
-                                districtExpanded = false
-                            })
+                // District (admin & registration editable; self-edit disabled)
+                val isSpecialUnit = remember(selectedUnitModel) {
+                    selectedUnitModel?.mappingType == "none"
+                }
+
+                if (!isHighRankingOfficer && !isSpecialUnit) {
+                    val isDistrictLocked = availableDistricts.size == 1 && district.isNotBlank()
+                    ExposedDropdownMenuBox(expanded = districtExpanded && !isDistrictLocked, onExpandedChange = {
+                        if (!isSelfEdit && !isDistrictLocked) districtExpanded = !districtExpanded
+                    }) {
+                        OutlinedTextField(
+                            value = district.ifEmpty { if (isSelfEdit) district else "Select District" },
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("District / HQ*") },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            enabled = !isDistrictLocked,
+                            trailingIcon = { 
+                                if (!isDistrictLocked) {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded)
+                                }
+                            },
+                            isError = showValidationErrors && district.isBlank()
+                        )
+                        if (!isSelfEdit && !isDistrictLocked) {
+                            ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
+                                availableDistricts.forEach { selection ->
+                                    DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                        if (district != selection) station = ""
+                                        district = selection
+                                        districtExpanded = false
+                                    })
+                                }
+                            }
                         }
                     }
+                    if (showValidationErrors && district.isBlank()) Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(fieldSpacing))
                 }
-            }
-            if (showValidationErrors && district.isBlank()) Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(fieldSpacing))
 
-            // Station (editable for admin and self-edit; uses district)
-            ExposedDropdownMenuBox(expanded = stationExpanded, onExpandedChange = {
-                if (district.isNotBlank() && stationsForSelectedDistrict.isNotEmpty()) stationExpanded = !stationExpanded
-            }) {
-                OutlinedTextField(
-                    value = station.ifEmpty { if (district.isNotBlank()) "Select Station / Section" else "Select District / HQ First" },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Station / Section*") },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
-                    enabled = district.isNotBlank() && stationsForSelectedDistrict.isNotEmpty(),
-                    isError = showValidationErrors && station.isBlank()
-                )
-                ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
-                    stationsForSelectedDistrict.forEach { selection ->
-                        DropdownMenuItem(text = { Text(selection) }, onClick = {
-                            station = selection
-                            stationExpanded = false
-                        })
+                // Station/Section (editable for admin and self-edit; uses district)
+                val hasSections = remember(unitSections, unit, district) {
+                    unitSections.isNotEmpty() || unit == "State INT" || district == "HQ"
+                }
+
+                if (!isHighRankingOfficer && (!isDistrictLevelUnit || hasSections) && !isSpecialUnit) {
+                    val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks, unit, unitSections) {
+                        if (unitSections.isNotEmpty()) {
+                            unitSections + listOf("Others")
+                        } else if (unit == "State INT") {
+                             Constants.stateIntSections + listOf("Others")
+                        } else {
+                            val isPoliceStationRank = policeStationRanks.contains(rank)
+                            val baseStations = if (isPoliceStationRank) {
+                                stationsForSelectedDistrict
+                            } else {
+                                stationsForSelectedDistrict.filter { !it.endsWith(" PS", ignoreCase = true) }
+                            }
+                            
+                            // Also add "Others" if it's an HQ-level unit (where we might need manual names)
+                            if (hasSections || district == "HQ") {
+                                baseStations + listOf("Others")
+                            } else {
+                                baseStations
+                            }
+                        }
+                    }
+
+                    ExposedDropdownMenuBox(expanded = stationExpanded, onExpandedChange = {
+                        if ((district.isNotBlank() || hasSections) && filteredStations.isNotEmpty()) stationExpanded = !stationExpanded
+                    }) {
+                        OutlinedTextField(
+                            value = station.ifEmpty { 
+                                if (hasSections) "Select Section" 
+                                else if (district.isNotBlank()) "Select Station" 
+                                else "Select District / HQ First" 
+                            },
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(if (hasSections) "Section *" else "Station *") },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
+                            enabled = (district.isNotBlank() || hasSections) && filteredStations.isNotEmpty(),
+                            isError = showValidationErrors && station.isBlank()
+                        )
+                        ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
+                            filteredStations.forEach { selection ->
+                                DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                    station = selection
+                                    stationExpanded = false
+                                })
+                            }
+                        }
+                    }
+                    if (showValidationErrors && station.isBlank()) Text(if (hasSections) "Section required" else "Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(fieldSpacing))
+
+                    // Manual Section (if "Others" is selected)
+                    if (station == "Others") {
+                        OutlinedTextField(
+                            value = manualSection,
+                            onValueChange = { manualSection = it },
+                            label = { Text("Specify ${if (hasSections) "Section" else "Station"} Name*") },
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = showValidationErrors && manualSection.isBlank()
+                        )
+                        if (showValidationErrors && manualSection.isBlank()) {
+                            Text("Please specify name", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Spacer(Modifier.height(fieldSpacing))
                     }
                 }
-            }
-            if (showValidationErrors && station.isBlank()) Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Manual Section (if "Others" is selected)
-            if (station == "Others") {
-                OutlinedTextField(
-                    value = manualSection,
-                    onValueChange = { manualSection = it },
-                    label = { Text("Specify Section Name*") },
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = showValidationErrors && manualSection.isBlank()
-                )
-                if (showValidationErrors && manualSection.isBlank()) {
-                    Text("Please specify section name", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-                Spacer(Modifier.height(fieldSpacing))
-            }
 
 
 

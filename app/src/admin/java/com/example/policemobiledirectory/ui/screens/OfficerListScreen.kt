@@ -95,6 +95,12 @@ fun StaffListContent(
     val isAdmin by viewModel.isAdmin.collectAsStateWithLifecycle(initialValue = false)
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle(initialValue = 1.0f)
     val cardStyle by viewModel.currentCardStyle.collectAsStateWithLifecycle(initialValue = CardStyle.Vibrant)
+    val staffType by viewModel.selectedStaffType.collectAsStateWithLifecycle(initialValue = EmployeeViewModel.StaffType.ALL)
+    val dynamicTitle = when (staffType) {
+        EmployeeViewModel.StaffType.EMPLOYEE -> "Employees"
+        EmployeeViewModel.StaffType.OFFICER -> "Officers"
+        else -> "Staff Directory"
+    }
 
     // Local state for dropdown expansion
     var unitExpanded by remember { mutableStateOf(false) }
@@ -133,7 +139,7 @@ fun StaffListContent(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
                 Text(
-                    text = "Staff Directory",
+                    text = dynamicTitle,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -254,7 +260,7 @@ fun StaffListContent(
             if (filteredContacts.isEmpty()) {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("No staff found")
+                        Text("No $dynamicTitle found")
                         TextButton(onClick = { viewModel.clearFilters() }) { Text("Clear All Filters") }
                     }
                 }
@@ -295,7 +301,7 @@ fun StaffListContent(
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ) {
-            Icon(Icons.Default.Add, "Add Staff")
+            Icon(Icons.Default.Add, "Add $dynamicTitle")
         }
     }
 }

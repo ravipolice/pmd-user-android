@@ -224,7 +224,10 @@ class ConstantsRepository @Inject constructor(
                         else -> emptyList<String>()
                     }
 
-                    UnitMapping(name, type, mergedDistricts, isDistrictLevel, isHqLevel, scopes, applicableRanks)
+                    val stationKeyword = doc.getString("stationKeyword")
+                    val mappedAreaType = doc.getString("mappedAreaType")
+
+                    UnitMapping(name, type, mergedDistricts, isDistrictLevel, isHqLevel, scopes, applicableRanks, stationKeyword, mappedAreaType)
                 } else null
             }.associateBy { it.unitName }
 
@@ -850,5 +853,31 @@ class ConstantsRepository @Inject constructor(
     fun getApplicableRanksForUnit(unitName: String): List<String> {
         val mapping = getUnitMappings()[unitName]
         return mapping?.applicableRanks ?: emptyList()
+    }
+
+    /**
+     * Centralized Station Resolution Logic (Sync with Web register/page.tsx)
+     * Filters a list of stations based on unit-specific metadata (keywords, scopes)
+     */
+    fun getStationsForUnit(
+        unitName: String,
+        baseStations: List<String>
+    ): List<String> {
+        val mapping = getUnitMappings()[unitName] ?: return baseStations
+        
+        // Priority: If unit has district scope, show ALL stations for the district (no keyword filter)
+        val hasDistrictScope = mapping.scopes.contains("district") ||
+                               mapping.scopes.contains("district_stations") ||
+                               mapping.isDistrictLevel
+
+        val stationKeyword = mapping.stationKeyword
+        if (!stationKeyword.isNullOrBlank() && !hasDistrictScope) {
+            val keywords = stationKeyword.split(",").map { it.trim() }.filter { it.isNotBlank() }
+            return baseStations.filter { station ->
+                keywords.any { k -> station.contains(k, ignoreCase = true) }
+            }
+        }
+
+        return baseStations
     }
 }

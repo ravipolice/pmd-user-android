@@ -34,23 +34,13 @@ val bottomNavItems = listOf(
         label = "Menu"
     ),
     BottomNavItem(
-        route = Routes.GALLERY_SCREEN, // 🖼️ New Gallery Screen
-        icon = Icons.Default.PhotoLibrary, // You can replace with your custom drawable later
-        label = "Gallery"
+        route = Routes.ADMIN_PANEL, // 📊 Dashboard
+        icon = Icons.Default.Dashboard,
+        label = "Dashboard"
     ),
     BottomNavItem(
         route = Routes.EMPLOYEE_LIST,
         icon = Icons.Default.Home,
         label = "Home"
-    ),
-    BottomNavItem(
-        route = Routes.DOCUMENTS,
-        icon = Icons.Default.Description,
-        label = "Docs"
-    ),
-    BottomNavItem(
-        route = Routes.USEFUL_LINKS,
-        icon = Icons.Default.Link,
-        label = "Links"
     )
 )

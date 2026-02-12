@@ -54,6 +54,7 @@ open class EmployeeRepository @Inject constructor(
 ) {
     private val TAG = "EmployeeRepository"
     private val employeesCollection = firestore.collection("employees")
+    private val adminsCollection = firestore.collection("admins")
     private val storageRef = storage.reference
     private val metaDoc = firestore.collection("meta").document("idCounters")
 
@@ -1177,11 +1178,33 @@ open class EmployeeRepository @Inject constructor(
         }
 
         val doc = snapshot?.documents?.firstOrNull()
+        
+        // --- 🆕 FALLBACK TO ADMINS COLLECTION IF NOT FOUND IN EMPLOYEES ---
+        var finalDoc = doc
+        if (finalDoc == null) {
+            Log.d(TAG, "getEmployeeByEmail: User not found in 'employees', trying 'admins' collection for $normalizedEmail")
+            try {
+                val adminSnapshot = adminsCollection.whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
+                finalDoc = adminSnapshot.documents.firstOrNull()
+                
+                if (finalDoc == null && normalizedEmail != rawEmail) {
+                    val adminRawSnapshot = adminsCollection.whereEqualTo(FIELD_EMAIL, rawEmail).limit(1).get().await()
+                    finalDoc = adminRawSnapshot.documents.firstOrNull()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "getEmployeeByEmail: Admins collection query failed", e)
+            }
+        }
+
         // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
-        val docKgid = doc?.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc?.id ?: ""
-        val remote = doc?.toObject(Employee::class.java)?.copy(kgid = docKgid)
-        if (remote != null && doc != null) {
-            val entity = buildEmployeeEntityFromDoc(doc, pinHash = doc.getString(FIELD_PIN_HASH).orEmpty())
+        val docId = finalDoc?.id ?: ""
+        val docKgid = finalDoc?.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: docId ?: ""
+        
+        // Convert to Pojo
+        val remote = finalDoc?.toObject(Employee::class.java)?.copy(kgid = docKgid)
+        
+        if (remote != null && finalDoc != null) {
+            val entity = buildEmployeeEntityFromDoc(finalDoc, pinHash = finalDoc.getString(FIELD_PIN_HASH).orEmpty())
             employeeDao.insertEmployee(entity)
             return@withContext entity
         }

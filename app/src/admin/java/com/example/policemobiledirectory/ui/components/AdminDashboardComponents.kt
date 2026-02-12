@@ -33,7 +33,7 @@ fun DashboardStatCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(110.dp)
+            .height(115.dp)
             .shadow(4.dp, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
@@ -54,7 +54,7 @@ fun DashboardStatCard(
             ) {
                 Text(
                     text = count,
-                    style = MaterialTheme.typography.displaySmall,
+                    style = MaterialTheme.typography.headlineMedium,
                     color = Color.White,
                     fontWeight = FontWeight.Bold
                 )
@@ -131,6 +131,58 @@ fun DashboardActionCard(
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
                 lineHeight = 18.sp
+            )
+        }
+    }
+}
+
+/**
+ * A prominent action card matching the style of DashboardStatCard.
+ * Uses a gradient background and a large icon.
+ */
+@Composable
+fun DashboardActionCardLarge(
+    title: String,
+    icon: ImageVector,
+    colorStart: Color,
+    colorEnd: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(115.dp)
+            .shadow(4.dp, RoundedCornerShape(16.dp))
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(colorStart, colorEnd)
+                    )
+                )
+                .padding(16.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.CenterStart).padding(end = 60.dp)
+            )
+            
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.3f),
+                modifier = Modifier
+                    .size(60.dp)
+                    .align(Alignment.CenterEnd)
             )
         }
     }

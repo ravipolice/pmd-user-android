@@ -1,44 +1,7 @@
 ﻿Configuration on demand is an incubating feature.
-> Task :app:preBuild UP-TO-DATE
-> Task :app:preUserDebugBuild UP-TO-DATE
-> Task :app:mergeUserDebugNativeDebugMetadata NO-SOURCE
 > Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
-> Task :app:generateUserDebugBuildConfig UP-TO-DATE
-> Task :app:checkUserDebugAarMetadata UP-TO-DATE
-> Task :app:processUserDebugNavigationResources UP-TO-DATE
-> Task :app:compileUserDebugNavigationResources UP-TO-DATE
-> Task :app:generateUserDebugResValues UP-TO-DATE
-> Task :app:processUserDebugGoogleServices UP-TO-DATE
-> Task :app:mapUserDebugSourceSetPaths UP-TO-DATE
-> Task :app:generateUserDebugResources UP-TO-DATE
-> Task :app:mergeUserDebugResources UP-TO-DATE
-> Task :app:packageUserDebugResources UP-TO-DATE
-> Task :app:parseUserDebugLocalResources UP-TO-DATE
-> Task :app:createUserDebugCompatibleScreenManifests UP-TO-DATE
-> Task :app:extractDeepLinksUserDebug UP-TO-DATE
-> Task :app:processUserDebugMainManifest UP-TO-DATE
-> Task :app:processUserDebugManifest UP-TO-DATE
-> Task :app:processUserDebugManifestForPackage UP-TO-DATE
-> Task :app:processUserDebugResources UP-TO-DATE
-> Task :app:javaPreCompileUserDebug UP-TO-DATE
-> Task :app:mergeUserDebugShaders UP-TO-DATE
-> Task :app:compileUserDebugShaders NO-SOURCE
-> Task :app:generateUserDebugAssets UP-TO-DATE
-> Task :app:mergeUserDebugAssets UP-TO-DATE
-> Task :app:compressUserDebugAssets UP-TO-DATE
-> Task :app:l8DexDesugarLibUserDebug UP-TO-DATE
-> Task :app:checkUserDebugDuplicateClasses UP-TO-DATE
-> Task :app:desugarUserDebugFileDependencies UP-TO-DATE
-> Task :app:mergeExtDexUserDebug UP-TO-DATE
-> Task :app:mergeLibDexUserDebug UP-TO-DATE
-> Task :app:mergeUserDebugJniLibFolders UP-TO-DATE
-> Task :app:mergeUserDebugNativeLibs UP-TO-DATE
-> Task :app:stripUserDebugDebugSymbols UP-TO-DATE
-> Task :app:validateSigningUserDebug UP-TO-DATE
-> Task :app:writeUserDebugAppMetadata UP-TO-DATE
-> Task :app:writeUserDebugSigningConfigVersions UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
 > Task :app:preAdminDebugBuild UP-TO-DATE
-> Task :app:mergeAdminDebugNativeDebugMetadata NO-SOURCE
 > Task :app:generateAdminDebugBuildConfig UP-TO-DATE
 > Task :app:checkAdminDebugAarMetadata UP-TO-DATE
 > Task :app:processAdminDebugNavigationResources UP-TO-DATE
@@ -56,97 +19,7 @@
 > Task :app:processAdminDebugManifest UP-TO-DATE
 > Task :app:processAdminDebugManifestForPackage UP-TO-DATE
 > Task :app:processAdminDebugResources UP-TO-DATE
-> Task :app:javaPreCompileAdminDebug UP-TO-DATE
-> Task :app:mergeAdminDebugShaders UP-TO-DATE
-> Task :app:compileAdminDebugShaders NO-SOURCE
-> Task :app:generateAdminDebugAssets UP-TO-DATE
-> Task :app:mergeAdminDebugAssets UP-TO-DATE
-> Task :app:compressAdminDebugAssets UP-TO-DATE
-> Task :app:l8DexDesugarLibAdminDebug UP-TO-DATE
-> Task :app:desugarAdminDebugFileDependencies UP-TO-DATE
-> Task :app:checkAdminDebugDuplicateClasses UP-TO-DATE
-> Task :app:mergeExtDexAdminDebug UP-TO-DATE
-> Task :app:mergeLibDexAdminDebug UP-TO-DATE
-> Task :app:mergeAdminDebugJniLibFolders UP-TO-DATE
-> Task :app:mergeAdminDebugNativeLibs UP-TO-DATE
-> Task :app:stripAdminDebugDebugSymbols UP-TO-DATE
-> Task :app:validateSigningAdminDebug UP-TO-DATE
-> Task :app:writeAdminDebugAppMetadata UP-TO-DATE
-> Task :app:writeAdminDebugSigningConfigVersions UP-TO-DATE
-> Task :app:kspUserDebugKotlin
-> Task :app:kspAdminDebugKotlin
+> Task :app:kspAdminDebugKotlin UP-TO-DATE
 
-> Task :app:compileUserDebugKotlin
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/repository/EmployeeRepository.kt:1004:31 Condition is always 'true'.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:474:60 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:505:64 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:577:64 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:671:60 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:749:64 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:879:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:924:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:953:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:986:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:1032:60 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/viewmodel/EmployeeViewModel.kt:336:18 This declaration is in a preview state and can be changed in a backwards-incompatible manner with a best-effort migration. Its usage should be marked with '@kotlinx.coroutines.FlowPreview' or '@OptIn(kotlinx.coroutines.FlowPreview::class)' if you accept the drawback of relying on preview API
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/viewmodel/EmployeeViewModel.kt:1222:42 Condition is always 'true'.
-
-> Task :app:compileAdminDebugKotlin
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/repository/EmployeeRepository.kt:1004:31 Condition is always 'true'.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:461:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:510:60 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:590:64 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:660:64 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:734:64 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:878:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:923:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:950:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:982:60 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:1022:197 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/PendingApprovalsScreen.kt:331:17 'fun Divider(modifier: Modifier = ..., thickness: Dp = ..., color: Color = ...): Unit' is deprecated. Renamed to HorizontalDivider.
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/viewmodel/EmployeeViewModel.kt:240:10 This declaration is in a preview state and can be changed in a backwards-incompatible manner with a best-effort migration. Its usage should be marked with '@kotlinx.coroutines.FlowPreview' or '@OptIn(kotlinx.coroutines.FlowPreview::class)' if you accept the drawback of relying on preview API
-w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/viewmodel/EmployeeViewModel.kt:743:13 Duplicate branch condition in 'when'.
-
-> Task :app:compileUserDebugJavaWithJavac
-> Task :app:hiltAggregateDepsUserDebug UP-TO-DATE
-> Task :app:hiltJavaCompileUserDebug
-> Task :app:processUserDebugJavaRes UP-TO-DATE
-> Task :app:mergeUserDebugJavaResource UP-TO-DATE
-
-> Task :app:compileAdminDebugJavaWithJavac
-./gradlew : Note: C:\Users\ravip\AndroidStudioProjects\PoliceMobileDirectory\
-app\build\generated\ksp\adminDebug\java\com\example\policemobiledirectory\di\
-AppModule_ProvideGoogleSignInClientFactory.java uses or overrides a 
-deprecated API.
-At line:1 char:1
-+ ./gradlew :app:assembleUserDebug :app:assembleAdminDebug 2>&1 | Out-F ...
-+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (Note: C:\Users\...deprecated AP 
-   I.:String) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 
-Note: Recompile with -Xlint:deprecation for details.
-
-> Task :app:hiltAggregateDepsAdminDebug UP-TO-DATE
-> Task :app:hiltJavaCompileAdminDebug
-> Task :app:processAdminDebugJavaRes
-> Task :app:transformUserDebugClassesWithAsm
-> Task :app:mergeAdminDebugJavaResource
-> Task :app:transformAdminDebugClassesWithAsm
-> Task :app:dexBuilderUserDebug
-> Task :app:mergeUserDebugGlobalSynthetics UP-TO-DATE
-> Task :app:mergeProjectDexUserDebug
-> Task :app:packageUserDebug
-> Task :app:createUserDebugApkListingFileRedirect UP-TO-DATE
-> Task :app:assembleUserDebug
-> Task :app:dexBuilderAdminDebug
-> Task :app:mergeAdminDebugGlobalSynthetics UP-TO-DATE
-> Task :app:mergeProjectDexAdminDebug
-> Task :app:packageAdminDebug
-> Task :app:createAdminDebugApkListingFileRedirect UP-TO-DATE
-> Task :app:assembleAdminDebug
-
-[Incubating] Problems report is available at: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/build/reports/problems/problems-report.html
-
-BUILD SUCCESSFUL in 4m 48s
-90 actionable tasks: 18 executed, 72 up-to-date
+> Task :app:compileAdminDebugKotlin FAILED
+19 actionable tasks: 1 executed, 18 up-to-date

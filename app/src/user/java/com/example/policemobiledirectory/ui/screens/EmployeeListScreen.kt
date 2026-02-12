@@ -258,18 +258,6 @@ private fun EmployeeListContent(
         selectedUnit = selectedUnitState
     }
 
-    val ksrpBattalions by constantsViewModel.ksrpBattalions.collectAsStateWithLifecycle()
-
-    // 🔹 DYNAMIC SECTIONS STATE
-    // Fetches sections for the selected unit (e.g. State INT -> Special Branch, etc.)
-    val unitSections by produceState<List<String>>(initialValue = emptyList(), key1 = selectedUnit) {
-        if (selectedUnit != "All" && selectedUnit.isNotBlank()) {
-            value = constantsViewModel.getSectionsForUnit(selectedUnit)
-        } else {
-            value = emptyList()
-        }
-    }
-
     // Check if selected unit is District Level (hides Station)
     val isDistrictLevelUnit by produceState(initialValue = false, key1 = selectedUnit) {
         value = constantsViewModel.isDistrictLevelUnit(selectedUnit)
@@ -300,82 +288,20 @@ private fun EmployeeListContent(
     }
 
     // Show "All" only for admins, regular users see only districts
-    // LOGIC CHANGE: If Unit is KSRP, show KSRP Battalions instead of Districts
-    // UNIT-TO-DISTRICT MAPPING LOGIC
-    val districtsList = remember(isAdmin, districts, ksrpBattalions, selectedUnit, fullUnits) {
-        // Find configuration for the selected unit
-        val unitConfig = fullUnits.find { it.name == selectedUnit }
-        
-        val baseList = when {
-            selectedUnit == "All" -> districts // Show all for "All"
-            unitConfig != null -> {
-                when (unitConfig.mappingType) {
-                    "subset", "single", "commissionerate" -> {
-                         // Use mapped districts from configuration
-                         if (unitConfig.mappedDistricts.isNotEmpty()) {
-                             unitConfig.mappedDistricts.sorted()
-                         } else {
-                             // Default to all districts excluding KSRP if mapping is missing
-                             districts.filter { !ksrpBattalions.contains(it) }
-                         }
-                    }
-                    "none" -> emptyList() // No districts for this unit (e.g. State Level)
-                    "state" -> listOf("HQ") // Example for state level
-                    else -> {
-                        // "all" or unknown -> All districts, but strictly exclude KSRP battalions
-                        districts.filter { !ksrpBattalions.contains(it) }
-                    }
-                }
-            }
-            // Fallback: If no config found, strictly exclude KSRP battalions (default behavior)
-            // Removed hardcoded "KSRP" check; it must be configured in DB now.
-            else -> districts.filter { !ksrpBattalions.contains(it) } 
-        }
-        
-        if (isAdmin) {
-            listOf("All") + baseList
-        } else {
-            baseList
-        }
+    // 🔹 DYNAMIC DISTRICTS LIST (Sync with Admin Mapping)
+    val districtsList = remember(isAdmin, selectedUnit, districts) {
+        val baseList = if (selectedUnit == "All") districts else constantsViewModel.getDistrictsForUnit(selectedUnit)
+        if (isAdmin) listOf("All") + baseList else baseList
     }
 
     var selectedStation by remember { mutableStateOf("All") }
     // var stationExpanded removed
     
-    // 🔹 FILTER STATIONS BY DISTRICT AND UNIT
-    val stationsForDistrict = remember(selectedDistrict, selectedUnit, stationsByDistrict, fullUnits, unitSections) {
-        // Find configuration for the selected unit to get stationKeyword
-        val unitConfig = fullUnits.find { it.name == selectedUnit }
-
-        // 1. Get stations for the selected district (or all districts if "All")
-        val districtStations = if (selectedDistrict == "All") {
-             listOf("All") 
-        } else {
-            val stations = stationsByDistrict[selectedDistrict]
-                ?: stationsByDistrict.keys.find { it.equals(selectedDistrict, ignoreCase = true) }?.let { stationsByDistrict[it] }
-                ?: emptyList()
-            listOf("All") + stations
-        }
-        
-         // 2. Apply unit-specific dynamic filtering
-        if (unitSections.isNotEmpty()) {
-             // If dynamic sections exist for this unit, use them as the "Station" list
-             listOf("All") + unitSections
-        } else if (selectedUnit == "All" || selectedUnit == "Law & Order") {
-            // "Law & Order" / "All" shows everything in the district
-            districtStations
-        } else {
-             // Dynamic Filtering using stationKeyword from DB
-             val keywords = unitConfig?.stationKeyword
-                 ?.split(",")
-                 ?.map { it.trim() }
-                 ?.filter { it.isNotEmpty() }
-                 ?: listOf(selectedUnit) // Fallback to Unit Name if no keyword configured
-
-             districtStations.filter { station -> 
-                 station == "All" || keywords.any { station.contains(it, ignoreCase = true) }
-             }
-        }
+    // 🔹 DYNAMIC STATIONS / SECTIONS STATE
+    // Fetches stations or sections based on unit configuration (Sync with Admin Panel)
+    val stationsForDistrict by produceState<List<String>>(initialValue = listOf("All"), key1 = selectedUnit, key2 = selectedDistrict) {
+        val resolved = constantsViewModel.getStationsAndSectionsForUnit(selectedUnit, selectedDistrict)
+        value = listOf("All") + resolved
     }
 
     var selectedRank by remember { mutableStateOf("All") }
@@ -424,6 +350,11 @@ private fun EmployeeListContent(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
 
+        // 🔹 DYNAMIC LABELS
+        val unitObj = fullUnits.find { it.name == selectedUnit }
+        val districtLabel = if (unitObj?.mappedAreaType == "BATTALION") "Battalion" else "District / HQ"
+        val stationLabel = if (stationsForDistrict.size > 1 && !stationsForDistrict.contains("Others") && selectedUnit != "All" && selectedUnit != "Law & Order") "Section" else "Station / Section"
+
         // 🔹 SEARCH & FILTER BAR
         SearchFilterBar(
             units = filteredUnitNames,
@@ -458,6 +389,8 @@ private fun EmployeeListContent(
             onSearchFilterChange = { viewModel.updateSearchFilter(it) },
             isDistrictLevelUnit = isDistrictLevelUnit,
             isAdmin = isAdmin,
+            districtLabel = districtLabel,
+            stationLabel = stationLabel,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 

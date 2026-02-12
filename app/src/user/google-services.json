@@ -15,11 +15,19 @@
       },
       "oauth_client": [
         {
-          "client_id": "603972083927-0429fm9f02n39d1f2dhvsig9ujgi9vo5.apps.googleusercontent.com",
+          "client_id": "603972083927-6ufvu62sqoch4i29oddmtptbbetr39sd.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.policemobiledirectory",
-            "certificate_hash": "6a0d5add2b6f79d542754fbae05bea35990c2907"
+            "certificate_hash": "7fd1256dc312c3faa530aff100f21a4482132947"
+          }
+        },
+        {
+          "client_id": "603972083927-rhq7k9qeph214p2kcndbfsa5942oaabo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.policemobiledirectory",
+            "certificate_hash": "a4aab1d56df7e046df21f27f9fdad941ba43a11b"
           }
         },
         {
@@ -36,7 +44,60 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "603972083927-im2d26cjkuoe4qj50qhrl71th6tttjc9.apps.googleusercontent.com",
+              "client_id": "603972083927-cdekr3d7hl1v36jpef692u7pajrmo3f8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:603972083927:android:a794d479acd06e5af29092",
+        "android_client_info": {
+          "package_name": "com.pmd.adminapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "603972083927-10nb089bl0mab0u42uloe28a3ladiive.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pmd.adminapp",
+            "certificate_hash": "47d8adcd535c94c69c2d0259dee44c4e06d06dea"
+          }
+        },
+        {
+          "client_id": "603972083927-2iiresjk90ugifjp3erk5u3cmvrtvp5r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pmd.adminapp",
+            "certificate_hash": "a4aab1d56df7e046df21f27f9fdad941ba43a11b"
+          }
+        },
+        {
+          "client_id": "603972083927-jrv7usjt5stc2kf9vtrbblcmpgcapb7p.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pmd.adminapp",
+            "certificate_hash": "7fd1256dc312c3faa530aff100f21a4482132947"
+          }
+        },
+        {
+          "client_id": "603972083927-rog2v7ucndnu1399fugu3pemrjchov7t.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZjrm7r4h7EdP4WwTzw9Rz42k_nKZRgj8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "603972083927-cdekr3d7hl1v36jpef692u7pajrmo3f8.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
@@ -52,19 +113,19 @@
       },
       "oauth_client": [
         {
-          "client_id": "603972083927-8col23gr7qq5e551hdsqlo45nfh8u80e.apps.googleusercontent.com",
+          "client_id": "603972083927-2rqgfq790c0cfp6e7opuioe4h13bqllc.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.pmd.userapp",
-            "certificate_hash": "47d8adcd535c94c69c2d0259dee44c4e06d06dea"
+            "certificate_hash": "a4aab1d56df7e046df21f27f9fdad941ba43a11b"
           }
         },
         {
-          "client_id": "603972083927-9a121s1a0jpfo51tttgdmb7hcu1qvh0u.apps.googleusercontent.com",
+          "client_id": "603972083927-l7dtc25qti06rhcj33p5tkdmd7g85uva.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.pmd.userapp",
-            "certificate_hash": "6a0d5add2b6f79d542754fbae05bea35990c2907"
+            "certificate_hash": "7fd1256dc312c3faa530aff100f21a4482132947"
           }
         },
         {
@@ -81,7 +142,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "603972083927-im2d26cjkuoe4qj50qhrl71th6tttjc9.apps.googleusercontent.com",
+              "client_id": "603972083927-cdekr3d7hl1v36jpef692u7pajrmo3f8.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

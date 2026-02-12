@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.policemobiledirectory.navigation.Routes
-import com.example.policemobiledirectory.ui.components.DashboardActionCard
+import com.example.policemobiledirectory.ui.components.DashboardActionCardLarge
 import com.example.policemobiledirectory.ui.components.DashboardStatCard
 import com.example.policemobiledirectory.utils.OperationStatus
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
@@ -120,9 +120,15 @@ fun AdminPanelScreen(
             TopAppBar(
                 windowInsets = WindowInsets(0.dp),
                 title = { 
+                    val staffType by viewModel.selectedStaffType.collectAsState(EmployeeViewModel.StaffType.ALL)
+                    val dynamicTitle = when (staffType) {
+                        EmployeeViewModel.StaffType.EMPLOYEE -> "Employees"
+                        EmployeeViewModel.StaffType.OFFICER -> "Officers"
+                        else -> "Staff List"
+                    }
                     Column {
                         Text(
-                            text = if (showDashboard) "Dashboard" else "Staff List",
+                            text = if (showDashboard) "Dashboard" else dynamicTitle,
                             fontWeight = FontWeight.Bold
                         )
                         if (showDashboard) {
@@ -245,6 +251,7 @@ fun AdminUnifiedDashboard(
                     colorEnd = Color(0xFF42A5F5),
                     modifier = Modifier.weight(1f).clickable {
                         viewModel.clearFilters()
+                        viewModel.updateStaffType(EmployeeViewModel.StaffType.EMPLOYEE)
                         onViewAll()
                     }
                 )
@@ -256,6 +263,7 @@ fun AdminUnifiedDashboard(
                     colorEnd = Color(0xFF7E57C2),
                     modifier = Modifier.weight(1f).clickable {
                         viewModel.clearFilters()
+                        viewModel.updateStaffType(EmployeeViewModel.StaffType.OFFICER)
                         onViewAll()
                     }
                 )
@@ -284,34 +292,112 @@ fun AdminUnifiedDashboard(
             }
         }
 
-        // --- 2. EMPLOYEE STATISTICS ---
+        // --- 2. OVERVIEW TILES ---
         item(span = { GridItemSpan(2) }) {
-            SectionHeader("Employees Overview")
+            SectionHeader("Statistics Overviews")
         }
-        item { BreakdownCard("By District", breakdowns.empDistricts) }
-        item { BreakdownCard("By Rank", breakdowns.empRanks) }
-
-        // --- 3. OFFICER STATISTICS ---
         item(span = { GridItemSpan(2) }) {
-            SectionHeader("Officers Overview")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DashboardActionCardLarge(
+                    title = "Employees\nOverview",
+                    icon = Icons.Default.Analytics,
+                    colorStart = Color(0xFF009688),
+                    colorEnd = Color(0xFF4DB6AC),
+                    onClick = { navController.navigate(Routes.EMPLOYEE_STATS) },
+                    modifier = Modifier.weight(1f)
+                )
+                DashboardActionCardLarge(
+                    title = "Officers\nOverview",
+                    icon = Icons.Default.InsertChart,
+                    colorStart = Color(0xFF607D8B),
+                    colorEnd = Color(0xFF90A4AE),
+                    onClick = { navController.navigate(Routes.OFFICER_STATS) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
-        item { BreakdownCard("By District", breakdowns.offDistricts) }
-        item { BreakdownCard("By Rank", breakdowns.offRanks) }
 
-        // --- 4. QUICK ACTIONS ---
+        // --- 3. QUICK ACTIONS ---
         item(span = { GridItemSpan(2) }) {
             SectionHeader("Management Actions")
         }
         
-        item { DashboardActionCard("Add Officer", Icons.Default.PersonAdd, Color(0xFF4CAF50), { navController.navigate(Routes.ADD_OFFICER) }) }
-        item { DashboardActionCard("Sync Data", Icons.Default.Sync, Color(0xFF2196F3), { viewModel.syncOfficersSheetToFirebase() }) }
-        item { DashboardActionCard("Manage Resources", Icons.Default.Category, Color(0xFFFF9800), { navController.navigate(Routes.MANAGE_CONSTANTS) }) }
-        item { DashboardActionCard("Push Notification", Icons.Default.Notifications, Color(0xFFE91E63), { navController.navigate(Routes.SEND_NOTIFICATION) }) }
+        item {
+            DashboardActionCardLarge(
+                title = "Add Officer",
+                icon = Icons.Default.PersonAdd,
+                colorStart = Color(0xFF4CAF50),
+                colorEnd = Color(0xFF81C784),
+                onClick = { navController.navigate(Routes.ADD_OFFICER) }
+            )
+        }
+        item {
+            DashboardActionCardLarge(
+                title = "Sync Data",
+                icon = Icons.Default.Sync,
+                colorStart = Color(0xFF2196F3),
+                colorEnd = Color(0xFF64B5F6),
+                onClick = { viewModel.syncOfficersSheetToFirebase() }
+            )
+        }
+        item {
+            DashboardActionCardLarge(
+                title = "Manage Resources",
+                icon = Icons.Default.Category,
+                colorStart = Color(0xFFFF9800),
+                colorEnd = Color(0xFFFFB74D),
+                onClick = { navController.navigate(Routes.MANAGE_CONSTANTS) }
+            )
+        }
+        item {
+            DashboardActionCardLarge(
+                title = "Push Notification",
+                icon = Icons.Default.Notifications,
+                colorStart = Color(0xFFE91E63),
+                colorEnd = Color(0xFFF06292),
+                onClick = { navController.navigate(Routes.SEND_NOTIFICATION) }
+            )
+        }
+
+        // --- 4. APP RESOURCES ---
+        item(span = { GridItemSpan(2) }) {
+            SectionHeader("App Resources")
+        }
+        item {
+            DashboardActionCardLarge(
+                title = "Gallery",
+                icon = Icons.Default.PhotoLibrary,
+                colorStart = Color(0xFF3F51B5),
+                colorEnd = Color(0xFF5C6BC0),
+                onClick = { navController.navigate(Routes.GALLERY_SCREEN) }
+            )
+        }
+        item {
+            DashboardActionCardLarge(
+                title = "Documents",
+                icon = Icons.Default.Description,
+                colorStart = Color(0xFF795548),
+                colorEnd = Color(0xFF8D6E63),
+                onClick = { navController.navigate(Routes.DOCUMENTS) }
+            )
+        }
+        item(span = { GridItemSpan(2) }) {
+            DashboardActionCardLarge(
+                title = "Useful Links",
+                icon = Icons.Default.Link,
+                colorStart = Color(0xFF00BCD4),
+                colorEnd = Color(0xFF4DD0E1),
+                onClick = { navController.navigate(Routes.USEFUL_LINKS) }
+            )
+        }
 
         // Footer version info
         item(span = { GridItemSpan(2) }) {
             Text(
-                text = "Admin Panel v2.2 • Unified Dashboard",
+                text = "Dashboard v2.5 • Premium Experience",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 textAlign = TextAlign.Center,

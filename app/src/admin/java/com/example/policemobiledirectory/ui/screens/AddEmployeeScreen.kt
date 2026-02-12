@@ -51,6 +51,7 @@ fun AddEmployeeScreen(
     val districts by constantsViewModel.districts.collectAsStateWithLifecycle()
     val stationsByDistrict by constantsViewModel.stationsByDistrict.collectAsStateWithLifecycle()
     val bloodGroups by constantsViewModel.bloodGroups.collectAsStateWithLifecycle()
+    val units by constantsViewModel.units.collectAsStateWithLifecycle()
 
     var name by remember { mutableStateOf("") }
     var kgid by remember { mutableStateOf("") }
@@ -60,6 +61,7 @@ fun AddEmployeeScreen(
     var bloodGroup by remember { mutableStateOf("") }
     var station by remember { mutableStateOf("") }
     var district by remember { mutableStateOf("") }
+    var unit by remember { mutableStateOf("") }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var currentPhotoUrl by remember { mutableStateOf<String?>(null) }
 
@@ -75,6 +77,7 @@ fun AddEmployeeScreen(
             bloodGroup = employeeData.bloodGroup ?: ""
             station = employeeData.station ?: ""
             district = employeeData.district ?: ""
+            unit = employeeData.unit ?: ""
             currentPhotoUrl = employeeData.photoUrl
         }
     }
@@ -118,24 +121,28 @@ fun AddEmployeeScreen(
             item { OutlinedTextField(value = mobile1, onValueChange = { mobile1 = it }, label = { Text("Mobile 1") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth()) }
             item { OutlinedTextField(value = mobile2, onValueChange = { mobile2 = it }, label = { Text("Mobile 2 (Optional)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth()) }
 
-            // Dropdowns
-            item { CustomDropdownMenu(label = "Rank", selectedOption = rank, options = ranks, onOptionSelected = { rank = it }) }
+            item { CustomDropdownMenu(label = "Unit*", selectedOption = unit, options = units, onOptionSelected = { unit = it; district = ""; station = "" }) }
+            item { CustomDropdownMenu(label = "Rank*", selectedOption = rank, options = ranks, onOptionSelected = { rank = it }) }
             item { CustomDropdownMenu(label = "Blood Group", selectedOption = bloodGroup, options = bloodGroups, onOptionSelected = { bloodGroup = it }) }
-            item { CustomDropdownMenu(label = "District", selectedOption = district, options = districts, onOptionSelected = { district = it; station = "" }) } // Reset station on district change
-
+            
+            // District Dropdown (Dynamic based on Unit)
             item {
-                val stationOptions = remember(district, stationsByDistrict) {
-                    if (district.isNotEmpty()) {
-                        // Try exact match first, then case-insensitive match
-                        stationsByDistrict[district]
-                            ?: stationsByDistrict.keys.find { it.equals(district, ignoreCase = true) }?.let { stationsByDistrict[it] }
-                            ?: emptyList()
-                    } else {
-                        emptyList()
-                    }
+                val availableDistrictsForUnit = remember(unit, districts) {
+                    if (unit == "All" || unit.isBlank()) districts else constantsViewModel.getDistrictsForUnit(unit)
                 }
-                CustomDropdownMenu(
-                    label = "Station",
+                CustomDropdownMenu(label = "District*", selectedOption = district, options = availableDistrictsForUnit, onOptionSelected = { district = it; station = "" })
+            }
+
+            // Station / Section Dropdown (Dynamic)
+            item {
+                 // 🔹 Fetch station options reactively
+                 val stationOptions by produceState<List<String>>(initialValue = emptyList(), key1 = unit, key2 = district) {
+                     value = constantsViewModel.getStationsAndSectionsForUnit(unit.ifBlank { "Law & Order" }, district)
+                 }
+                 
+                 val isSection = stationOptions.isNotEmpty() && !stationOptions.contains("Others") && unit != "Law & Order"
+                 CustomDropdownMenu(
+                    label = if (isSection) "Section *" else "Station *",
                     selectedOption = station,
                     options = stationOptions,
                     onOptionSelected = { station = it },
@@ -200,6 +207,7 @@ fun AddEmployeeScreen(
                             bloodGroup = bloodGroup.ifBlank { null },
                             station = station.ifBlank { null },
                             district = district.ifBlank { null },
+                            unit = unit.ifBlank { null },
                             photoUrl = currentPhotoUrl,
                             email = employee?.email ?: ""
                         )
