@@ -407,14 +407,3 @@ private fun getFileName(context: Context, uri: Uri): String? {
     } ?: uri.lastPathSegment
 }
 
-// Helper logic for Play Store URL
-// Removed duplicate private function since it's defined in UsefulLinksScreen.kt as public or we can make this one private and use it if we resolve ambiguity
-// But the error says it conflicts with public one in UsefulLinksScreen.kt
-// Since both are top level functions in the same package 'com.example.policemobiledirectory.ui.screens', they conflict if one is public and other is private but visible to same file?
-// Actually, Kotlin allows private to shadow public?
-// The error says: "Overload resolution ambiguity"
-// The issue is that both files are in the same package. `UsefulLinksScreen.kt` defines `fun getPackageNameFromPlayUrl`. `AddUsefulLinkScreen.kt` defines `private fun getPackageNameFromPlayUrl`.
-// Since they are in the same package, `AddUsefulLinkScreen.kt` sees the public one from `UsefulLinksScreen.kt`. It also sees its own private one.
-// To fix this, I should remove the duplicate definition in `AddUsefulLinkScreen.kt` and use the one from `UsefulLinksScreen.kt`.
-
-// I'll remove the function definition at the bottom of AddUsefulLinkScreen.kt

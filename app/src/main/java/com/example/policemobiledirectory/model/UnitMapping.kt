@@ -13,5 +13,6 @@ data class UnitMapping(
     val scopes: List<String> = emptyList(),
     val applicableRanks: List<String> = emptyList(),
     val stationKeyword: String? = null,
-    val mappedAreaType: String? = null
+    val mappedAreaType: String? = null,
+    val hideFromRegistration: Boolean = false
 )

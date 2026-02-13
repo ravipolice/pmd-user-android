@@ -124,14 +124,12 @@ fun EmployeeStatsScreen(
         .eachCount().toList().sortedByDescending { it.second }
 
     val employeesByRankStats = filteredEmployees
-        .groupingBy { it.displayRank.trim().ifEmpty { "N/A" } }
+        .groupingBy { it.rank?.trim()?.ifEmpty { "N/A" } ?: "N/A" }
         .eachCount().toList().sortedByDescending { it.second }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
-                windowInsets = WindowInsets(0.dp),
                 title = { Text("Employee Statistics") },
                 navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(

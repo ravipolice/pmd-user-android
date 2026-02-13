@@ -243,6 +243,32 @@ class ConstantsViewModel @Inject constructor(
         }
     }
 
+    fun addRank(name: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.addRank(name)
+            result.onSuccess {
+                refreshConstants()
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to add rank: ${it.message}")
+            }
+        }
+    }
+
+    fun deleteRank(name: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.deleteRank(name)
+            result.onSuccess {
+                refreshConstants()
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to delete rank: ${it.message}")
+            }
+        }
+    }
+
     // --- UPDATE (RENAME) WRAPPERS ---
 
     fun updateDistrict(oldName: String, newName: String) {
@@ -284,6 +310,32 @@ class ConstantsViewModel @Inject constructor(
         }
     }
 
+    fun updateRank(oldName: String, newName: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.updateRank(oldName, newName)
+            result.onSuccess {
+                refreshConstants()
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to rename rank: ${it.message}")
+            }
+        }
+    }
+
+    fun updateUnitDetails(unit: com.example.policemobiledirectory.model.UnitModel) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.updateUnitDetails(unit)
+            result.onSuccess {
+                refreshConstants()
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to update unit details: ${it.message}")
+            }
+        }
+    }
+
     /**
      * Check if a unit is District Level (No Station Required)
      */
@@ -296,6 +348,42 @@ class ConstantsViewModel @Inject constructor(
      */
     fun getDistrictsForUnit(unitName: String): List<String> {
         return constantsRepository.getDistrictsForUnit(unitName)
+    }
+
+
+    private val _currentUnitSections = MutableStateFlow<List<String>>(emptyList())
+    val currentUnitSections: StateFlow<List<String>> = _currentUnitSections.asStateFlow()
+
+    fun loadSectionsForUnit(unitName: String) {
+        viewModelScope.launch {
+            _currentUnitSections.value = constantsRepository.getSectionsForUnit(unitName)
+        }
+    }
+
+    fun addSection(unitName: String, sectionName: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.addSection(unitName, sectionName)
+            result.onSuccess {
+                loadSectionsForUnit(unitName) // Reload
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to add section: ${it.message}")
+            }
+        }
+    }
+
+    fun deleteSection(unitName: String, sectionName: String) {
+        viewModelScope.launch {
+            _refreshStatus.value = OperationStatus.Loading
+            val result = constantsRepository.deleteSection(unitName, sectionName)
+            result.onSuccess {
+                loadSectionsForUnit(unitName) // Reload
+                _refreshStatus.value = OperationStatus.Success(it)
+            }.onFailure {
+                _refreshStatus.value = OperationStatus.Error("Failed to delete section: ${it.message}")
+            }
+        }
     }
 
     suspend fun getSectionsForUnit(unitName: String): List<String> {

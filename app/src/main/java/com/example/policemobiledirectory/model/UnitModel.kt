@@ -16,5 +16,6 @@ data class UnitModel(
     val scopes: List<String> = emptyList(), // Legacy support
     val applicableRanks: List<String> = emptyList(),
     val stationKeyword: String = "", // For dynamic filtering (e.g. "DCRB", "ESCOM")
-    val mappedAreaType: String = "" // "DISTRICT", "BATTALION", "RANGE", "ZONE", "NONE"
+    val mappedAreaType: String = "", // "DISTRICT", "BATTALION", "RANGE", "ZONE", "NONE"
+    val hideFromRegistration: Boolean = false
 )

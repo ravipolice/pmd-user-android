@@ -228,8 +228,9 @@ class ConstantsRepository @Inject constructor(
 
                     val stationKeyword = doc.getString("stationKeyword")
                     val mappedAreaType = doc.getString("mappedAreaType")
+                    val hideFromRegistration = doc.getBoolean("hideFromRegistration") ?: false
 
-                    UnitMapping(name, type, mergedDistricts, isDistrictLevel, isHqLevel, scopes, applicableRanks, stationKeyword, mappedAreaType)
+                    UnitMapping(name, type, mergedDistricts, isDistrictLevel, isHqLevel, scopes, applicableRanks, stationKeyword, mappedAreaType, hideFromRegistration)
                 } else null
             }.associateBy { it.unitName }
 
@@ -256,7 +257,9 @@ class ConstantsRepository @Inject constructor(
                             isHqLevel = doc.getBoolean("isHqLevel") ?: false,
                             scopes = (doc.get("scopes") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList(),
                             applicableRanks = (doc.get("applicableRanks") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList(),
-                            stationKeyword = stationKeyword
+                            stationKeyword = stationKeyword,
+                            mappedAreaType = doc.getString("mappedAreaType") ?: "",
+                            hideFromRegistration = doc.getBoolean("hideFromRegistration") ?: false
                         )
                     } else null
                 }.sortedBy { it.name }
@@ -809,6 +812,41 @@ class ConstantsRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    // --- RANKS ---
+    suspend fun addRank(name: String, seniority: Int = 999): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val rankId = name.trim() // Use name as ID for simplicity
+            val rank = mapOf(
+                "rank_id" to rankId,
+                "rank_label" to name.trim(),
+                "seniority_order" to seniority,
+                "isActive" to true
+            )
+            firestore.collection("rankMaster").document(rankId)
+                .set(rank)
+                .await()
+            clearCache()
+            fetchRanksFromFirestore()
+            Result.success("Rank '$name' added successfully")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteRank(name: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // Document ID is presumed to be the rank name based on addRank logic
+            firestore.collection("rankMaster").document(name.trim())
+                .delete()
+                .await()
+            clearCache()
+            fetchRanksFromFirestore()
+            Result.success("Rank '$name' deleted successfully")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
     // --- UPDATE OPERATIONS (Rename) ---
     /*
      * Since Firestore IDs are the names themselves (or composites of names),
@@ -848,12 +886,86 @@ class ConstantsRepository @Inject constructor(
     suspend fun updateUnit(oldName: String, newName: String): Result<String> = withContext(Dispatchers.IO) {
          if (oldName == newName) return@withContext Result.success("No change")
         try {
-            // 1. Create new
-            addUnit(newName).getOrThrow()
-            // 2. Delete old
+            // 1. Get old unit data to preserve it
+            val oldDoc = firestore.collection("units").document(oldName.trim()).get().await()
+            if (!oldDoc.exists()) return@withContext Result.failure(Exception("Unit not found"))
+
+            val oldData = oldDoc.data ?: return@withContext Result.failure(Exception("Unit data is empty"))
+            
+            // 2. Create new unit map with updated name
+            val newData = oldData.toMutableMap()
+            newData["name"] = newName.trim()
+
+            // 3. Save new document
+            firestore.collection("units").document(newName.trim())
+                .set(newData)
+                .await()
+
+            // 4. Delete old document
+             // NOTE: We should also ideally migrate 'unit_sections' if they exist for this unit.
+             // Migrating sections
+             val oldSectionsDoc = firestore.collection("unit_sections").document(oldName.trim()).get().await()
+             if (oldSectionsDoc.exists()) {
+                 val sectionsData = oldSectionsDoc.data
+                 if (sectionsData != null) {
+                     firestore.collection("unit_sections").document(newName.trim()).set(sectionsData).await()
+                     firestore.collection("unit_sections").document(oldName.trim()).delete().await()
+                 }
+             }
+
             deleteUnit(oldName).getOrThrow()
             
-            Result.success("Renamed unit '$oldName' to '$newName'")
+            Result.success("Renamed unit '$oldName' to '$newName' (Data Preserved)")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateUnitDetails(unit: com.example.policemobiledirectory.model.UnitModel): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val docRef = firestore.collection("units").document(unit.id.ifNotBlank { it } ?: unit.name)
+            
+            val data = mapOf(
+                "name" to unit.name,
+                "isActive" to unit.isActive,
+                "scopes" to unit.scopes,
+                "applicableRanks" to unit.applicableRanks,
+                "hideFromRegistration" to unit.hideFromRegistration,
+                "stationKeyword" to unit.stationKeyword,
+                "mappedAreaType" to unit.mappedAreaType,
+                "mappedDistricts" to unit.mappedDistricts, // Legacy
+                "mappedAreaIds" to unit.mappedDistricts, // New standard
+                "mappingType" to unit.mappingType,
+                "isDistrictLevel" to unit.isDistrictLevel,
+                "isHqLevel" to unit.isHqLevel
+            )
+
+            docRef.set(data, com.google.firebase.firestore.SetOptions.merge()).await()
+            fetchUnitsFromFirestore() // Refresh cache
+            Result.success("Unit details updated successfully")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun String.ifNotBlank(block: (String) -> String): String? {
+        return if (this.isNotBlank()) block(this) else null
+    }
+
+    suspend fun updateRank(oldName: String, newName: String): Result<String> = withContext(Dispatchers.IO) {
+        if (oldName == newName) return@withContext Result.success("No change")
+        try {
+            // 1. Get old rank to preserve seniority
+            val oldDoc = firestore.collection("rankMaster").document(oldName.trim()).get().await()
+            val seniority = oldDoc.getLong("seniority_order")?.toInt() ?: 999
+
+            // 2. Create new with same seniority
+            addRank(newName, seniority).getOrThrow()
+
+            // 3. Delete old
+            deleteRank(oldName).getOrThrow()
+
+            Result.success("Renamed rank '$oldName' to '$newName'")
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -918,5 +1030,50 @@ class ConstantsRepository @Inject constructor(
         }
 
         return baseStations
+    }
+
+    // --- SECTIONS MANAGEMENT ---
+
+    suspend fun addSection(unitName: String, sectionName: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val docRef = firestore.collection("unit_sections").document(unitName)
+            
+            firestore.runTransaction { transaction ->
+                val snapshot = transaction.get(docRef)
+                
+                if (snapshot.exists()) {
+                    val currentSections = snapshot.get("sections") as? List<String> ?: emptyList()
+                    if (!currentSections.contains(sectionName)) {
+                        val newSections = currentSections + sectionName
+                        transaction.update(docRef, "sections", newSections)
+                    }
+                } else {
+                    transaction.set(docRef, mapOf("sections" to listOf(sectionName)))
+                }
+            }.await()
+            
+            Result.success("Section added")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteSection(unitName: String, sectionName: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+             val docRef = firestore.collection("unit_sections").document(unitName)
+            
+            firestore.runTransaction { transaction ->
+                val snapshot = transaction.get(docRef)
+                if (snapshot.exists()) {
+                    val currentSections = snapshot.get("sections") as? List<String> ?: emptyList()
+                    val newSections = currentSections.filter { it != sectionName }
+                    transaction.update(docRef, "sections", newSections)
+                }
+            }.await()
+            
+            Result.success("Section deleted")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

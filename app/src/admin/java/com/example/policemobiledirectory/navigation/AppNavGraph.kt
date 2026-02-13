@@ -326,12 +326,22 @@ private fun AppNavHostContent(
         }
 
         // --- MANAGE CONSTANTS ---
-        composable(Routes.MANAGE_CONSTANTS) {
+        composable(
+            route = "${Routes.MANAGE_CONSTANTS}?initialTab={initialTab}",
+            arguments = listOf(
+                navArgument("initialTab") {
+                    type = NavType.IntType
+                    defaultValue = -1
+                }
+            )
+        ) { backStackEntry ->
+            val initialTab = backStackEntry.arguments?.getInt("initialTab") ?: -1
             // Using hiltViewModel() to get scoped instance of ConstantsViewModel
             val constantsViewModel: com.example.policemobiledirectory.viewmodel.ConstantsViewModel = hiltViewModel()
             com.example.policemobiledirectory.ui.screens.ManageConstantsScreen(
                 navController = navController,
-                viewModel = constantsViewModel
+                viewModel = constantsViewModel,
+                initialTab = initialTab
             )
         }
     }

@@ -321,7 +321,7 @@ fun handleLinkClick(context: Context, playStoreUrl: String?, apkUrl: String?, ap
             !playStoreUrl.isNullOrEmpty() && playStoreUrl.contains("id=") -> {
                 openAppOrStore(context, playStoreUrl)
             }
-            !apkUrl.isNullOrEmpty() && apkUrl.contains("firebasestorage.googleapis.com") -> {
+            !apkUrl.isNullOrEmpty() -> {
                 downloadAndInstallApk(context, apkUrl, appName)
             }
             !playStoreUrl.isNullOrEmpty() -> {

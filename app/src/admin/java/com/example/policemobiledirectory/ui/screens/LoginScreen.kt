@@ -384,7 +384,7 @@ fun LoginScreen(
                 
                 // Developer Information
                 Text(
-                    text = "Developed By Ravikumar J, AHC, DAR Chikkaballapura",
+                    text = "Developed By Ravikumar J, Nandija Tech Group",
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,

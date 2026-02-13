@@ -342,7 +342,7 @@ fun ContactCard(
                                         Icon(
                                             imageVector = Icons.Filled.Call,
                                             contentDescription = "Call mobile",
-                                            tint = Color.Black,
+                                            tint = Color(0xFF22D3EE), // Cyan-400
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
@@ -353,7 +353,7 @@ fun ContactCard(
                                         Icon(
                                             imageVector = Icons.AutoMirrored.Filled.Message,
                                             contentDescription = "SMS",
-                                            tint = Color.Black,
+                                            tint = Color(0xFF4ADE80), // Green-400
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
@@ -385,8 +385,9 @@ fun ContactCard(
                             }
                         } else {
                             Text(
-                                text = "No mobile number",
-                                color = Color.Black.copy(alpha = 0.7f),
+                                text = "No contact number available",
+                                color = Color.Gray,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                                 fontSize = (12 * fontScale).sp
                             )
                         }

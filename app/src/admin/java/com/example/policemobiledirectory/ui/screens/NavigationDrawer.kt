@@ -16,6 +16,21 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Badge // Or Person
+import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.LocalPolice
+import androidx.compose.material.icons.filled.Stars
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Apartment
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -217,15 +232,17 @@ fun NavigationDrawer(
                 Modifier
                     .weight(1f)
                     .padding(vertical = 8.dp)
+                    .verticalScroll(rememberScrollState()) // Enable scrolling for many items
             ) {
+                // 1. Dashboard
                 DrawerItem(
-                    icon = Icons.Default.Person,
-                    text = "My Profile",
-                    selected = currentRoute == Routes.MY_PROFILE,
+                    icon = Icons.Default.Dashboard,
+                    text = "Dashboard",
+                    selected = currentRoute == Routes.ADMIN_PANEL,
                     onClick = {
                         scope.launch {
                             drawerState.close()
-                            navController.navigate(Routes.MY_PROFILE) {
+                            navController.navigate(Routes.ADMIN_PANEL) {
                                 launchSingleTop = true
                                 restoreState = true
                                 popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
@@ -234,7 +251,180 @@ fun NavigationDrawer(
                     }
                 )
 
+                // 2. Employees (Home)
+                DrawerItem(
+                    icon = Icons.Default.Badge, // Using Badge or Person
+                    text = "Employees",
+                    selected = currentRoute == Routes.EMPLOYEE_LIST,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate(Routes.EMPLOYEE_LIST) {
+                                launchSingleTop = true
+                                restoreState = true
+                                popUpTo(0) // Go to root
+                            }
+                        }
+                    }
+                )
+                
+                // 3. Pending Approvals
+                DrawerItem(
+                    icon = Icons.Default.VerifiedUser,
+                    text = "Pending Approvals",
+                    selected = currentRoute == Routes.PENDING_APPROVALS,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate(Routes.PENDING_APPROVALS)
+                        }
+                    }
+                )
 
+               /*
+                // 4. Officers (Merged into Employees generally, but kept if distinct route desired)
+                DrawerItem(
+                    icon = Icons.Default.LocalPolice,
+                    text = "Officers",
+                    selected = false, // Add specific route check if separate screen exists
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            // Logic to filter for officers or nav to separate screen
+                            navController.navigate(Routes.EMPLOYEE_LIST) // Placeholder
+                        }
+                    }
+                )
+                */
+
+                Divider(modifier = Modifier.padding(vertical = 4.dp))
+                
+                // --- MASTER DATA ---
+                Text(
+                    text = "Master Data",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 24.dp, top = 8.dp, bottom = 4.dp)
+                )
+
+                // Ranks
+                DrawerItem(
+                    icon = Icons.Default.Stars,
+                    text = "Ranks",
+                    selected = false,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate("${Routes.MANAGE_CONSTANTS}?initialTab=3") // Tab 3 = Ranks
+                        }
+                    },
+                    isSubItem = true
+                )
+
+                // Districts
+                DrawerItem(
+                    icon = Icons.Default.Map,
+                    text = "Districts",
+                    selected = false,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate("${Routes.MANAGE_CONSTANTS}?initialTab=0") // Tab 0 = Districts
+                        }
+                    },
+                    isSubItem = true
+
+                )
+
+                // Stations
+                DrawerItem(
+                    icon = Icons.Default.Apartment,
+                    text = "Stations",
+                    selected = false,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate("${Routes.MANAGE_CONSTANTS}?initialTab=1") // Tab 1 = Stations
+                        }
+                    },
+                    isSubItem = true
+
+                )
+
+                // Units
+                DrawerItem(
+                    icon = Icons.Default.Groups,
+                    text = "Units",
+                    selected = false,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate("${Routes.MANAGE_CONSTANTS}?initialTab=2") // Tab 2 = Units
+                        }
+                    },
+                    isSubItem = true
+
+                )
+
+                Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // 5. Notifications
+                DrawerItem(
+                    icon = Icons.Default.Notifications,
+                    text = "Notifications",
+                    selected = currentRoute == Routes.NOTIFICATIONS,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate(Routes.NOTIFICATIONS)
+                        }
+                    }
+                )
+
+                // 6. Documents
+                DrawerItem(
+                    icon = Icons.Default.Description,
+                    text = "Documents",
+                    selected = currentRoute == Routes.DOCUMENTS,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate(Routes.DOCUMENTS)
+                        }
+                    }
+                )
+
+                // 7. Gallery
+                DrawerItem(
+                    icon = Icons.Default.PhotoLibrary,
+                    text = "Gallery",
+                    selected = currentRoute == Routes.GALLERY_SCREEN,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate(Routes.GALLERY_SCREEN)
+                        }
+                    }
+                )
+                
+                // 8. Useful Links
+                DrawerItem(
+                    icon = Icons.Default.Link,
+                    text = "Useful Links",
+                    selected = currentRoute == Routes.USEFUL_LINKS,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate(Routes.USEFUL_LINKS)
+                        }
+                    }
+                )
+
+                Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // 9. App Management (General)
+                
+                // 10. Doc Converter
                 DrawerItem(
                     icon = Icons.Default.Translate,
                     text = "Nudi Converter",
@@ -242,27 +432,20 @@ fun NavigationDrawer(
                     onClick = {
                         scope.launch {
                             drawerState.close()
-                            navController.navigate(Routes.NUDI_CONVERTER) {
-                                launchSingleTop = true
-                                restoreState = true
-                                popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
-                            }
+                            navController.navigate(Routes.NUDI_CONVERTER)
                         }
                     }
                 )
-
+                
+                // 11. CSV Upload
                 DrawerItem(
-                    icon = Icons.Default.Info,
-                    text = "About App",
-                    selected = currentRoute == Routes.ABOUT,
+                    icon = Icons.Default.UploadFile,
+                    text = "CSV Upload",
+                    selected = currentRoute == Routes.UPLOAD_CSV,
                     onClick = {
                         scope.launch {
                             drawerState.close()
-                            navController.navigate(Routes.ABOUT) {
-                                launchSingleTop = true
-                                restoreState = true
-                                popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
-                            }
+                            navController.navigate(Routes.UPLOAD_CSV)
                         }
                     }
                 )
@@ -385,6 +568,7 @@ fun DrawerItem(
     text: String,
     selected: Boolean = false,
     textColor: Color = MaterialTheme.colorScheme.onSurface,
+    isSubItem: Boolean = false, // ✅ New parameter
     onClick: () -> Unit
 ) {
     val containerColor = if (selected)
@@ -392,24 +576,28 @@ fun DrawerItem(
     else
         Color.Transparent
 
+    val paddingStart = if (isSubItem) 40.dp else 20.dp // Indent subitems
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(containerColor)
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(start = paddingStart, end = 20.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             icon,
             contentDescription = text,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
+            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(if(isSubItem) 20.dp else 24.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge.copy(
-                color = textColor
+                color = if (selected) MaterialTheme.colorScheme.primary else textColor,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
             )
         )
     }

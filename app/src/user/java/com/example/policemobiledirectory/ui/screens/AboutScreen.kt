@@ -175,7 +175,7 @@ fun AboutScreen(navController: NavController) {
             )
 
             Text(
-                text = "Ravikumar J",
+                text = "Ravikumar J, Nandija Tech Group",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -203,6 +203,60 @@ fun AboutScreen(navController: NavController) {
                     val intent = Intent(Intent.ACTION_SENDTO).apply {
                         data = Uri.parse("mailto:$email")
                         putExtra(Intent.EXTRA_SUBJECT, "Police Mobile Directory - Feedback")
+                    }
+                    context.startActivity(intent)
+                }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 🔹 Clickable Phone
+            val phoneNumber = "9844610264"
+            val phoneText = buildAnnotatedString {
+                append("Call Support:\n")
+                withStyle(
+                    style = SpanStyle(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 14.sp
+                    )
+                ) {
+                    append(phoneNumber)
+                }
+            }
+
+            Text(
+                text = phoneText,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.clickable {
+                    val intent = Intent(Intent.ACTION_DIAL).apply {
+                        data = Uri.parse("tel:$phoneNumber")
+                    }
+                    context.startActivity(intent)
+                }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 🔹 Clickable Phone
+            val phoneNumber = "9844610264"
+            val phoneText = buildAnnotatedString {
+                append("Call Support:\n")
+                withStyle(
+                    style = SpanStyle(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 14.sp
+                    )
+                ) {
+                    append(phoneNumber)
+                }
+            }
+
+            Text(
+                text = phoneText,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.clickable {
+                    val intent = Intent(Intent.ACTION_DIAL).apply {
+                        data = Uri.parse("tel:$phoneNumber")
                     }
                     context.startActivity(intent)
                 }
