@@ -235,33 +235,6 @@ fun AboutScreen(navController: NavController) {
                 }
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 🔹 Clickable Phone
-            val phoneNumber = "9844610264"
-            val phoneText = buildAnnotatedString {
-                append("Call Support:\n")
-                withStyle(
-                    style = SpanStyle(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 14.sp
-                    )
-                ) {
-                    append(phoneNumber)
-                }
-            }
-
-            Text(
-                text = phoneText,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.clickable {
-                    val intent = Intent(Intent.ACTION_DIAL).apply {
-                        data = Uri.parse("tel:$phoneNumber")
-                    }
-                    context.startActivity(intent)
-                }
-            )
-
             Spacer(modifier = Modifier.height(24.dp))
 
             // 🔹 Affiliation Statement

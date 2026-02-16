@@ -32,6 +32,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import com.example.policemobiledirectory.utils.PinHasher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -1154,7 +1155,13 @@ open class EmployeeViewModel @Inject constructor(
                 }
 
                 // 2️⃣ Prepare safe PendingRegistration object
+                var finalPin = entity.pin
+                if (finalPin.length == 6 && !finalPin.contains(":")) {
+                    finalPin = PinHasher.hashPassword(finalPin)
+                }
+
                 val pending = entity.copy(
+                    pin = finalPin,
                     isApproved = false,
                     firebaseUid = entity.firebaseUid.takeIf { it.isNotBlank() } ?: "",
                     status = "pending",

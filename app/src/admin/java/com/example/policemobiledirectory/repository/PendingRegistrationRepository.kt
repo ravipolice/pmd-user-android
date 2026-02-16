@@ -15,6 +15,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.example.policemobiledirectory.utils.PinHasher
 
 @Singleton
 class PendingRegistrationRepository @Inject constructor(
@@ -137,8 +138,16 @@ class PendingRegistrationRepository @Inject constructor(
             
             val photoUrl = entity.photoUrl ?: entity.photoUrlFromGoogle
 
+            var finalPin = entity.pin
+            if (finalPin.length == 6 && !finalPin.contains(":")) {
+                finalPin = PinHasher.hashPassword(finalPin)
+            }
+
             // ✅ CRITICAL FIX: Ensure kgid is explicitly set in Employee object
-            val employee = entity.toEmployee(photoUrl).copy(kgid = kgid)
+            val employee = entity.toEmployee(photoUrl).copy(
+                kgid = kgid,
+                pin = finalPin
+            )
 
             // 1️⃣ Save employee (Google Sheet + Room)
             val result = employeeRepository.addOrUpdateEmployee(employee).last()

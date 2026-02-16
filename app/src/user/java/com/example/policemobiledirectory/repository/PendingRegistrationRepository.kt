@@ -15,6 +15,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.example.policemobiledirectory.utils.PinHasher
 
 @Singleton
 class PendingRegistrationRepository @Inject constructor(
@@ -58,7 +59,13 @@ class PendingRegistrationRepository @Inject constructor(
             try {
                 val docRef = firestore.collection("pending_registrations").document()
 
+                var finalPin = entity.pin
+                if (finalPin.length == 6 && !finalPin.contains(":")) {
+                    finalPin = PinHasher.hashPassword(finalPin)
+                }
+
                 val prepared = entity.copy(
+                    pin = finalPin,
                     firestoreId = docRef.id,
                     status = "pending",
                     createdAt = java.util.Date(),
